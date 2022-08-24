@@ -89,12 +89,3 @@ bool FASTCALL Hooks::hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage
 
 	return oSendNetMsg( pNetChan, edx, msg, bForceReliable, bVoice );
 }
-
-void* FASTCALL Hooks::hkAllocKeyValuesMemory( IKeyValuesSystem* thisptr, int edx, int iSize ) {
-	static auto oAllocKeyValuesMemory = DTR::AllocKeyValuesMemory.GetOriginal<decltype( &hkAllocKeyValuesMemory )>( );
-
-	if ( const std::uintptr_t uReturnAddress = reinterpret_cast< std::uintptr_t >( _ReturnAddress( ) ); uReturnAddress == Offsets::Sigs.uAllocKeyValuesEngine || uReturnAddress == Offsets::Sigs.uAllocKeyValuesClient )
-		return nullptr;
-
-	return oAllocKeyValuesMemory( thisptr, edx, iSize );
-}

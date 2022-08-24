@@ -41,47 +41,6 @@ bool FASTCALL Hooks::hkShouldSkipAnimFrame( void* ecx, uint32_t ebx ) {
 	return oShouldSkipAnimFrame( ecx, ebx );
 }
 
-void FASTCALL Hooks::hkClampBonesInBBox( CBasePlayer* ecx, uint32_t ebx, matrix3x4_t* bones, int boneMask ) {
-	static auto oClampBonesInBBox{ DTR::ClampBonesInBBox.GetOriginal<decltype( &hkClampBonesInBBox )>( ) };
-
-	if ( ecx == ctx.m_pLocal
-		&& !( ctx.m_cLocalData.at( ctx.m_iLastSentCmdNumber % 150 ).PredictedNetvars.m_iFlags & FL_ONGROUND ) )
-		return;
-
-	/* guwop fix
-	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
-	const auto bone_index = lookupBone( ecx, _( "pelvis" ) );
-
-	const auto oldBonePos = bones[ bone_index ].GetOrigin( );*/
-
-	oClampBonesInBBox( ecx, ebx, bones, boneMask );
-
-	/*const auto newBonePos = bones[ bone_index ].GetOrigin( );
-
-	const auto delta = oldBonePos - newBonePos;
-	for ( std::size_t i{ }; i < ecx->m_CachedBoneData( ).Count( ); ++i ) {
-		auto& bone = bones[ i ];
-		auto& mat = bones[ i ];
-		bone[ 0 ][ 3 ] = mat[ 0 ][ 3 ] + delta.x;
-		bone[ 1 ][ 3 ] = mat[ 1 ][ 3 ] + delta.y;
-		bone[ 2 ][ 3 ] = mat[ 2 ][ 3 ] + delta.z;
-	}*/
-}
-
-void FASTCALL Hooks::hkPostDataUpdate( CBasePlayer* ecx, uint32_t edx, int32_t updateType ) {
-	static auto oPostDataUpdate{ DTR::PostDataUpdate.GetOriginal<decltype( &hkPostDataUpdate )>( ) };
-
-	if ( !ecx
-		|| !ecx->IsPlayer( ) )
-		return oPostDataUpdate( ecx, edx, updateType );
-
-	const auto backupEffects{ ecx->m_fEffects( ) };
-
-	ecx->m_fEffects( ) |= EF_NOINTERP;
-	oPostDataUpdate( ecx, edx, updateType );
-	ecx->m_fEffects( ) = backupEffects;
-}
-
 bool FASTCALL Hooks::hkSetupbones( const std::uintptr_t ecx, const std::uintptr_t edx, matrix3x4_t* const bones, 
 	int max_bones, int mask, float time ) {
 	static auto oSetupbones{ DTR::Setupbones.GetOriginal<decltype( &hkSetupbones )>( ) };
@@ -125,18 +84,6 @@ void FASTCALL Hooks::hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx ) 
 		return;
 
 	oUpdateClientsideAnimation( ecx, edx );
-}
-
-QAngle* FASTCALL Hooks::hkGetEyeAngles( CBasePlayer* ecx, void* edx ) {
-	static auto oGetEyeAngles = DTR::GetEyeAngles.GetOriginal<decltype( &hkGetEyeAngles )>( );
-
-	auto& LocalData{ ctx.m_cLocalData.at( ctx.m_iLastSentCmdNumber % 150 ) };
-	if ( ecx != ctx.m_pLocal
-		|| LocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( )
-		|| *reinterpret_cast< std::uintptr_t* >( _AddressOfReturnAddress( ) ) != Offsets::Sigs.ReturnToEyePosAndVectors )
-		return oGetEyeAngles( ecx, edx );
-
-	return &LocalData.m_angViewAngles;
 }
 
 void FASTCALL Hooks::hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate ) {

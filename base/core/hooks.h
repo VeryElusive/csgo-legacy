@@ -29,8 +29,8 @@ namespace VTABLE
 		ALLOCKEYVALUESMEMORY = 2,
 
 		/* client table */
-		CREATEMOVE = 22,
-		FRAMESTAGENOTIFY = 37,
+		CREATEMOVE = 21,
+		FRAMESTAGENOTIFY = 36,
 		WRITEUSERCMDDELTATOBUFFER = 24,
 
 		/* panel table */
@@ -108,7 +108,6 @@ namespace DTR
 	inline CDetourHook Reset;
 	inline CDetourHook EndScene;
 	inline CDetourHook Present;
-	inline CDetourHook AllocKeyValuesMemory;
 	inline CDetourHook CreateMoveProxy;
 	inline CDetourHook FrameStageNotify;
 	inline CDetourHook GetScreenAspectRatio;
@@ -141,7 +140,6 @@ namespace DTR
 	inline CDetourHook DoExtraBonesProcessing;
 	inline CDetourHook StandardBlendingRules;
 	inline CDetourHook UpdateClientsideAnimation;
-	inline CDetourHook GetEyeAngles;
 	inline CDetourHook CheckForSequenceChange;
 	inline CDetourHook AccumulateLayers;
 	inline CDetourHook PhysicsSimulate;
@@ -161,7 +159,6 @@ namespace DTR
 	inline CDetourHook GetAlphaModulation;
 	inline CDetourHook PostDataUpdate;
 	inline CDetourHook OnLatchInterpolatedVariables;
-	inline CDetourHook ClampBonesInBBox;
 }
 
 /*
@@ -197,7 +194,6 @@ namespace Hooks
 	bool	FASTCALL	hkIsHltv( void* ecx, void* EDX );
 	int		FASTCALL	hkEmitSound( void* _this, int edx, IRecipientFilter& filter, int iEntIndex, int iChannel, const char* pSoundEntry, unsigned int nSoundEntryHash, const char* pSample, float flVolume, int nSeed, float flAttenuation, int iFlags, int iPitch, const Vector* pOrigin, const Vector* pDirection, void* pUtlVecOrigins, bool bUpdatePositions, float soundtime, int speakerentity, int unk );
 	bool	FASTCALL	hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage& msg, bool bForceReliable, bool bVoice );
-	void*	FASTCALL	hkAllocKeyValuesMemory( IKeyValuesSystem* thisptr, int edx, int iSize );
 	bool	FASTCALL	hkInPrediction( void* ecx, void* edx );
 	void	FASTCALL	hkProcessMovement( void* ecx, DWORD edx, CBasePlayer* basePlayer, CMoveData* moveData );
 	bool	FASTCALL	hkSvCheatsGetBool( CConVar* thisptr, int edx );
@@ -205,8 +201,6 @@ namespace Hooks
 	void	FASTCALL	hkStandardBlendingRules( CBasePlayer* const ent, const std::uintptr_t edx, CStudioHdr* const mdl_data, int a1, int a2, float a3, int mask );
 	void	FASTCALL	hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx );
 	bool	FASTCALL	hkShouldSkipAnimFrame( void* ecx, uint32_t ebx );
-	void	FASTCALL	hkClampBonesInBBox( CBasePlayer* ecx, uint32_t ebx, matrix3x4_t* bones, int boneMask );
-	QAngle* FASTCALL	hkGetEyeAngles( CBasePlayer* ecx, void* edx );
 	void	FASTCALL	hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate );
 	void	FASTCALL	hkAccumulateLayers( CBasePlayer* const ecx, const std::uintptr_t edx, int a0, int a1, float a2, int a3 );
 	void	FASTCALL	hkPhysicsSimulate( CBasePlayer* player, int time );
@@ -223,7 +217,6 @@ namespace Hooks
 	bool	CDECL		hkGlowEffectSpectator( CBasePlayer* const player, CBasePlayer* const local, int& style, Vector& clr, float& alpha_from, float& alpha_to, float& time_from, float& time_to, bool& animate );
 	void	FASTCALL	hkGetColorModulation( IMaterial* const ecx, const std::uintptr_t edx, float* const r, float* const g, float* const b );
 	float	FASTCALL	hkGetAlphaModulation( IMaterial* ecx, uint32_t ebx );
-	void	FASTCALL	hkPostDataUpdate( CBasePlayer* ecx, uint32_t edx, int32_t updateType );
 	void	FASTCALL	hkOnLatchInterpolatedVariables( CBasePlayer* const ecx, const std::uintptr_t edx, const int flags );
 	void				hkCL_SendMove( );
 

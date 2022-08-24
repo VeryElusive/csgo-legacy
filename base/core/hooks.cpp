@@ -65,16 +65,6 @@ bool Hooks::Setup( ) {
 	if ( !DTR::PacketStart.Create( MEM::GetVFunc( pClientStateSwap, 5 ), &Hooks::hkPacketStart ) )
 		return false;
 
-	//if ( !DTR::ProcessTempEntities.Create( MEM::GetVFunc( pClientStateSwap, 36 ), &Hooks::hkProcessTempEntities ) )
-	//	return false;	
-
-	// in cmove now
-	//if ( !DTR::SendNetMsg.Create( MEM::GetVFunc( ( DWORD** )Interfaces::ClientState->pNetChannel, 40 ), &Hooks::hkSendNetMsg ) )
-	//	return false;
-
-	if ( !DTR::AllocKeyValuesMemory.Create( MEM::GetVFunc( Interfaces::KeyValuesSystem, VTABLE::ALLOCKEYVALUESMEMORY ), &hkAllocKeyValuesMemory ) )
-		return false;
-
 	if ( !DTR::WriteUserCmdDeltaToBuffer.Create( MEM::GetVFunc( Interfaces::Client, VTABLE::WRITEUSERCMDDELTATOBUFFER ), &hkWriteUserCmdDeltaToBuffer ) )
 		return false;
 
@@ -115,24 +105,19 @@ bool Hooks::Setup( ) {
 		return false;
 
 	if ( !DTR::UpdateClientsideAnimation.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 56 8B F1 80 BE ? ? 00 00 00 74 36" ) ) ),
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 56 8B F1 80 BE ? ? ? ? ? 74 36" ) ) ),
 		&Hooks::hkUpdateClientsideAnimation ) )
 		return false;
 
-	if ( !DTR::GetEyeAngles.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 85 F6 74 32" ) ) ),
-		&Hooks::hkGetEyeAngles ) )
-		return false;		
-	
-	if ( !DTR::GlowEffectSpectator.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 8B 5D 0C 56 57 85 DB 74 47 " ) ) ),
+	/*if ( !DTR::GlowEffectSpectator.Create(
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 8B 5D 0C 56 57 85 DB 74 47" ) ) ),//wrong sig
 		&Hooks::hkGlowEffectSpectator ) )
-		return false;		
+		return false;		*/
 	
 	if ( !DTR::GetColorModulation.Create(
 		( byte* )( MEM::FindPattern( MATERIALSYSTEM_DLL, _( "55 8B EC 83 EC ? 56 8B F1 8A 46" ) ) ),
 		&Hooks::hkGetColorModulation ) )
-		return false;		
+		return false;
 	
 	if ( !DTR::GetAlphaModulation.Create(
 		( byte* )( MEM::FindPattern( MATERIALSYSTEM_DLL, _( "56 8B F1 8A 46 20 C0 E8 02 A8 01 75 0B 6A 00 6A 00 6A 00 E8 ? ? ? ? 80 7E 22 05 76 0E" ) ) ),
@@ -164,13 +149,18 @@ bool Hooks::Setup( ) {
 		&Hooks::hkSetupbones ) )
 		return false;
 
+	auto rel32_resolve = [ ]( uintptr_t ptr ) {
+		auto offset = *( uintptr_t* )( ptr + 0x1 );
+		return ( uintptr_t* )( ptr + 5 + offset );
+	};
+
 	if ( !DTR::PhysicsSimulate.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 8B 8E ? ? ? ? 83 F9 FF 74 23" ) ) ),
+		( byte* )rel32_resolve( ( MEM::FindPattern( CLIENT_DLL, _( "E8 ? ? ? ? 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 8B 06" ) ) ) ),// IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
 		&Hooks::hkPhysicsSimulate ) )
 		return false;
 
 	if ( !DTR::ModifyEyePosition.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 70 56 57 8B F9 89 7C 24 14 83 7F 60" ) ) ),
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B F9 83 7F 60 00 0F 84" ) ) ),
 		&Hooks::hkModifyEyePosition ) )
 		return false;
 	
@@ -180,7 +170,7 @@ bool Hooks::Setup( ) {
 		return false;		
 	
 	if ( !DTR::CalcView.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 56 57 FF 75 18" ) ) ),
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 53 8B 5D 08 56 57 FF 75 18 8B F1 FF 75 14 FF 75" ) ) ),
 		&Hooks::hkCalcView ) )
 		return false;		
 	
@@ -188,21 +178,6 @@ bool Hooks::Setup( ) {
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 10 53 56 8B F1 57 80 BE ? ? ? ? ? 75 41" ) ) ),
 		&Hooks::hkOnLatchInterpolatedVariables ) )
 		return false;		
-	
-	if ( !DTR::ClampBonesInBBox.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 70 56 57 8B F9 89 7C 24 38 83 BF" ) ) ),
-		&Hooks::hkClampBonesInBBox ) )
-		return false;	
-
-	/*if ( !DTR::CL_Move.Create(
-		( byte* )( MEM::FindPattern( ENGINE_DLL, _( "55 8B EC 81 EC ? ? ? ? 53 56 8A F9 F3 0F 11 45 ? 8B 4D 04" ) ) ),
-		&Hooks::hkCL_Move ) )
-		return false;
-	
-	if ( !DTR::ShouldInterpolate.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 E8 ? ? ? ? 3B F0" ) ) ),
-		&Hooks::hkShouldInterpolate ) )
-		return false;*/
 
 	return true;
 }

@@ -241,7 +241,7 @@
     <ProjectGuid>{0ae1f3a9-87f5-4f11-9ad3-5846b76b6565}</ProjectGuid>
     <RootNamespace>havoc</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>havoc-sdk</ProjectName>
+    <ProjectName>havoc-legacy</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
