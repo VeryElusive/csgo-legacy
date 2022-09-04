@@ -23,9 +23,6 @@ void CAnimationSys::RunAnimationSystem( ) {
 			continue;
 		}
 
-		if ( player->m_iAnimationLayersCount( ) <= 0 )
-			continue;
-
 		/*if ( player->IsDormant( ) ) {
 			if ( entry.m_pRecords.empty( ) ) {
 				entry.m_pRecords.emplace_back( std::make_shared< LagRecord_t >( player ) );
@@ -175,7 +172,7 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 
 	entry.m_vecUpdatedOrigin = entry.m_pPlayer->GetAbsOrigin( );
 
-	memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
+	memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * 13u );
 }
 
 FORCEINLINE void CAnimationSys::SetupInterp( LagRecord_t* to, PlayerEntry& entry ) {
@@ -356,15 +353,13 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 			absoluteframetime{ Interfaces::Globals->flAbsFrameTime },
 			m_occlusion_frame{ player->m_iOcclusionFrame( ) },
 			m_ent_client_flags{ player->m_iEntClientFlags( ) },
-			m_hRender{ player->m_hRender( ) },
-			m_VisibilityBits{ player->m_VisibilityBits( ) },
 			m_ik_context{ player->m_IkContext( ) }, m_effects{ player->m_fEffects( ) },
 			m_occlusion_flags{ player->m_iOcclusionFlags( ) } {}
 
 		float					m_cur_time{ }, m_frame_time{ }, absoluteframetime{ };
 		int						m_frame_count{ }, m_tick_count, m_occlusion_frame{ };
 
-		std::uint8_t			m_ent_client_flags{ }, m_hRender{ }, m_VisibilityBits{ };
+		std::uint8_t			m_ent_client_flags{ };
 		ik_context_t* m_ik_context{ };
 
 		int				m_effects{ };
@@ -402,13 +397,6 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 		// C_CSPlayer::ReevauluateAnimLOD and C_CSPlayer::AccumulateLayers
 		player->m_iOcclusionFlags( ) &= ~0xau;
 		player->m_iOcclusionFrame( ) = 0;
-
-		// IsVisible ( C_BaseAnimatingOverlay::AccumulateInterleavedDispatchedLayers and C_CSPlayer::BuildTransformations )
-		if ( player->m_hRender( ) == 0xFFFF ) //INVALID_CLIENT_RENDER_HANDLE
-			player->m_hRender( ) = 1;
-
-		if ( !( player->m_VisibilityBits( ) & 1 ) )
-			player->m_VisibilityBits( ) |= 1;
 	}
 
 	ctx.m_bSetupBones = true;
@@ -424,8 +412,6 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 		player->m_fEffects( ) = backup.m_effects;
 		player->m_iEntClientFlags( ) = backup.m_occlusion_flags;
 		player->m_iOcclusionFrame( ) = backup.m_occlusion_frame;
-		player->m_hRender( ) = backup.m_hRender;
-		player->m_VisibilityBits( ) = backup.m_VisibilityBits;
 	}
 
 	Interfaces::Globals->flCurTime = backup.m_cur_time;

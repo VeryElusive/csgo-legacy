@@ -235,23 +235,21 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				}
 			}
 
-			if ( !ctx.m_pLocal->IsDead( ) ) {
+			// TODO: 
+			/*if ( !ctx.m_pLocal->IsDead( ) ) {
 				for ( auto i{ Interfaces::ClientState->pEvents }; i; i = Interfaces::ClientState->pEvents->next ) {
 					if ( !i->iClassID )
 						continue;
 
 					i->flFireDelay = 0.f;
 				}
-			}
+			}*/
 
 
-			Interfaces::Engine->FireEvents( );
+			//Interfaces::Engine->FireEvents( );
 			Features::Shots.OnNetUpdate( );
 
-			static bool did{ };
-			if ( !did )
-				did = Features::EnginePrediction.AddToDataMap( );
-
+			// TODO: we removed velomod fix we need to to tat
 			//Features::AnimSys.UpdateCommands( );
 		}
 

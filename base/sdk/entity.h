@@ -413,7 +413,7 @@ public:
 	OFFSET( bool, Dormant( ), 0xED );
 
 	Vector WorldSpaceCenter( ) {
-		return MEM::CallVFunc<Vector>( this, 54 );
+		return MEM::CallVFunc<Vector>( this, 778 );
 	}
 };
 
@@ -545,34 +545,32 @@ public:
 	OFFSET( int, m_iMoveState( ), Offsets::m_iMoveState );
 	OFFSET( bool, m_bIsWalking( ), Offsets::m_bIsWalking );
 	OFFSET( int, m_nModelIndex( ), Offsets::m_nModelIndex );
-	OFFSET( uint8_t, m_hRender( ), Offsets::m_nRenderMode + 0x17 );// 0x172
-	OFFSET( uint8_t, m_VisibilityBits( ), Offsets::m_nRenderMode + 0x19 ); // 0x174
-	OFFSET( bool, m_bUseNewAnimstate( ), Offsets::m_flLowerBodyYawTarget + 0x38 ); // 0x998b
-	OFFSET( int, m_iAnimationLayersCount( ), 0x299C );
-	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2990 );
-	OFFSET( CCommandContext, m_CmdContext( ), 0x350cu );
-	OFFSET( int, m_nSimulationTick( ), 0x2acu );
-	OFFSET( unsigned long, g_iModelBoneCounter( ), 0x2690u );
+	OFFSET( bool, m_bUseNewAnimstate( ), 0x3874 ); // 0x998b
+	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2970 );
+	OFFSET( CCommandContext, m_CmdContext( ), 0x34FCu );
+	OFFSET( int, m_nSimulationTick( ), 0x2a8u );
+	OFFSET( unsigned long, g_iModelBoneCounter( ), 0x2680u );// havent tested but - 0x10
 	OFFSET( int, m_iOcclusionFrame( ), 0xa30u );
 	OFFSET( std::uint32_t, m_iOcclusionFlags( ), 0xa28u );
 	OFFSET( std::uint8_t, m_iEntClientFlags( ), 0x68u );
-	OFFSET( ik_context_t*, m_IkContext( ), 0x2670u );
+	OFFSET( ik_context_t*, m_IkContext( ), 0x2660 ); // havent tested but - 0x10
 	OFFSET( int, m_iLastSetupBonesFrame( ), 0xa68u );
-	OFFSET( float, m_flLastSetupBonesTime( ), 0x2928u );
-	OFFSET( CBoneAccessor, m_BoneAccessor( ), 0x26a4u );
-	OFFSET( CStudioHdr*, m_pStudioHdr( ), 0x2950u );
+	OFFSET( float, m_flLastSetupBonesTime( ), 0x2914u );// - 0x14
+	OFFSET( CBoneAccessor, m_BoneAccessor( ), 0x2694 );// - 0x10
+	OFFSET( CStudioHdr*, m_pStudioHdr( ), 0x293cu );// - 0x14
 	OFFSET( VarMapping_t, m_pVarMapping( ), 0x24u );
-	OFFSET( QAngle, m_angRotation( ), 0xC8 );
-	OFFSET( QAngle, m_vecOldAngRotation( ), 0x3B0 );
 
-	OFFSET( CCSGOPlayerAnimState*, m_pAnimState( ), Offsets::m_bIsScoped - 0x14 ); // @ida: client.dll @ [8B 8E ? ? ? ? F3 0F 10 48 ? E8 ? ? ? ? C7 + 0x2]
-	OFFSET( CUtlVector< matrix3x4_t >, m_CachedBoneData( ), 0x2914 ); // DT_BasePlayer::m_CachedBoneData = reinterpret_cast<std::uintptr_t>(core::find_signature(charenc("client.dll"), charenc("8B BF ? ? ? ? 8D 14 49")) + 2); for using base ent
+	OFFSET( CCSGOPlayerAnimState*, m_pAnimState( ), 0x3874 ); // @ida: client.dll @ [8B 8E ? ? ? ? 85 C9 74 3E + 0x2]
+	OFFSET( CUtlVector< matrix3x4_t >, m_CachedBoneData( ), 0x2900 ); // DT_BasePlayer::m_CachedBoneData = reinterpret_cast<std::uintptr_t>(core::find_signature(charenc("client.dll"), charenc("8B BF ? ? ? ? 8D 14 49")) + 2); for using base ent
 
 	OFFSETINDATAMAP( Vector, m_vecAbsVelocity );
 	OFFSETINDATAMAP( int, m_iEFlags );
 	OFFSETINDATAMAP( int, m_fEffects );
 	OFFSETINDATAMAP( float, m_surfaceFriction );
 
+	FORCEINLINE int m_iAnimationLayersCount( ) {
+		return 13;
+	}
 
 	void SetAbsOrigin( Vector origin ) {
 		/*Ignoring unreasonable position (%f,%f,%f) from vphysics! (entity %s)\n*/
@@ -592,7 +590,7 @@ public:
 	}
 
 	void UpdateClientsideAnimations( ) {
-		return MEM::CallVFunc<void>( this, 224 );
+		return MEM::CallVFunc<void>( this, 218 );
 	}
 
 	std::array<float, MAXSTUDIOPOSEPARAM>& m_flPoseParameter( ) {
@@ -704,7 +702,7 @@ class CBaseCombatWeapon : public CBaseEntity
 public:
 	OFFSET( short, m_iItemDefinitionIndex( ), Offsets::m_iItemDefinitionIndex );
 	OFFSET( int, m_iClip1( ), Offsets::m_iClip1 );
-	OFFSET( bool, m_bReloading( ), 0x32A5 );
+	//OFFSET( bool, m_bReloading( ), 0x32A5 );
 	OFFSET( float, m_flNextPrimaryAttack( ), Offsets::m_flNextPrimaryAttack );
 	OFFSET( int, m_nSequence( ), Offsets::m_nSequence );
 	OFFSET( float, m_flPostponeFireReadyTime( ), Offsets::m_flPostponeFireReadyTime );
@@ -745,19 +743,19 @@ public:
 	bool IsKnife( );
 
 	CCSWeaponData* GetCSWeaponData( ) {
-		return MEM::CallVFunc<CCSWeaponData*>( this, 461 );// @xref: "effects/nightvision"
+		return MEM::CallVFunc<CCSWeaponData*>( this, 446 );// @xref: "effects/nightvision"
 	}	
 	
 	void UpdateAccuracyPenalty( ) {
-		return MEM::CallVFunc<void>( this, 484 );
+		return MEM::CallVFunc<void>( this, 471 );
 	}
 
 	float GetSpread( ) {
-		return MEM::CallVFunc<float>( this, 453 );
+		return MEM::CallVFunc<float>( this, 439 );
 	}
 
 	float GetInaccuracy( ) {
-		return MEM::CallVFunc<float>( this, 483 );
+		return MEM::CallVFunc<float>( this, 469 );
 	}
 };
 

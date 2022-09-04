@@ -9,7 +9,6 @@ void CRageBot::Main( CUserCmd& cmd ) {
 
 	if ( !Config::Get<bool>( Vars.RagebotEnable )
 		|| !ctx.m_pWeapon || !ctx.m_pWeaponData
-		|| ctx.m_pWeapon->m_bReloading( )
 		|| ( ctx.m_pWeaponData->nWeaponType >= WEAPONTYPE_C4
 			&& ctx.m_pWeapon->m_iItemDefinitionIndex( ) != WEAPON_TASER )
 		|| ctx.m_pLocal->m_MoveType( ) == MOVETYPE_LADDER )

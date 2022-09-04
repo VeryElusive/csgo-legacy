@@ -56,35 +56,6 @@ void FASTCALL Hooks::hkPacketStart( void* ecx, void* edx, int in_seq, int out_ac
 	return oPacketStart( ecx, edx, in_seq, out_acked );
 }
 
-bool FASTCALL Hooks::hkProcessTempEntities( void* ecx, void* edx, void* msg ) {
-	static auto oProcessTempEntities = DTR::ProcessTempEntities.GetOriginal<decltype( &Hooks::hkProcessTempEntities )>( );
-
-	const auto backupMaxClients = Interfaces::ClientState->nMaxClients;
-
-	Interfaces::ClientState->nMaxClients = 1;
-
-	const auto ret = oProcessTempEntities( ecx, edx, msg );
-
-	Interfaces::ClientState->nMaxClients = backupMaxClients;
-
-	/* const auto ret = oProcessTempEntities( ecx, edx, msg );
-
-	ctx.GetLocal( );
-
-	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
-		for ( auto i = Interfaces::ClientState->pEvents; i; i = Interfaces::ClientState->pEvents->next ) {
-			if ( i->iClassID == 0 )
-				continue;
-
-			i->flFireDelay = 0.f;
-		}
-	}*/
-
-	Interfaces::Engine->FireEvents( );
-
-	return ret;
-}
-
 bool FASTCALL Hooks::hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage& msg, bool bForceReliable, bool bVoice ) {
 	static auto oSendNetMsg = DTR::SendNetMsg.GetOriginal<decltype( &Hooks::hkSendNetMsg )>( );
 

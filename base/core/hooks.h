@@ -131,7 +131,6 @@ namespace DTR
 	inline CDetourHook SvCheatsGetBool;
 	inline CDetourHook PacketEnd;
 	inline CDetourHook PacketStart;
-	inline CDetourHook ProcessTempEntities;
 	inline CDetourHook Paint;
 	inline CDetourHook EmitSound;
 	inline CDetourHook InPrediction;
@@ -183,7 +182,6 @@ namespace Hooks
 	void	FASTCALL	hkCreateMoveProxy( IBaseClientDll* thisptr, int edx, int nSequenceNumber, float flInputSampleFrametime, bool bIsActive );
 	void	FASTCALL	hkPacketEnd( void* cl_state, void* EDX );
 	void	FASTCALL	hkPacketStart( void* ecx, void* edx, int in_seq, int out_acked );
-	bool	FASTCALL	hkProcessTempEntities( void* ecx, void* EDX, void* msg );
 	void	FASTCALL	hkDrawModel( IStudioRender* thisptr, int edx, DrawModelResults_t* pResults, const DrawModelInfo_t& info, matrix3x4_t* pBoneToWorld, float* flFlexWeights, float* flFlexDelayedWeights, const Vector& vecModelOrigin, int nFlags );
 	void	FASTCALL	hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClientFrameStage stage );
 	void	FASTCALL	hkOverrideView( IClientModeShared* thisptr, int edx, CViewSetup* pSetup );

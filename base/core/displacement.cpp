@@ -215,11 +215,11 @@ void Offsets::Init( ) {
 std::uintptr_t Offsets::FindInDataMap( DataMap_t* pMap, const char* name ) {
 	while ( pMap ) {
 		for ( int i = 0; i < pMap->nDataFields; i++ ) {
-			if ( pMap->pDataDesc[ i ].szFieldName == nullptr )
+			if ( pMap->pDataDesc[ i ].szFieldName == NULL )
 				continue;
 
 			if ( strcmp( name, pMap->pDataDesc[ i ].szFieldName ) == 0 )
-				return pMap->pDataDesc[ i ].iFieldOffset;
+				return pMap->pDataDesc[ i ].iFieldOffset[ TD_OFFSET_NORMAL ];
 
 			if ( pMap->pDataDesc[ i ].iFieldType == FIELD_EMBEDDED ) {
 				if ( pMap->pDataDesc[ i ].pTypeDescription ) {

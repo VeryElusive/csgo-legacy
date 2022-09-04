@@ -9,6 +9,7 @@
 
 
 #pragma region hooks_get
+
 bool Hooks::Setup( ) {
 	if ( MH_Initialize( ) != MH_OK )
 		throw std::runtime_error( _( "failed initialize minhook" ) );
@@ -22,8 +23,8 @@ bool Hooks::Setup( ) {
 	if ( !DTR::CreateMoveProxy.Create( MEM::GetVFunc( Interfaces::Client, VTABLE::CREATEMOVE ), &hkCreateMoveProxy ) )
 		return false;
 
-	if ( !DTR::DrawModel.Create( MEM::GetVFunc( Interfaces::StudioRender, VTABLE::DRAWMODEL ), &hkDrawModel ) )
-		return false;
+	//if ( !DTR::DrawModel.Create( MEM::GetVFunc( Interfaces::StudioRender, VTABLE::DRAWMODEL ), &hkDrawModel ) )
+	//	return false;
 
 	if ( !DTR::Paint.Create( MEM::GetVFunc( Interfaces::EngineVGui, VTABLE::VGUI_PAINT ), &HkPaint ) )
 		return false;
@@ -143,13 +144,8 @@ bool Hooks::Setup( ) {
 		&Hooks::hkSetupbones ) )
 		return false;
 
-	auto rel32_resolve = [ ]( uintptr_t ptr ) {
-		auto offset = *( uintptr_t* )( ptr + 0x1 );
-		return ( uintptr_t* )( ptr + 5 + offset );
-	};
-
 	if ( !DTR::PhysicsSimulate.Create(
-		( byte* )rel32_resolve( ( MEM::FindPattern( CLIENT_DLL, _( "E8 ? ? ? ? 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 8B 06" ) ) ) ),// TODO: IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 0C 56 8B F1 8B 0D ? ? ? ? 80" ) ) ),// TODO: IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
 		&Hooks::hkPhysicsSimulate ) )
 		return false;
 
@@ -167,6 +163,8 @@ bool Hooks::Setup( ) {
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 53 8B 5D 08 56 57 FF 75 18 8B F1 FF 75 14 FF 75" ) ) ),
 		&Hooks::hkCalcView ) )
 		return false;		
+
+	// TODO: hook sendnetmsg
 	
 	if ( !DTR::OnLatchInterpolatedVariables.Create(
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 10 53 56 8B F1 57 80 BE ? ? ? ? ? 75 41" ) ) ),

@@ -124,31 +124,14 @@ public:
 	int				iServerTick;			// 0x016C
 	int				iClientTick;			// 0x0170
 	int				iDeltaTick;				// 0x0174
-	bool			bPaused;				// 0x0178
-	std::byte		pad4[0x7];				// 0x0179
-	int				iViewEntity;			// 0x0180
-	int				iPlayerSlot;			// 0x0184
-	char			szLevelName[MAX_PATH];	// 0x0188
-	char			szLevelNameShort[80];	// 0x028C
-	char			szMapGroupName[80];		// 0x02DC
-	char			szLastLevelNameShort[80]; // 0x032C
-	std::byte		pad5[0xC];				// 0x037C
-	int				nMaxClients;			// 0x0388 
-	std::byte		pad6[0x498C];			// 0x038C
-	float			flLastServerTickTime;	// 0x4D18
-	bool			bInSimulation;			// 0x4D1C
-	std::byte		pad7[0x3];				// 0x4D1D
-	int				iOldTickcount;			// 0x4D20
-	float			flTickRemainder;		// 0x4D24
-	float			flFrameTime;			// 0x4D28
-	int				iLastOutgoingCommand;	// 0x4D2C
-	int				nChokedCommands;		// 0x4D30
-	int				iLastCommandAck;		// 0x4D34
-	int				iLastServerTick;		// 0x4D38
-	int				iCommandAck;			// 0x4D3C
-	int				iSoundSequence;			// 0x4D40
-	std::byte		pad8[0x50];				// 0x4D90
-	QAngle			angViewPoint;			// 0x4D9C
-	std::byte		pad9[0xD0];				// 0x4E6C
-	CEventInfo*		pEvents;				// 0x4F3C
+	std::byte		pad4[ 0x4B30 ];			// 0x0179
+	float			flFrameTime;			// 0x4CA8
+	int				iLastOutgoingCommand;	// 0x4CAC
+	int				nChokedCommands;		// 0x4CB0
+	int				iLastCommandAck;		// 0x4CB4
+	int				iLastServerTick;		// 0x4CB8
+	int				iCommandAck;			// 0x4CBC
+	int				iSoundSequence;			// 0x4CC0
+	std::byte		pad8[ 0x128 ];			// 0x4CC4
+	CEventInfo*		pEvents;				// 0x4DEC
 }; // Size: 0x4E70

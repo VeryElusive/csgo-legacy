@@ -121,7 +121,7 @@ bool CBasePlayer::CanShoot( ) {
 		return true;
 
 	if ( ( properWeap || weapon->m_iItemDefinitionIndex( ) == WEAPON_TASER )
-		&& ( weapon->m_iClip1( ) <= 0 || weapon->m_bReloading( ) )
+		&& ( weapon->m_iClip1( ) <= 0 )
 		|| weapon->m_flNextPrimaryAttack( ) > curtime )
 		return false;
 

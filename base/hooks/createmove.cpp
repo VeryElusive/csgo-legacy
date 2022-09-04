@@ -239,11 +239,6 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 	LocalData.m_angViewAngles = cmd.viewAngles;
 
-	if ( Interfaces::ClientState->pNetChannel ) {
-		if ( !DTR::SendNetMsg.IsHooked( ) )
-			DTR::SendNetMsg.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDNETMSG ), &Hooks::hkSendNetMsg );
-	}
-
 	VerifiedCmd.userCmd = cmd;
 	VerifiedCmd.uHashCRC = cmd.GetChecksum( );
 }
