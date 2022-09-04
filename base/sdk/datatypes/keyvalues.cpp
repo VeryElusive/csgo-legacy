@@ -3,6 +3,7 @@
 
 #include <assert.h>
 
+/*
 CKeyValues::CKeyValues( const char* szKeyName, void* pUnknown1, HKeySymbol hCaseInsensitiveKeyName )
 {
 	using CKeyValuesConstructorFn = void( __thiscall* )( void*, const char*, void*, HKeySymbol );
@@ -181,4 +182,4 @@ void CKeyValues::SetUint64( const char* szKeyName, const int nLowValue, const in
 	pSubKey->szValue = new char[ sizeof( std::uint64_t ) ];
 	*reinterpret_cast< std::uint64_t* >( pSubKey->szValue ) = static_cast< std::uint64_t >( nHighValue ) << 32ULL | nLowValue;
 	pSubKey->iDataType = TYPE_UINT64;
-}
+}*/

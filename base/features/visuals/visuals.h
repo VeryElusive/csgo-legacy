@@ -104,6 +104,7 @@ public:
 	void DrawWeapon( VisualPlayerEntry& entry, bool AmmoBar );
 	void DrawSkeleton( VisualPlayerEntry& entry );
 	void DrawFlags( VisualPlayerEntry& entry );
+	void DrawOOF( VisualPlayerEntry& entry );
 	bool DrawAmmo( VisualPlayerEntry& entry );
 
 	const Color DormantCol = Color( 200, 200, 200 );
@@ -198,10 +199,11 @@ public:
 
 	std::vector<std::shared_ptr< hitmarker_t >> hits;
 
+	Vector2D m_vec2KeyBindPos{ };
+
 private:
 	float m_flAutoPeekSize{ };
 
-	Vector2D m_vec2KeyBindPos{ };
 	Vector2D m_vec2KeyBindAbsSize{ };
 
 	bool m_bKeybindDragging{ };

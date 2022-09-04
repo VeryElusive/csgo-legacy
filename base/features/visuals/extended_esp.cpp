@@ -67,7 +67,7 @@ void CExtendedESP::AdjustPlayer( CBasePlayer* player )
 		return;
 	auto& sound_player = m_cSoundPlayers[ player->Index( ) - 1];
 
-	if ( Interfaces::Globals->flRealTime - sound_player.m_iReceiveTime > 450 )
+	if ( Interfaces::Globals->flRealTime - sound_player.m_iReceiveTime > 1.f )
 		return;
 
 	if ( !sound_player.valid )

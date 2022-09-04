@@ -158,7 +158,8 @@ void CAnimationSys::SetupLocalMatrix( ) {
 
 		ctx.m_pLocal->SetAbsAngles( { 0.f, ctx.m_cFakeData.m_flAbsYaw, 0.f } );
 
-		SetupBonesFixed( ctx.m_pLocal, ctx.m_cFakeData.m_matMatrix, Interfaces::Globals->flCurTime, 11 );
+		SetupBonesFixed( ctx.m_pLocal, ctx.m_cFakeData.m_matMatrix, 0xFFF00,
+			Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME /* | NULLIK*/ | OCCLUSIONINTERP ) );
 	}
 
 	RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
@@ -179,11 +180,8 @@ void CAnimationSys::SetupLocalMatrix( ) {
 		}
 	}
 
-	//ctx.m_bSetupBones = true;
-	//ctx.m_pLocal->SetupBones( ctx.m_matRealLocalBones, 256, BONE_USED_BY_ANYTHING, Interfaces::Globals->flCurTime );
-	//ctx.m_bSetupBones = false;
-
-	SetupBonesFixed( ctx.m_pLocal, ctx.m_matRealLocalBones, Interfaces::Globals->flCurTime, 27 );
+	SetupBonesFixed( ctx.m_pLocal, ctx.m_matRealLocalBones, BONE_USED_BY_ANYTHING | BONE_ALWAYS_SETUP,
+		Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME  | /*NULLIK |*/ OCCLUSIONINTERP ) );
 
 	RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
 }

@@ -34,8 +34,7 @@ void Inputsys::updateNeededKeys( ) {
 		for ( int i = 0; i < 256; i++ )
 			KeysToCheck.emplace_back( i );
 	}
-
-	if ( !Menu::Opened ) {
+	else {
 		if ( !Offsets::Cvars.cl_mouseenable->GetBool( ) )
 			return;
 
@@ -62,7 +61,7 @@ void Inputsys::updateNeededKeys( ) {
 		//if ( !Config::Get<keybind_t>( Vars.AntiaimLeft ).enabled && !Config::Get<keybind_t>( Vars.AntiaimRight ).enabled )
 		//	Features::Antiaim.ManualSide = 0;
 
-		if ( Config::Get<keybind_t>(Vars.AntiaimLeft ).enabled ) {
+		if ( Config::Get<keybind_t>( Vars.AntiaimLeft ).enabled ) {
 			if ( Features::Antiaim.ManualSide == 1 )
 				Features::Antiaim.ManualSide = 0;
 			else
@@ -80,7 +79,13 @@ void Inputsys::updateNeededKeys( ) {
 			Config::Get<keybind_t>( Vars.AntiaimRight ).enabled = false;
 		}
 
-		ctx.m_bExploitsEnabled = ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) 
+		if ( !Config::Get<keybind_t>( Vars.AntiaimRight ).key
+			&& !Config::Get<keybind_t>( Vars.AntiaimLeft ).key
+			&& Config::Get<keybind_t>( Vars.AntiaimRight ).mode != EKeyMode::AlwaysOn
+			&& Config::Get<keybind_t>( Vars.AntiaimLeft ).mode != EKeyMode::AlwaysOn )
+			Features::Antiaim.ManualSide = 0;
+
+		ctx.m_bExploitsEnabled = ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled )
 			|| ( Config::Get<bool>( Vars.ExploitsHideshots ) && Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ).enabled );
 	}
 }

@@ -1,7 +1,7 @@
 #include "../group.h"
 
 void MenuGroup::Checkbox( const char* name, bool& value ) {
-	auto Size = Vector2D( 12, std::min( 12.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
+	const auto Size = Vector2D( 12, std::min( 12.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 
 	const auto offScreen{ Menu::CursorPos.y + Size.y > OldCursorPos.y + size.y };
 
@@ -17,9 +17,9 @@ void MenuGroup::Checkbox( const char* name, bool& value ) {
 			value = !value;
 
 		if ( value )
-			FillCol = Color( 40, 40, 40 );
+			FillCol = Color( 60, 60, 60 );
 		else
-			FillCol = Color( 25, 25, 25 );
+			FillCol = Menu::ControlCol;
 	}
 
 	Render::FilledRectangle( Menu::CursorPos, Size, FillCol );

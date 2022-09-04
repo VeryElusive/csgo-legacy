@@ -121,7 +121,6 @@ namespace DTR
 	inline CDetourHook DoPostScreenEffects;
 	inline CDetourHook IsConnected;
 	inline CDetourHook RenderSmokeOverlay;
-	inline CDetourHook ListLeavesInBox;
 	inline CDetourHook PaintTraverse;
 	inline CDetourHook DrawModel;
 	inline CDetourHook RunCommand;
@@ -140,6 +139,7 @@ namespace DTR
 	inline CDetourHook DoExtraBonesProcessing;
 	inline CDetourHook StandardBlendingRules;
 	inline CDetourHook UpdateClientsideAnimation;
+	inline CDetourHook GetEyeAngles;
 	inline CDetourHook CheckForSequenceChange;
 	inline CDetourHook AccumulateLayers;
 	inline CDetourHook PhysicsSimulate;
@@ -153,12 +153,12 @@ namespace DTR
 	inline CDetourHook CMCreateMove;
 	inline CDetourHook WriteUserCmdDeltaToBuffer;
 	inline CDetourHook ShouldInterpolate;
-	inline CDetourHook AddBoxOverlay;
 	inline CDetourHook GlowEffectSpectator;
 	inline CDetourHook GetColorModulation;
 	inline CDetourHook GetAlphaModulation;
-	inline CDetourHook PostDataUpdate;
 	inline CDetourHook OnLatchInterpolatedVariables;
+	inline CDetourHook OnNewCollisionBounds;
+	inline CDetourHook CL_FireEvents;
 }
 
 /*
@@ -188,7 +188,6 @@ namespace Hooks
 	void	FASTCALL	hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClientFrameStage stage );
 	void	FASTCALL	hkOverrideView( IClientModeShared* thisptr, int edx, CViewSetup* pSetup );
 	bool	FASTCALL	hkOverrideConfig( IMaterialSystem* ecx, void* edx, MaterialSystemConfig_t& config, bool bForceUpdate );
-	int		FASTCALL	hkListLeavesInBox( void* thisptr, int edx, const Vector& vecMins, const Vector& vecMaxs, unsigned short* puList, int nListMax );
 	float	FASTCALL	hkGetScreenAspectRatio( void* ECX, void* EDX, int32_t iWidth, int32_t iHeight );
 	bool	FASTCALL	hkIsPaused( void* ecx, void* edx );
 	bool	FASTCALL	hkIsHltv( void* ecx, void* EDX );
@@ -201,6 +200,7 @@ namespace Hooks
 	void	FASTCALL	hkStandardBlendingRules( CBasePlayer* const ent, const std::uintptr_t edx, CStudioHdr* const mdl_data, int a1, int a2, float a3, int mask );
 	void	FASTCALL	hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx );
 	bool	FASTCALL	hkShouldSkipAnimFrame( void* ecx, uint32_t ebx );
+	QAngle* FASTCALL	hkGetEyeAngles( CBasePlayer* ecx, void* edx );
 	void	FASTCALL	hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate );
 	void	FASTCALL	hkAccumulateLayers( CBasePlayer* const ecx, const std::uintptr_t edx, int a0, int a1, float a2, int a3 );
 	void	FASTCALL	hkPhysicsSimulate( CBasePlayer* player, int time );
@@ -213,12 +213,10 @@ namespace Hooks
 	bool	FASTCALL	hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot, bf_write* buf, int from, int to, bool is_new_command );
 	bool	FASTCALL	hkShouldInterpolate( CBasePlayer* ecx, const std::uintptr_t edx );
 	int		FASTCALL	hkDoPostScreenEffects( IClientModeShared* thisptr, int edx, CViewSetup* pSetup );
-	void	FASTCALL	hkAddBoxOverlay( void* ecx, void* edx, const Vector& origin, const Vector& mins, const Vector& max, QAngle const& orientation, int r, int g, int b, int a, float duration );
 	bool	CDECL		hkGlowEffectSpectator( CBasePlayer* const player, CBasePlayer* const local, int& style, Vector& clr, float& alpha_from, float& alpha_to, float& time_from, float& time_to, bool& animate );
 	void	FASTCALL	hkGetColorModulation( IMaterial* const ecx, const std::uintptr_t edx, float* const r, float* const g, float* const b );
 	float	FASTCALL	hkGetAlphaModulation( IMaterial* ecx, uint32_t ebx );
 	void	FASTCALL	hkOnLatchInterpolatedVariables( CBasePlayer* const ecx, const std::uintptr_t edx, const int flags );
-	void				hkCL_SendMove( );
 
 	void	CDECL		m_bClientSideAnimationHook( CRecvProxyData* data, void* entity, void* output );
 }

@@ -5,7 +5,7 @@ inline float map_number( float input, float input_min, float input_max, float ou
 }
 
 void MenuGroup::Slider( const char* name, int& value, int min, int max ) {
-	const auto Size = Vector2D( size.x - 30, std::min( 12.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
+	const auto Size = Vector2D( size.x - 30, std::min( 16.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 
 	value = std::clamp<int>( value, min, max );
 
@@ -35,16 +35,20 @@ void MenuGroup::Slider( const char* name, int& value, int min, int max ) {
 	const float slider_ratio = map_number( ( float )value, ( float )min, ( float )max, 0.f, 1.f );
 
 	//Render::FilledRectangle( Menu::CursorPos, Size, FillCol );
+	Render::FilledRectangle( Menu::CursorPos, Size + 2, Menu::ControlCol );
+
 	Render::Rectangle( Menu::CursorPos, Size + 2, Color( 0, 0, 0 ) );
-	Render::FilledRectangle( Menu::CursorPos + 1, Vector2D( Size.x * slider_ratio, Size.y ), Menu::AccentCol );
+	Render::Rectangle( Menu::CursorPos + 1, Size, Menu::OutlineLight );
 
-	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( Size.x / 2, 0 ), Color( 255, 255, 255 ), FONT_CENTER, std::to_string( value ).c_str( ) );
+	Render::FilledRectangle( Menu::CursorPos + 2, Vector2D( ( Size.x - 2 ) * slider_ratio, Size.y - 2 ), Menu::AccentCol );
 
-	Menu::CursorPos += Vector2D( 0, 18 );
+	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( Size.x / 2, 2 ), Color( 255, 255, 255 ), FONT_CENTER, std::to_string( value ).c_str( ) );
+
+	Menu::CursorPos += Vector2D( 0, 22 );
 }
 
 void MenuGroup::Slider( const char* name, float& value, float min, float max ) {
-	const auto Size = Vector2D( size.x - 30, 12 );
+	const auto Size = Vector2D( size.x - 30, std::min( 16.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 
 	value = std::clamp<float>( value, min, max );
 
@@ -66,10 +70,14 @@ void MenuGroup::Slider( const char* name, float& value, float min, float max ) {
 	const float slider_ratio = map_number( ( float )value, ( float )min, ( float )max, 0.f, 1.f );
 
 	//Render::FilledRectangle( Menu::CursorPos, Size, FillCol );
-	Render::Rectangle( Menu::CursorPos, Size + 2, Color( 0, 0, 0 ) );
-	Render::FilledRectangle( Menu::CursorPos + 1, Vector2D( Size.x * slider_ratio, Size.y ), Menu::AccentCol );
+	Render::FilledRectangle( Menu::CursorPos, Size + 2, Menu::ControlCol );
 
-	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( Size.x / 2, 0 ), Color( 255, 255, 255 ), FONT_CENTER, std::to_string( value ).c_str( ) );
+	Render::Rectangle( Menu::CursorPos, Size + 2, Color( 0, 0, 0 ) );
+	Render::Rectangle( Menu::CursorPos + 1, Size, Menu::OutlineLight );
+
+	Render::FilledRectangle( Menu::CursorPos + 2, Vector2D( ( Size.x - 2 ) * slider_ratio, Size.y - 2 ), Menu::AccentCol );
+
+	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( Size.x / 2, 2 ), Color( 255, 255, 255 ), FONT_CENTER, std::to_string( value ).c_str( ) );
 
 	Menu::CursorPos += Vector2D( 0, 18 );
 }

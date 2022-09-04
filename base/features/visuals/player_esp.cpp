@@ -26,7 +26,7 @@ void CPlayerESP::Main( CBasePlayer* ent ) {
 		entry.health -= 6.f * Interfaces::Globals->flFrameTime * ( entry.health - ent->m_iHealth( ) );
 
 	if ( ent->Dormant( ) ) {
-		entry.Alpha -= Interfaces::Globals->flFrameTime * 0.2f;
+		entry.Alpha -= Interfaces::Globals->flFrameTime / 5.f;
 		entry.DormancyFade += Interfaces::Globals->flFrameTime;
 	}
 	else {
@@ -36,6 +36,8 @@ void CPlayerESP::Main( CBasePlayer* ent ) {
 
 	entry.Alpha = std::clamp<float>( entry.Alpha, 0.f, 1.f );
 	entry.DormancyFade = std::clamp<float>( entry.DormancyFade, 0.f, 1.f );
+
+	DrawOOF( entry );
 
 	if ( !GetBBox( ent, entry.BBox ) )
 		return;
@@ -307,6 +309,77 @@ void CPlayerESP::DrawSkeleton( VisualPlayerEntry& entry ) {
 
 		Render::Line( bone1, bone2, last );
 	}
+}
+
+void RotateTriangle( std::array<Vector2D, 3>& points, float rotation ) {
+	const auto pointsCenter = ( points.at( 0 ) + points.at( 1 ) + points.at( 2 ) ) / 3;
+	for ( auto& point : points ) {
+		point -= pointsCenter;
+
+		const auto tempX = point.x;
+		const auto tempY = point.y;
+
+		const auto theta = DEG2RAD( rotation );
+		const auto c = cos( theta );
+		const auto s = sin( theta );
+
+		point.x = tempX * c - tempY * s;
+		point.y = tempX * s + tempY * c;
+
+		point += pointsCenter;
+	}
+}
+
+void CPlayerESP::DrawOOF( VisualPlayerEntry& entry ) {
+	CheckPlayerBoolFig( entry.type, VisOOF );
+
+	Color last;
+	GetPlayerColorFig( entry.type, VisOOFCol, last );
+
+	last = last.Set<COLOR_A>( last.Get<COLOR_A>( ) * entry.Alpha );
+	last = last.Lerp( DormantCol.Set<COLOR_A>( last.Get<COLOR_A>( ) * 0.4f ), entry.DormancyFade );
+
+	if ( ctx.m_pLocal->IsDead( ) )
+		return;
+
+	auto isOnScreen = [ ]( Vector origin, Vector& screen ) -> bool {
+		if ( !Math::WorldToScreen( origin, screen ) )
+			return false;
+
+		return ( screen.x > 0 && screen.x < ctx.m_ve2ScreenSize.x ) && ( ctx.m_ve2ScreenSize.y > screen.y && screen.y > 0 );
+	};
+
+	Vector screenPos;
+	if ( isOnScreen( entry.ent->GetAbsOrigin( ), screenPos ) )
+		return;
+
+	QAngle viewAngles{ ctx.m_angOriginalViewangles };
+
+	static int width{ static_cast<int>( ctx.m_ve2ScreenSize.x ) }, height{ static_cast< int >( ctx.m_ve2ScreenSize.y ) };
+
+	const auto screenCenter{ Vector2D( width * 0.5f, height * 0.5f ) };
+	const auto angleYawRad{ DEG2RAD( viewAngles.y - Math::CalcAngle( ctx.m_vecEyePos, entry.ent->GetAbsOrigin( ) ).y - 90.0f ) };
+
+	constexpr auto radius{ 20 };
+	constexpr auto size{ 15 };
+
+	const auto newPointX{ screenCenter.x + ( ( ( ( width - ( size * 3 ) ) * 0.5f ) * ( radius / 100.0f ) ) * cos( angleYawRad ) ) + ( int )( 6.0f * ( ( ( float )size - 4.0f ) / 16.0f ) ) };
+	const auto newPointY{ screenCenter.y + ( ( ( ( height - ( size * 3 ) ) * 0.5f ) * ( radius / 100.0f ) ) * sin( angleYawRad ) ) };
+
+	std::array <Vector2D, 3> points
+	{
+		Vector2D( newPointX - size, newPointY - size ),
+		Vector2D( newPointX + size, newPointY ),
+		Vector2D( newPointX - size, newPointY + size )
+	};
+
+	RotateTriangle( points, viewAngles.y - Math::CalcAngle( ctx.m_vecEyePos, entry.ent->GetAbsOrigin( ) ).y - 90.0f );
+
+
+	Render::Triangle( points.at( 0 ), points.at( 1 ), points.at( 2 ), last.Set<COLOR_A>( last.Get<COLOR_A>( ) / 4 ) );
+	Render::Line( points.at( 0 ), points.at( 1 ), last );
+	Render::Line( points.at( 1 ), points.at( 2 ), last );
+	Render::Line( points.at( 2 ), points.at( 0 ), last );
 }
 
 bool CPlayerESP::GetBBox( CBasePlayer* ent, rect& box ) {

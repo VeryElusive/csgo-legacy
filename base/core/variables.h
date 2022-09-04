@@ -22,6 +22,8 @@ struct Variables_t {
 	ADD_PLAYER_VAR( Color, VisSkeletonCol, Color( 255, 255, 255 ) );	
 	ADD_PLAYER_VAR( bool, VisGlow, false );
 	ADD_PLAYER_VAR( Color, VisGlowCol, Color( 255, 255, 255 ) );
+	ADD_PLAYER_VAR( bool, VisOOF, false );
+	ADD_PLAYER_VAR( Color, VisOOFCol, Color( 255, 255, 255 ) );
 
 	ADD_PLAYER_VAR( bool, VisWeapIcon, false );
 	ADD_PLAYER_VAR( bool, VisWeapText, false );
@@ -76,7 +78,10 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, VisThirdPersonDistance, 130 );
 	C_ADD_VARIABLE( bool, VisDroppedWeapon, false );
 	C_ADD_VARIABLE( Color, VisDroppedWeaponCol, Color( 255, 255, 255 ) );
-	C_ADD_VARIABLE( bool, VisGrenades, false );
+	C_ADD_VARIABLE( bool, VisGrenadesEnemy, false );
+	C_ADD_VARIABLE( Color, VisGrenadesEnemyCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( bool, VisGrenadesTeam, false );
+	C_ADD_VARIABLE( Color, VisGrenadesTeamCol, Color( 255, 107, 107 ) );
 	C_ADD_VARIABLE( bool, VisBomb, false );
 	C_ADD_VARIABLE( bool, VisLocalBulletImpacts, false );
 	C_ADD_VARIABLE( Color, VisLocalBulletImpactsCol, Color( 255, 107, 107 ) );
@@ -226,6 +231,7 @@ struct Variables_t {
 	// anti aim
 	C_ADD_VARIABLE( bool, AntiaimEnable, false );
 	C_ADD_VARIABLE( bool, AntiaimDesync, false );
+	C_ADD_VARIABLE( bool, AntiAimManualDir, false );
 	C_ADD_VARIABLE( int, AntiaimAtTargets, 0 );
 	C_ADD_VARIABLE( int, AntiaimPitch, 0 );
 	C_ADD_VARIABLE( int, AntiaimYaw, 0 );

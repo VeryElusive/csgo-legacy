@@ -15,5 +15,8 @@ void CDECL Hooks::m_bClientSideAnimationHook( CRecvProxyData* data, void* entity
 		&& !( ( CBasePlayer* )entity )->IsHostage( ) )
 		*( int* )output = ( ctx.m_bUpdatingAnimations ? 1 : 0 );
 
+	if ( !bClientSideAnimation )
+		return;
+
 	bClientSideAnimation( data, entity, output );
 }

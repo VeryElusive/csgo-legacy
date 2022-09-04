@@ -57,6 +57,8 @@ void RoundStart( IGameEvent* pEvent ) {
 	for ( int i{ }; i < 64; i++ ) {
 		Features::Visuals.DormantESP.m_cSoundPlayers[ i ].valid = false;
 		Features::Visuals.PlayerESP.Entries.at( i ).Alpha = 0;
+		Features::Visuals.PlayerESP.Entries.at( i ).health = 100;
+		Features::AnimSys.m_arrEntries.at( i ).m_iMissedShots = 0;
 	}
 
 	if ( Config::Get<bool>( Vars.MiscBuyBot ) )

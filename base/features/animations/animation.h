@@ -9,41 +9,18 @@ enum SideIndexes{
 	RIGHT
 };
 
-struct sides_t {
-	float m_flAbsYaw{ };
-	float m_flOldAbsYaw{ };
-	float m_flMoveYaw{ };
-	float m_flMoveYawCurtoIdeal{ };
-	float m_flMoveYawIdeal{ };
-
-	int m_iBonesCount{ 256 };
-
-	CAnimationLayer m_pLayers[ 13 ]{ };
-
-	//std::array<float, 24> pose;
-
-	matrix3x4_t m_pMatrix[ 256 ]{ };
-};
 
 struct AnimData_t {
 	inline AnimData_t( CBasePlayer* player ) :
 		m_flSimulationTime( player->m_flSimulationTime( ) ),
 		m_vecOrigin( player->m_vecOrigin( ) ),
 		m_iFlags( player->m_fFlags( ) ),
-		m_vecVelocity( player->m_vecVelocity( ) ),
 		m_flDuckAmount( player->m_flDuckAmount( ) ),
+		m_vecMins( player->m_vecMins( ) ), 
+		m_vecMaxs( player->m_vecMaxs( ) ),
+		m_vecVelocity( player->m_vecVelocity( ) ),
 		m_pWeapon( player->GetWeapon( ) )
 	{
-		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * player->m_iAnimationLayersCount( ) );
-	}
-
-	inline void Update( CBasePlayer* player ) {
-		this->m_vecOrigin = player->m_vecOrigin( );
-		this->m_iFlags = player->m_fFlags( );
-		this->m_vecVelocity = player->m_vecVelocity( );
-		this->m_flDuckAmount = player->m_flDuckAmount( );
-		this->m_pWeapon = player->GetWeapon( );
-
 		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * player->m_iAnimationLayersCount( ) );
 	}
 
@@ -53,13 +30,14 @@ struct AnimData_t {
 	float m_flDuckAmount{ };
 
 	Vector m_vecOrigin{ };
+	Vector m_vecMins{ };
+	Vector m_vecMaxs{ };
 	Vector m_vecVelocity{ };
+
 
 	CAnimationLayer m_pLayers[ 13 ];
 
 	CWeaponCSBase* m_pWeapon{ };
-
-	std::array<sides_t, 3> m_cAnimSides;
 };
 
 struct PlayerEntry;
@@ -67,7 +45,9 @@ struct LagRecord_t {
 	inline LagRecord_t( CBasePlayer* player ) :
 		m_cAnimData{ player },
 		m_iNewCmds( TIME_TO_TICKS( player->m_flSimulationTime( ) - player->m_flOldSimulationTime( ) ) ),
-		m_vecMins( player->m_vecMins( ) ), m_vecMaxs( player->m_vecMaxs( ) ), m_angEyeAngles( player->m_angEyeAngles( ) ),
+		m_flPoseParameter( player->m_flPoseParameter( ) ),
+		m_angEyeAngles( player->m_angEyeAngles( ) ),
+		m_flAbsYaw( player->m_pAnimState( )->flAbsYaw ),
 		m_iReceiveTick(Interfaces::ClientState->iServerTick ), m_bDormant( player->IsDormant( ) )
 	{ }
 
@@ -75,25 +55,28 @@ struct LagRecord_t {
 
 	bool m_bBrokeLC{ true };
 	bool m_bAnimated{ };
-	bool m_bMultiMatrix{ };
+	//bool m_bMultiMatrix{ };
 	bool m_bDormant{ };
 
 	std::optional<bool> m_bLanded{ };
 	float m_flOnGroundTime{ };
 
-	int m_iResolverSide{ };
 	int m_iNewCmds{ };
 	int m_iReceiveTick{ };
 
-	Vector m_vecMins{ };
-	Vector m_vecMaxs{ };
+	float m_flAbsYaw{ };
 
 	QAngle m_angEyeAngles{ };
 
-	inline void FinalAdjustments( CBasePlayer* player, std::optional <AnimData_t>& previous );
+	std::array<float, 24> m_flPoseParameter;
+
+	matrix3x4_t m_pCompensatedMatrix[ 256 ]{ };
+	matrix3x4_t m_pMatrix[ 256 ]{ };
+	int m_iBonesCount{ 256 };
+
+	inline void FinalAdjustments( CBasePlayer* player, const std::optional <AnimData_t>& previous, int chokedReal );
 	inline bool IsValid( );
 	inline void Apply( CBasePlayer* ent, bool onlyAnim = false );
-	inline void SelectResolverSide( PlayerEntry& entry );
 };
 
 struct Interpolated_t {
@@ -129,13 +112,13 @@ struct PlayerEntry {
 	Vector m_vecLastOrigin{ };
 
 	float m_flSpawnTime{ };
-	float m_flJitterAmount{ };
+	//float m_flJitterAmount{ };
 
 	bool m_bBrokeLC{ };
 
 	int m_iMissedShots{ };
-	int m_iResolverSide{ };
-	int m_iFirstResolverSide{ };
+	//int m_iResolverSide{ };
+	//int m_iFirstResolverSide{ };
 
 	int m_iRealChoked{ };
 	int m_iLastUnchoked{ };
@@ -143,20 +126,26 @@ struct PlayerEntry {
 	inline void reset( );
 };
 
+enum ESetupBonesFlags {
+	INVALIDATEBONECACHE = 1,
+	SETUPBONESFRAME = 2,
+	NULLIK = 4,
+	OCCLUSIONINTERP = 8,
+};
+
 class CAnimationSys {
 public:
 	void RunAnimationSystem( );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
-	void UpdateSide( PlayerEntry& entry, LagRecord_t* current, const int side );
+	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
 	FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
-	bool SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const float time, const int flags );
+	bool SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags );
 
 	void SetupLocalMatrix( );
 	void UpdateLocal( const QAngle& view_angles, const bool only_anim_state );
 	void UpdateCommands( );
 	void UpdatePlayerMatrixes( );
-	void GetSide( PlayerEntry& entry );
 
 	std::array< PlayerEntry, 64> m_arrEntries;
 };

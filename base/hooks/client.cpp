@@ -82,6 +82,14 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 					continue;
 
 				//draw_server_hitboxes( i );
+			}*/	
+
+			// TODO: actually fix defensive frame interpolation
+			/*if ( Features::Exploits.m_bWasDefensiveTick ) {
+				auto& var_mapping = ctx.m_pLocal->m_pVarMapping( );
+
+				for ( int i{ }; i < var_mapping.m_nInterpolatedEntries; ++i )
+					var_mapping.m_Entries[ i ].m_bNeedsToInterpolate = false;
 			}*/
 
 			if ( Config::Get<bool>( Vars.RemovalFlash ) )
@@ -95,9 +103,6 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				if ( Offsets::Cvars.weapon_debug_spread_show->GetInt( ) )
 					Offsets::Cvars.weapon_debug_spread_show->SetValue( 0 );
 			}
-
-			if ( Offsets::Cvars.cl_csm_shadows->GetBool( ) )
-				Offsets::Cvars.cl_csm_shadows->SetValue( 0 );
 		}
 
 		{
@@ -110,7 +115,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				fnLoadNamedSkys( name );
 				oldSky = Config::Get<int>( Vars.VisWorldSkybox );
 			}
-			else if ( !ctx.m_pLocal )
+			else if ( !ctx.m_pLocal || Interfaces::ClientState->iDeltaTick > 0 )
 				oldSky = 0;
 
 			if ( Offsets::Cvars.r_modelAmbientMin->GetFloat( ) != ( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f ) )
@@ -150,6 +155,9 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			if ( Offsets::Cvars.cl_foot_contact_shadows->GetBool( ) )
 				Offsets::Cvars.cl_foot_contact_shadows->SetValue( FALSE );
 
+			if ( Offsets::Cvars.cl_csm_shadows->GetBool( ) )
+				Offsets::Cvars.cl_csm_shadows->SetValue( FALSE );
+
 			//if ( Offsets::Cvars.sv_showimpacts->GetInt( ) != 2 )
 			//	Offsets::Cvars.sv_showimpacts->SetValue( 2 );
 
@@ -158,29 +166,32 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		}
 	}
 	else if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_END ) {
-		for ( int i{ 1 }; i <= 64; i++ ) {
-			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-			if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
-				continue;
+		if ( ctx.m_pLocal ) {
+			const bool dead{ ctx.m_pLocal->IsDead( ) };
+			for ( int i{ 1 }; i <= 64; i++ ) {
+				const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
+				if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
+					continue;
 
-			const auto varMapping{ *reinterpret_cast< std::uintptr_t* >( ( reinterpret_cast< std::uintptr_t >( player ) + 36u ) ) };
-			if ( !varMapping )
-				continue;
+				const auto varMapping{ *reinterpret_cast< std::uintptr_t* >( ( reinterpret_cast< std::uintptr_t >( player ) + 36u ) ) };
+				if ( !varMapping )
+					continue;
 
-			*( WORD* )( varMapping + 14u ) = 0u;
-			*( DWORD* )( *( DWORD* )( varMapping + 20u ) + 36u ) = 0;
+				*( WORD* )( varMapping + 14u ) = 0u;
+				*( DWORD* )( *( DWORD* )( varMapping + 20u ) + 36u ) = 0;
 
-			*( WORD* )( varMapping + 26u ) = 0u;
-			*( DWORD* )( *( DWORD* )( varMapping + 32u ) + 36u ) = 0;
+				*( WORD* )( varMapping + 26u ) = 0u;
+				*( DWORD* )( *( DWORD* )( varMapping + 32u ) + 36u ) = 0;
 
-			*( WORD* )( varMapping + 38u ) = 0u;
-			*( DWORD* )( *( DWORD* )( varMapping + 44u ) + 36u ) = 0;
+				*( WORD* )( varMapping + 38u ) = 0u;
+				*( DWORD* )( *( DWORD* )( varMapping + 44u ) + 36u ) = 0;
 
-			*( WORD* )( varMapping + 50u ) = 0u;
-			*( DWORD* )( *( DWORD* )( varMapping + 56u ) + 36u ) = 0;
+				*( WORD* )( varMapping + 50u ) = 0u;
+				*( DWORD* )( *( DWORD* )( varMapping + 56u ) + 36u ) = 0;
 
-			*( DWORD* )( *( DWORD* )( varMapping + 8u ) + 36u ) = 0;
-			*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;
+				*( DWORD* )( *( DWORD* )( varMapping + 8u ) + 36u ) = dead ? Interfaces::Globals->flIntervalPerTick * 2 : 0;
+				*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;
+			}
 		}
 
 		if ( Config::Get<bool>( Vars.RemovalSmoke ) ) {
@@ -224,9 +235,9 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				}
 			}
 
-			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
-				for ( auto i{ Interfaces::ClientState->pEvents }; i != nullptr; i = Interfaces::ClientState->pEvents->next ) {
-					if ( i->iClassID == 0 )
+			if ( !ctx.m_pLocal->IsDead( ) ) {
+				for ( auto i{ Interfaces::ClientState->pEvents }; i; i = Interfaces::ClientState->pEvents->next ) {
+					if ( !i->iClassID )
 						continue;
 
 					i->flFireDelay = 0.f;
@@ -246,31 +257,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 		Features::AnimSys.RunAnimationSystem( );
 
-		{
-			static DWORD* KillFeedTime = nullptr;
-			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
-				if ( !KillFeedTime )
-					KillFeedTime = MEM::FindHudElement<DWORD>( ( "CCSGO_HudDeathNotice" ) );
-
-				if ( KillFeedTime ) {
-					auto LocalDeathNotice = ( float* )( ( uintptr_t )KillFeedTime + 0x50 );
-
-					if ( LocalDeathNotice )
-						*LocalDeathNotice = Config::Get<bool>( Vars.MiscPreserveKillfeed ) ? FLT_MAX : 1.5f;
-
-					if ( ctx.m_bClearKillfeed ) {
-						using Fn = void( __thiscall* )( uintptr_t );
-						static auto clearNotices = ( Fn )Offsets::Sigs.ClearNotices;
-
-						clearNotices( ( uintptr_t )KillFeedTime - 0x14 );
-
-						ctx.m_bClearKillfeed = false;
-					}
-				}
-			}
-			else
-				KillFeedTime = 0;
-		}
+		//ctx.m_bClearKillfeed
 	}break;
 	default: break;
 
@@ -278,7 +265,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 	if ( ctx.m_pLocal ) {
 		if ( !Interfaces::GameRules )
-			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "A1 ? ? ? ? 85 C0 0F 84 ? ? ? ? 80 B8 ? ? ? ? ? 74 7A" ) ) + 0x1 ) ) );
+			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ?? ?? ?? ?? 85 C0 74 0A 8B 01 FF 50 78 83 C0 54" ) ) + 0x2 ) ) );
 
 		if ( ctx.m_pLocal->m_hViewModel( ) ) {
 			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
@@ -298,57 +285,6 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		Interfaces::GameRules = nullptr;
 }
 
-bool InPeek( ) {
-	matrix3x4_t backup_matrix[ 256 ];
-	memcpy( backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
-
-	const auto delta = ctx.m_pLocal->m_vecVelocity( ) * ( TICKS_TO_TIME( 7 ) + ctx.m_flOutLatency );
-
-	// credits: diamondhack!
-	for ( std::size_t i{ }; i < ctx.m_pLocal->m_CachedBoneData( ).Count( ); ++i ) {
-		auto& bone = ctx.m_pLocal->m_CachedBoneData( ).Base( )[ i ];
-
-		bone[ 0 ][ 3 ] += delta.x;
-		bone[ 1 ][ 3 ] += delta.y;
-		bone[ 2 ][ 3 ] += delta.z;
-	}
-
-	const auto backup_origin = ctx.m_pLocal->m_vecOrigin( );
-
-	ctx.m_pLocal->m_vecOrigin( ) += delta;
-	ctx.m_pLocal->SetAbsOrigin( ctx.m_pLocal->m_vecOrigin( ) );
-
-	const auto hitboxSet = ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) );
-	if ( !hitboxSet )
-		return false;
-
-	const auto hitbox = hitboxSet->GetHitbox( HITBOX_PELVIS );
-	if ( !hitbox )
-		return false;
-
-	Vector center = ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f;
-	center = Math::VectorTransform( center, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
-
-	if ( ctx.m_iTicksAllowed ) {
-		for ( int i = 1; i <= 64; i++ ) {
-			auto ent = static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) );
-			if ( !ent || ent->IsDormant( ) || ent == ctx.m_pLocal || ent->IsDead( ) || ent->m_bGunGameImmunity( ) || ent->IsTeammate( ) )
-				continue;
-
-			const auto data{ Features::Autowall.FireEmulated( ent, ctx.m_pLocal,
-				ent->m_vecOrigin( ) + ent->m_vecViewOffset( ), center ) };
-
-			if ( data.dmg > 1 ) {
-				ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
-				ctx.m_pLocal->SetAbsOrigin( backup_origin );
-				memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
 
 bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot, bf_write* buf, int from, int to, bool is_new_command ) {
 	static auto oWriteUserCmdDeltaToBuffer = DTR::WriteUserCmdDeltaToBuffer.GetOriginal<decltype( &hkWriteUserCmdDeltaToBuffer )>( );
@@ -365,65 +301,36 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 	static int timer{ };
 
 
-	if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd
-		|| Features::Exploits.m_iShiftAmount ) {
-		if ( from == -1 ) {
-			if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd ) {
-				moveMsg->m_iNewCmds = 1;
-				moveMsg->m_iBackupCmds = 0;
+	if ( !Features::Exploits.m_bWasDefensiveTick ) {
+		if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd
+			|| Features::Exploits.m_iShiftAmount ) {
+			if ( from == -1 ) {
+				if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd ) {
+					moveMsg->m_iNewCmds = 1;
+					moveMsg->m_iBackupCmds = 0;
 
-				for ( to = nextCmdNumber - moveMsg->m_iNewCmds + 1; to <= nextCmdNumber; ++to ) {
-					if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
-						stoplol = true;
-						break;
+					for ( to = nextCmdNumber - moveMsg->m_iNewCmds + 1; to <= nextCmdNumber; ++to ) {
+						if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
+							stoplol = true;
+							break;
+						}
+
+						from = to;
 					}
-
-					from = to;
 				}
+				else
+					stoplol = Features::Exploits.Shift( ecx, edx, slot, buf, from, to, moveMsg );
 			}
-			else
-				stoplol = Features::Exploits.Shift( ecx, edx, slot, buf, from, to, moveMsg );
+
+			return !stoplol;
 		}
+	}
+	else {
+		if ( from == -1 )
+			stoplol = Features::Exploits.BreakLC( ecx, edx, slot, buf, from, to, moveMsg );
 
 		return !stoplol;
 	}
-	else if ( ctx.m_iTicksAllowed >= 14
-		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) {
-		static bool stoppedRunning{ };
-
-		if ( from == -1 ) {
-			if ( timer++ >= 14 )
-				timer = 0;
-			stoppedRunning = timer;// InPeek( );
-			if ( !stoppedRunning )
-				stoplol = Features::Exploits.BreakLC( ecx, edx, slot, buf, from, to, moveMsg, timer >= 14 );
-		}
-
-		if ( !stoppedRunning )
-			return !stoplol;
-	}
-	else
-		timer = 0;
-
-	/*else if ( ctx.m_iTicksAllowed >= 14
-		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) {
-		static bool stoppedRunning{ };
-		static bool finalTick{ };
-
-		if ( from == -1 ) {
-			const bool b4{ finalTick };
-			finalTick = InPeek( );
-
-			stoppedRunning = b4;
-			if ( !stoppedRunning )
-				stoplol = Features::Exploits.BreakLC( ecx, edx, slot, buf, from, to, moveMsg, finalTick );
-		}
-
-		if ( !stoppedRunning )
-			return !stoplol;
-	}
-	else
-		timer = 0;*/
 
 	if ( from == -1
 		&& ctx.m_iTicksAllowed > 0 ) {

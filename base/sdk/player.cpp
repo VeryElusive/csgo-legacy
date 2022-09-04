@@ -37,39 +37,49 @@ CWeaponCSBase* CBasePlayer::GetWeapon( ) {
 	return static_cast< CWeaponCSBase * >( Interfaces::ClientEntityList->GetClientEntityFromHandle( this->m_hActiveWeapon( ) ) );
 }
 
-Vector CBasePlayer::GetEyePosition( ) {
+Vector CBasePlayer::GetEyePosition( float pitch ) {
 	auto v12 = this->m_pAnimState( );
 	if ( !v12 )
 		return { };
 
+	const auto backupPoseParam{ ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) };
+
+	ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
+		pitch
+		- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 360.f
+	), -90.f, 90.f ) + 90.f ) / 180.f;
+
+	// idk if this is necessary but ill do it anyways
 	this->SetAbsAngles( { 0.f, v12->flAbsYaw, 0.f } );
 
-	matrix3x4_t tempMatrix[ 256 ];
-	Features::AnimSys.SetupBonesFixed( this, tempMatrix, Interfaces::Globals->flCurTime, 15 );
+	Features::AnimSys.SetupBonesFixed( this, ctx.m_matRealLocalBones, BONE_USED_BY_HITBOX, Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME | NULLIK | OCCLUSIONINTERP ) );
 
-	auto eye_pos = this->m_vecOrigin( ) + this->m_vecViewOffset( );
+	auto eyePos{ this->m_vecOrigin( ) + this->m_vecViewOffset( ) };
 
 	if ( v12->pEntity && ( v12->bHitGroundAnimation || v12->flDuckAmount != 0.f || this->m_hGroundEntity( ) == -1 ) ) {
-		static auto lookup_bone = *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone );
-		const auto bone_index = lookup_bone( v12->pEntity, _( "head_0" ) );
+		static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+		const auto boneIndex{ lookupBone( v12->pEntity, _( "head_0" ) ) };
 
-		if ( bone_index != -1 ) {
-			Vector head_pos{
-				tempMatrix[ bone_index ][ 0u ][ 3u ],
-				tempMatrix[ bone_index ][ 1u ][ 3u ],
-				tempMatrix[ bone_index ][ 2u ][ 3u ] + 1.7f
+		if ( boneIndex != -1 ) {
+			Vector headPos{
+				ctx.m_matRealLocalBones[ boneIndex ][ 0u ][ 3u ],
+				ctx.m_matRealLocalBones[ boneIndex ][ 1u ][ 3u ],
+				ctx.m_matRealLocalBones[ boneIndex ][ 2u ][ 3u ] + 1.7f
 			};
 
-			if ( eye_pos.z > head_pos.z ) {
-				const auto v5 = std::abs( eye_pos.z - head_pos.z );
-				const auto v6 = std::max( ( v5 - 4.f ) / 6.f, 0.f );
-				const auto v7 = std::min( v6, 1.f );
+			if ( eyePos.z > headPos.z ) {
+				const auto v5{ std::abs( eyePos.z - headPos.z ) };
+				const auto v6{ std::max( ( v5 - 4.f ) / 6.f, 0.f ) };
+				const auto v7{ std::min( v6, 1.f ) };
 
-				eye_pos.z += ( ( ( v7 * v7 ) * 3.f ) - ( ( v7 + v7 ) * ( v7 * v7 ) ) ) * ( head_pos.z - eye_pos.z );
+				eyePos.z += ( ( ( v7 * v7 ) * 3.f ) - ( ( v7 + v7 ) * ( v7 * v7 ) ) ) * ( headPos.z - eyePos.z );
 			}
 		}
 	}
-	return eye_pos;
+
+	ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
+
+	return eyePos;
 }
 
 bool CBasePlayer::IsHostage( ) {
@@ -84,7 +94,7 @@ bool CBasePlayer::CanShoot( ) {
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return false;
 
-	const auto weapon = this->GetWeapon( );
+	const auto weapon{ this->GetWeapon( ) };
 	if ( !weapon )
 		return false;
 
@@ -97,12 +107,8 @@ bool CBasePlayer::CanShoot( ) {
 	if ( this->m_bIsDefusing( ) )
 		return false;
 
-	const auto weapon_data = weapon->GetCSWeaponData( );
-	if ( !weapon_data )
-		return false;
-
 	auto tickbase = this->m_nTickBase( );
-	const int ticksAllowed{ ( Config::Get<bool>(Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) ? ctx.m_iTicksAllowed : 0 };
+	const int ticksAllowed{ ctx.m_iTicksAllowed };
 	const bool properWeap{ ctx.m_pWeaponData->nWeaponType > WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 };
 	if ( properWeap )
 		tickbase -= ticksAllowed;

@@ -18,6 +18,35 @@ void Render::FilledRectangle( Vector2D pos, Vector2D size, Color col ) {
 	Interfaces::Surface->DrawFilledRect( pos.x, pos.y, pos.x + size.x, pos.y + size.y );
 }
 
+void Render::FilledRoundedBox( Vector2D pos, Vector2D size, int points, int radius, Color col ) {
+	if ( GlobalAlpha < 1.f )
+		col = col.Set<COLOR_A>( col.Get<COLOR_A>( ) * GlobalAlpha );
+
+	Vertex_t* round = new Vertex_t[ 4 * points ];
+
+	for ( int i = 0; i < 4; i++ ) {
+		int _x = pos.x + ( ( i < 2 ) ? ( size.x - radius ) : radius );
+		int _y = pos.y + ( ( i % 3 ) ? ( size.y - radius ) : radius );
+
+		float a = 90.f * i;
+
+		for ( int j = 0; j < points; j++ ) {
+			float _a = DEG2RAD( a + ( j / ( float )( points - 1 ) ) * 90.f );
+
+			round[ ( i * points ) + j ] = Vertex_t( Vector2D( _x + radius * sin( _a ), _y - radius * cos( _a ) ) );
+		}
+	}
+
+	static int Texture = Interfaces::Surface->CreateNewTextureID( true );
+	unsigned char buffer[ 4 ] = { 255, 255, 255, 255 };
+
+	Interfaces::Surface->DrawSetTextureRGBA( Texture, buffer, 1, 1 );
+	Interfaces::Surface->DrawSetColor( col );
+	Interfaces::Surface->DrawSetTexture( Texture );
+
+	Interfaces::Surface->DrawTexturedPolygon( 4 * points, round );
+}
+
 void Render::FilledRectangle( int x, int y, int w, int h, Color col ) {
 	Interfaces::Surface->DrawSetColor( col );
 	Interfaces::Surface->DrawFilledRect( x, y, x + w, y + h );

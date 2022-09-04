@@ -4,6 +4,7 @@
 #include "../misc/logger.h"
 #include "../misc/shot_info.h"
 #include "../../sdk/entity.h"
+#include "../../utils/ray_tracer.h"
 #include "../../context.h"
 #include "autowall.h"
 
@@ -24,18 +25,20 @@ case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.n
 case WEAPONTYPE_MACHINEGUN: name = Config::Get<int>( Vars.name##Machine );break; }\
 
 struct AimPoint_t {
+	AimPoint_t( ) {}
+	AimPoint_t( Vector point, int ind, Vector center ) : m_vecPoint{ point }, m_iHitgroup{ ind } { 
+		m_flCenterAmt = ( ( point - ctx.m_vecEyePos ) - ( center - ctx.m_vecEyePos ) ).Length2D( );
+	}
+
 	Vector m_vecPoint{ };
 	int m_iHitgroup{ };
-	int m_iIntersections{ };
-	float m_flDamage{ };
+	//int m_iIntersections{ };
+	int m_flDamage{ };
+	float m_flCenterAmt{ FLT_MAX };
 
 	bool m_bValid{ };
 	bool m_bPenetrated{ };
 	bool m_bScanned{ };
-
-	AimPoint_t( ) {}
-
-	AimPoint_t( Vector point, int ind ) : m_vecPoint{ point }, m_iHitgroup{ ind } {}
 };
 
 struct AimTarget_t {
@@ -60,29 +63,23 @@ public:
 	void Main( CUserCmd& cmd );
 	std::shared_ptr<LagRecord_t> GetBestLagRecord( PlayerEntry& entry );
 	std::vector<AimTarget_t> m_cAimTargets{ };
-	std::shared_mutex m_pMutex = { };
-
 private:
 
 	std::vector<int> m_iHitboxes{ };
 
-	int QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, bool& dontScan );
+	int QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, bool& metScaled );
 	int OffsetDelta( CBasePlayer* player, std::shared_ptr<LagRecord_t> record );
-	bool CheckHeadSafepoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record );
-	int SafePoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, Vector aimpoint, int index );
 	void ScanTargets( );
 	bool CreatePoints( AimTarget_t& aim_target, std::vector<AimPoint_t>& aim_points );
 	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
 	void Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index );
-	void CalcCapsulePoints( std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* const hitbox, matrix3x4_t& matrix, float scale );
 	void ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, AimPoint_t& point );
 	std::optional< AimPoint_t> PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
 	std::optional<AimTarget_t> PickTarget( );
 	void Fire( CUserCmd& cmd );
 	bool HitChance( CBasePlayer* player, const QAngle& ang, int hitchance, int index );
+	//bool FastHitChance( CBasePlayer* player, const Vector& dir, const Vector& mins, const Vector& maxs, const float& radius, int hitchance );
 	Vector2D CalcSpreadAngle( const int item_index, const float recoil_index, const int i );
-
-	static void GetTargets( void* i );
 
 	FORCEINLINE void Reset( ) {
 		m_bShouldStop = false;

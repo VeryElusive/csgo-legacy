@@ -86,6 +86,18 @@ void FASTCALL Hooks::hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx ) 
 	oUpdateClientsideAnimation( ecx, edx );
 }
 
+QAngle* FASTCALL Hooks::hkGetEyeAngles( CBasePlayer* ecx, void* edx ) {
+	static auto oGetEyeAngles = DTR::GetEyeAngles.GetOriginal<decltype( &hkGetEyeAngles )>( );
+
+	auto& LocalData{ ctx.m_cLocalData.at( ctx.m_iLastSentCmdNumber % 150 ) };
+	if ( ecx != ctx.m_pLocal
+		|| LocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( )
+		|| *reinterpret_cast< std::uintptr_t* >( _AddressOfReturnAddress( ) ) != Offsets::Sigs.ReturnToEyePosAndVectors )
+		return oGetEyeAngles( ecx, edx );
+
+	return &LocalData.m_angViewAngles;
+}
+
 void FASTCALL Hooks::hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate ) {
 	// no sequence interpolation over here mate
 	// forces the animation queue to clear
@@ -104,13 +116,14 @@ void FASTCALL Hooks::hkAccumulateLayers( CBasePlayer* const ecx, const std::uint
 		return oAccumulateLayers( ecx, edx, a0, a1, a2, a3 );
 
 	if ( const auto state = ecx->m_pAnimState( ) ) {
-		const auto backup_first_update = state->bFirstUpdate;
+		const auto backupFirstUpdate = state->bFirstUpdate;
 
+		// bone snapshots fix
 		state->bFirstUpdate = true;
 
 		oAccumulateLayers( ecx, edx, a0, a1, a2, a3 );
 
-		state->bFirstUpdate = backup_first_update;
+		state->bFirstUpdate = backupFirstUpdate;
 
 		return;
 	}

@@ -36,8 +36,8 @@ void CMisc::Movement( CUserCmd& cmd ) {
 					cmd.iButtons &= ~IN_JUMP;
 			}
 
-			if ( !SlowWalk( cmd ) )
-				AutoStrafer( cmd );
+			SlowWalk( cmd );
+			AutoStrafer( cmd );
 		}
 	}
 
@@ -46,121 +46,12 @@ void CMisc::Movement( CUserCmd& cmd ) {
 	cmd.flUpMove = std::clamp<float>( cmd.flUpMove, -320.f, 320.f );
 }
 
-void CMisc::LimitSpeed( CUserCmd& cmd, float speed ) {
-	const auto cmdSpeed = sqrtf( ( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) );
-
-	if ( cmdSpeed <= 0.f ) 
-		return;
-
-	if ( cmd.iButtons & IN_DUCK )
-		speed /= 0.34f;
-
-	if ( cmdSpeed <= speed )
-		return;
-
-	float ratio = fminf( speed / cmdSpeed, cmdSpeed );
-
-	cmd.flForwardMove *= ratio;
-	cmd.flSideMove *= ratio;
-	cmd.flUpMove *= ratio;
-}
-
-bool CMisc::AutoStop( CUserCmd& cmd ) {
-	if ( !Features::Ragebot.m_bShouldStop )
-		return false;
-
-	if ( !Features::Ragebot.RagebotAutoStop )
-		return false;
-
-	if ( !Config::Get<bool>( Vars.RagebotEnable ) )
-		return false;
-
-	if ( cmd.iButtons & IN_JUMP
-		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
-		return false;
-
-	if ( Features::Ragebot.RagebotBetweenShots && !ctx.m_bCanShoot )
-		return false;
-
-	if ( !ctx.m_pWeaponData )
-		return false;
-
-	const auto maxWeaponSpeed{ ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) };
-	const auto optSpeed{ maxWeaponSpeed / 3.f };
-
-	const auto& velocity{ ctx.m_pLocal->m_vecVelocity( ) };
-	const auto speed{ velocity.Length2D( ) };
-
-	auto& side{ cmd.flSideMove }, & forward{ cmd.flForwardMove };
-
-	if ( optSpeed >= speed )
-		LimitSpeed( cmd, optSpeed );
-	else {
-		cmd.iButtons &= ~IN_SPEED;
-		auto finalWishSpeed = std::min( maxWeaponSpeed, 250.f );
-
-		const auto ducking =
-			cmd.iButtons & IN_DUCK
-			|| ctx.m_pLocal->m_flDuckAmount( )
-			|| ctx.m_pLocal->m_fFlags( ) & FL_DUCKING;
-
-		bool slowDownBro{ };
-		if ( ctx.m_pWeapon
-			&& Offsets::Cvars.sv_accelerate->GetBool( ) ) {
-			const auto item_index = static_cast< std::uint16_t >( ctx.m_pWeapon->m_iItemDefinitionIndex( ) );
-			if ( ctx.m_pWeapon->m_zoomLevel( ) > 0
-				&& ( item_index == 11 || item_index == 38 || item_index == 9 || item_index == 8 || item_index == 39 || item_index == 40 ) )
-				slowDownBro = ( maxWeaponSpeed * 0.52f ) < 110.f;
-
-			if ( !ducking
-				|| slowDownBro )
-				finalWishSpeed *= std::min( 1.f, maxWeaponSpeed / 250.f );
-		}
-
-		if ( ducking
-			&& !slowDownBro )
-			finalWishSpeed /= 3.f;
-
-		finalWishSpeed =
-			( ( Interfaces::Globals->flIntervalPerTick * Offsets::Cvars.sv_accelerate->GetFloat( ) ) * finalWishSpeed )
-			* ctx.m_pLocal->m_surfaceFriction( );
-
-		if ( optSpeed <= ( speed - finalWishSpeed ) ) {
-			if ( finalWishSpeed <= 0.f ) {
-				LimitSpeed( cmd, optSpeed );
-
-				return true;
-			}
-		}
-		else {
-			finalWishSpeed = speed - optSpeed;
-
-			if ( ( speed - optSpeed ) < 0.f ) {
-				LimitSpeed( cmd, optSpeed );
-
-				return true;
-			}
-		}
-
-		QAngle dir;
-		Math::VectorAngles( velocity * -1, dir );
-
-		dir.y = cmd.viewAngles.y - dir.y;
-
-		Vector move;
-		Math::AngleVectors( dir, &move );
-
-		cmd.flForwardMove = move.x * finalWishSpeed;
-		cmd.flSideMove = move.y * finalWishSpeed;
-	}
-
-	return true;
-}
-
 void CMisc::QuickStop( CUserCmd& cmd ) {
 	if ( Config::Get<bool>( Vars.MiscQuickStop ) 
 		&& !cmd.flForwardMove && !cmd.flSideMove 
-		&& !( cmd.iButtons & IN_JUMP ) ) {
+		&& !( cmd.iButtons & IN_JUMP ) 
+		&& ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) {
+		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
 
 		if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 20.f ) {
 			QAngle direction;
@@ -305,7 +196,7 @@ void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_
 }
 
 bool CMisc::MicroMove( CUserCmd& cmd ) {
-	if ( !Config::Get<bool>(Vars.AntiaimEnable )
+	if ( !Config::Get<bool>( Vars.AntiaimEnable )
 		|| !Config::Get<bool>( Vars.AntiaimDesync )
 		|| cmd.iButtons & IN_JUMP
 		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
@@ -352,21 +243,28 @@ bool CMisc::MicroMove( CUserCmd& cmd ) {
 }
 
 void CMisc::AutoStrafer( CUserCmd& cmd ) {
+	if ( !Config::Get<bool>( Vars.MiscAutostrafe ) )
+
+		return;
 	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
 		return;
 
-	if ( !Config::Get<bool>( Vars.MiscAutostrafe ) )
+	const auto& velocity = ctx.m_pLocal->m_vecVelocity( );
+
+	if ( velocity.Length2D( ) < 2.f
+		&& !cmd.flForwardMove && !cmd.flSideMove )
 		return;
 
-	const auto& velocity = ctx.m_pLocal->m_vecVelocity( );
+	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
+		return;
 
 	if ( cmd.flForwardMove != 0.f || cmd.flSideMove != 0.f )
 		MovementAngle.y = std::remainder(
 			MovementAngle.y
 			+ std::remainder(
 				RAD2DEG(
-					std::atan2( -cmd.flSideMove, cmd.flForwardMove )
-				), 360.f
+					std::atan2( cmd.flForwardMove, cmd.flSideMove )
+				) - 90.f, 360.f
 			), 360.f
 		);
 
@@ -416,32 +314,19 @@ void CMisc::AutoStrafer( CUserCmd& cmd ) {
 	MoveMINTFix( cmd, MovementAngle, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 }
 
-bool CMisc::SlowWalk( CUserCmd& cmd ) {
+void CMisc::SlowWalk( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeaponData )
-		return false;
+		return;
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) {
+		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
+
 		const float opt_speed = ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) / 3.f;
-		const float movement_speed = sqrtf( cmd.flForwardMove * cmd.flForwardMove + cmd.flSideMove * cmd.flSideMove );
+		const float movement_speed = std::sqrtf( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) + ( cmd.flUpMove * cmd.flUpMove );
 		float speed = ctx.m_pLocal->m_vecVelocity( ).Length2D( );
 
-		if ( movement_speed > opt_speed ) {
-			cmd.iButtons |= 0x20000u;
-
-			if ( speed <= 0.1f ) {
-				cmd.flSideMove *= opt_speed;
-				cmd.flForwardMove *= opt_speed;
-			}
-			else {
-				cmd.flForwardMove = ( cmd.flForwardMove / movement_speed ) * opt_speed;
-				cmd.flSideMove = ( cmd.flSideMove / movement_speed ) * opt_speed;
-			}
-		}
-
-		return true;
+		LimitSpeed( cmd, opt_speed );
 	}
-
-	return false;
 }
 
 void CMisc::FakeDuck( CUserCmd& cmd ) {
@@ -555,4 +440,95 @@ void CMisc::Thirdperson( ) {
 	Interfaces::Input->vecCameraOffset.x = camAngles.x;
 	Interfaces::Input->vecCameraOffset.y = camAngles.y;
 	Interfaces::Input->vecCameraOffset.z = camAngles.z;
+}
+
+bool CMisc::InPeek( ) {
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 0.2f ) {
+		Features::Exploits.m_bAlreadyPeeked = false;
+		return false;
+	}
+
+	matrix3x4_t backup_matrix[ 256 ];
+	memcpy( backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+
+	const auto delta = ctx.m_pLocal->m_vecVelocity( ) * ( TICKS_TO_TIME( 3 /* + ctx.m_flOutLatency */ ) );
+
+	// credits: diamondhack!
+	for ( std::size_t i{ }; i < ctx.m_pLocal->m_CachedBoneData( ).Count( ); ++i ) {
+		auto& bone = ctx.m_pLocal->m_CachedBoneData( ).Base( )[ i ];
+
+		bone[ 0 ][ 3 ] += delta.x;
+		bone[ 1 ][ 3 ] += delta.y;
+		bone[ 2 ][ 3 ] += delta.z;
+	}
+
+	const auto backup_origin = ctx.m_pLocal->m_vecOrigin( );
+	const auto backupAbsOrigin = ctx.m_pLocal->GetAbsOrigin( );
+
+	ctx.m_pLocal->m_vecOrigin( ) += delta;
+	ctx.m_pLocal->SetAbsOrigin( ctx.m_pLocal->m_vecOrigin( ) );
+
+	const auto hitboxSet = ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) );
+	if ( !hitboxSet )
+		return false;
+
+	auto bestFOV{ INT_MAX };
+	CBasePlayer* bestPlayer{ nullptr };
+	for ( auto i = 1; i <= 64; ++i ) {
+		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
+		if ( !player
+			|| !player->IsPlayer( )
+			|| player->Dormant( )
+			|| player->IsDead( )
+			|| player->IsTeammate( ) )
+			continue;
+
+		const auto fov = Math::GetFov( ctx.m_angOriginalViewangles, Math::CalcAngle( ctx.m_vecEyePos, player->GetAbsOrigin( ) ) );
+		if ( fov > bestFOV )
+			continue;
+
+		bestPlayer = player;
+	}
+
+	if ( !bestPlayer ) {
+		ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
+		ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
+		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+		return false;
+	}
+
+	auto enemyShootPos = bestPlayer->m_vecOrigin( );
+	enemyShootPos.z += 64.f;
+
+	int bestDmg{ };
+
+	for ( const auto& hb : { HITBOX_CHEST, HITBOX_RIGHT_THIGH, HITBOX_LEFT_THIGH, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT } ) {
+		const auto hitbox = hitboxSet->GetHitbox( hb );
+		if ( !hitbox )
+			return false;
+
+		Vector center = ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f;
+		center = Math::VectorTransform( center, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
+
+		const auto data{ Features::Autowall.FireEmulated( bestPlayer, ctx.m_pLocal,
+			enemyShootPos, center ) };
+
+		if ( data.dmg > bestDmg ) {
+			bestDmg = data.dmg;
+			break;
+		}
+	}
+
+	if ( bestDmg > 1 ) {
+		ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
+		ctx.m_pLocal->SetAbsOrigin( backup_origin );
+		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+		return true;
+	}
+
+	ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
+	ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
+	memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	Features::Exploits.m_bAlreadyPeeked = false;
+	return false;
 }

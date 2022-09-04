@@ -2,7 +2,7 @@
 #include "group/group.h"
 #include "../../features/misc/logger.h"
 
-#define APPEND_LEN Vector2D( 60, 120 )
+#define APPEND_LEN Vector2D( 60, 140 )
 
 std::vector<multi_item_t> removals = {
 	{ "Scope", &Config::Get<bool>( Vars.RemovalScope ) },
@@ -133,7 +133,7 @@ case 7: if ( !Config::Get<bool>( Vars.##name##Auto ) ) goto jmp;break; \
 case 8: if ( !Config::Get<bool>( Vars.##name##Machine ) ) goto jmp;break; }\
 
 void Menu::RenderSubtabs( std::vector<std::string> subTabs, int& activeSubtab ) {
-	const Vector2D SubTabPos = Pos + Vector2D( 20, Size.y - 29 );
+	const Vector2D SubTabPos = Pos + Vector2D( 20, 55 );
 	const Vector2D SubTabSize = Vector2D( ( Size.x - 40 ) / subTabs.size( ), 1 );
 	int i{ };
 	for ( const auto& SubTab : subTabs ) {
@@ -149,8 +149,8 @@ void Menu::RenderSubtabs( std::vector<std::string> subTabs, int& activeSubtab ) 
 		i++;
 	}
 
-	Render::FilledRectangle( SubTabPos, Vector2D( Size.x - 40, 1 ), Color( 80, 80, 80 ) );
-	Render::FilledRectangle( SubTabPos + Vector2D( SubTabSize.x * activeSubtab, 0 ), SubTabSize, AccentCol );
+	//Render::FilledRectangle( SubTabPos, Vector2D( Size.x - 40, 1 ), Color( 80, 80, 80 ) );
+	//Render::FilledRectangle( SubTabPos + Vector2D( SubTabSize.x * activeSubtab, 0 ), SubTabSize, AccentCol );
 }
 
 void Menu::GetElements( ) {
@@ -164,7 +164,7 @@ void Menu::GetElements( ) {
 		const char* tabs[ 4 ] = { _( "A" ), _( "C" ), _( "D" ), _( "E" ) };
 
 		const auto TextSize = Render::GetTextSize( _( "A" ), Fonts::MenuTabs );
-		Vector2D TabPos = Pos + Vector2D( Size.x / 2 - ( TextSize.x + 5 ) * 2, 13 );
+		Vector2D TabPos = Pos + Vector2D( Size.x / 2 - ( TextSize.x + 5 ) * 2, 8 );
 		int i{ };
 		for ( auto tab : tabs ) {
 			const auto Hov = Inputsys::hovered( TabPos + Vector2D( i * ( TextSize.x + 10 ), 0 ), TextSize ) && Menu::OpenedID == "";
@@ -295,7 +295,7 @@ void Menu::DrawRage( ) {
 		static int weapGroup{ };
 
 		{
-			const auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
+			static auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
 			RagebotGroup->Begin( _( "General" ), CompensatedLength );
 			{
 				RagebotGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.RagebotEnable ) );
@@ -323,14 +323,14 @@ void Menu::DrawRage( ) {
 				RagebotGroup->Checkbox( _( "Doubletap" ), Config::Get<bool>( Vars.ExploitsDoubletap ) );
 				RagebotGroup->Keybind( _( "Doubletap key" ), Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ) );
 
-				RagebotGroup->Checkbox( _( "Defensive doubletap" ), Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) );
+				RagebotGroup->Checkbox( _( "Lag peek" ), Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) );
 				RagebotGroup->Checkbox( _( "Hideshots" ), Config::Get<bool>( Vars.ExploitsHideshots ) );
 				RagebotGroup->Keybind( _( "Hideshots key" ), Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ) );
 			}
 			RagebotGroup->End( );
 		}
 		{
-			const auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
+			static auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
 			RagebotGroup->Begin( _( "General" ), CompensatedLength );
 			{
 				RagebotGroup->Combo( _( "Target selection" ), Config::Get<int>( Vars.RagebotTargetSelection ), { _( "Highest damage" ), _( "FOV" ), _( "Distance" ), _( "Lowest health" ) } );
@@ -398,7 +398,7 @@ void Menu::DrawRage( ) {
 	}
 	else {
 		{
-			const auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
+			static auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
 			AntiaimGroup->Begin( _( "General" ), CompensatedLength );
 			{
 				AntiaimGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.AntiaimEnable ) );
@@ -424,12 +424,14 @@ void Menu::DrawRage( ) {
 
 				//AntiaimGroup->Combo( _( "Auto direction" ), Config::Get<int>( Vars.AntiaimFreestand ), { _( "Off" ), _( "Desync side" ), _( "Yaw" ) } );
 
-				AntiaimGroup->Label( _( "Manual direction" ) );
+				AntiaimGroup->Checkbox( _( "Manual direction" ), Config::Get<bool>( Vars.AntiAimManualDir ) );
 				AntiaimGroup->ColorPicker( _( "Manual direction Color" ), Config::Get<Color>( Vars.AntiaimManualCol ) );
 				AntiaimGroup->Label( _( "Left" ) );
 				AntiaimGroup->Keybind( _( "Left key" ), Config::Get<keybind_t>( Vars.AntiaimLeft ) );
+				Config::Get<keybind_t>( Vars.AntiaimLeft ).mode = EKeyMode::Toggle;
 				AntiaimGroup->Label( _( "Right" ) );
 				AntiaimGroup->Keybind( _( "Right key" ), Config::Get<keybind_t>( Vars.AntiaimRight ) );
+				Config::Get<keybind_t>( Vars.AntiaimRight ).mode = EKeyMode::Toggle;
 			}
 
 			AntiaimGroup->End( );
@@ -438,7 +440,7 @@ void Menu::DrawRage( ) {
 		//NewGroupRow( );
 
 		{
-			const auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
+			static auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
 			AntiaimGroup->Begin( _( "Fakelag" ), Vector2D( CompensatedLength.x, ( Size.y - 119 ) / 2 - 10 ) );
 			{
 				AntiaimGroup->Slider( _( "Limit" ), Config::Get<int>( Vars.AntiaimFakeLagLimit ), 0, 15 );
@@ -457,7 +459,7 @@ void Menu::DrawMisc( ) {
 	const Vector2D CompensatedLength = Vector2D( ( ( Size.x - APPEND_LEN.x ) / 2 ), Size.y - APPEND_LEN.y );
 
 	{
-		const auto MiscGroup{ std::make_unique< MenuGroup >( ) };
+		static auto MiscGroup{ std::make_unique< MenuGroup >( ) };
 		MiscGroup->Begin( _( "General" ), CompensatedLength );
 		{
 			/* propaganda section */
@@ -522,14 +524,14 @@ void Menu::DrawMisc( ) {
 
 			if ( MiscGroup->Button( _( "Reset menu size" ) ) ) {
 				Features::Logger.Log( _( "Menu size reset" ), true );
-				Menu::Size = { 600, 580 };
+				Menu::Size = { 800, 550 };
 			}
 		}
 		MiscGroup->End( );
 	}
 
 	{
-		const auto MiscGroup{ std::make_unique< MenuGroup >( ) };
+		static auto MiscGroup{ std::make_unique< MenuGroup >( ) };
 		MiscGroup->Begin( _( "Movement" ), CompensatedLength );
 		{
 			MiscGroup->Checkbox( _( "Bunnyhop" ), Config::Get<bool>( Vars.MiscBunnyhop ) );
@@ -559,8 +561,8 @@ void Menu::DrawMisc( ) {
 void Menu::DrawConfig( ) {
 
 	{
-		auto CfgGroup = std::make_unique< MenuGroup >( );
-		CfgGroup->Begin( _( "Config" ), Size - Vector2D( 40, 121 ) );
+		static auto CfgGroup = std::make_unique< MenuGroup >( );
+		CfgGroup->Begin( _( "" ), Size - Vector2D( 40, 140 ) );
 
 		Config::Refresh( );
 
@@ -622,7 +624,7 @@ void Menu::DrawVisual( ) {
 
 	if ( ActiveSubTab < 3 ) {
 		{
-			const auto EspGroup{ std::make_unique< MenuGroup >( ) };
+			static auto EspGroup{ std::make_unique< MenuGroup >( ) };
 			EspGroup->Begin( _( "ESP" ), CompensatedLength );
 			{
 				PlayerCheckbox( EspGroup, _( "Enabled" ), VisEnable, ActiveSubTab );
@@ -639,6 +641,10 @@ void Menu::DrawVisual( ) {
 				PlayerColorPicker( EspGroup, _( "SkeletonCol" ), VisSkeletonCol, ActiveSubTab );
 				PlayerCheckbox( EspGroup, _( "Glow" ), VisGlow, ActiveSubTab );
 				PlayerColorPicker( EspGroup, _( "GlowCol" ), VisGlowCol, ActiveSubTab );
+				if ( ActiveSubTab != 0 ) {
+					PlayerCheckbox( EspGroup, _( "Out of FOV" ), VisOOF, ActiveSubTab );
+					PlayerColorPicker( EspGroup, _( "Out of FOV Col" ), VisOOFCol, ActiveSubTab );
+				}
 
 				std::vector<multi_item_t> ItemsLocal;
 				std::vector<multi_item_t> ItemsTeam;
@@ -665,7 +671,7 @@ void Menu::DrawVisual( ) {
 		}
 
 		{
-			const auto ChamGroup{ std::make_unique< MenuGroup >( ) };
+			static auto ChamGroup{ std::make_unique< MenuGroup >( ) };
 			ChamGroup->Begin( _( "Chams" ), CompensatedLength );
 			{
 				PlayerCheckbox( ChamGroup, _( "Visible" ), ChamVis, ActiveSubTab );
@@ -706,7 +712,7 @@ void Menu::DrawVisual( ) {
 	// OTHER SUBTAB
 	else {
 		{
-			const auto EspGroup{ std::make_unique< MenuGroup >( ) };
+			static auto EspGroup{ std::make_unique< MenuGroup >( ) };
 			EspGroup->Begin( _( "General" ), CompensatedLength );
 			{
 				EspGroup->MultiCombo( _( "Removals" ), removals );
@@ -725,7 +731,10 @@ void Menu::DrawVisual( ) {
 
 				EspGroup->Checkbox( _( "Dropped weapons" ), Config::Get<bool>( Vars.VisDroppedWeapon ) );
 				EspGroup->ColorPicker( _( "Dropped weapons Color" ), Config::Get<Color>( Vars.VisDroppedWeaponCol ) );
-				EspGroup->Checkbox( _( "Grenades" ), Config::Get<bool>( Vars.VisGrenades ) );
+				EspGroup->Checkbox( _( "Team grenades" ), Config::Get<bool>( Vars.VisGrenadesTeam ) );
+				EspGroup->ColorPicker( _( "Team grenades Color" ), Config::Get<Color>( Vars.VisGrenadesTeamCol ) );
+				EspGroup->Checkbox( _( "Enemy grenades" ), Config::Get<bool>( Vars.VisGrenadesEnemy ) );
+				EspGroup->ColorPicker( _( "Enemy grenades Color" ), Config::Get<Color>( Vars.VisGrenadesEnemyCol ) );
 				EspGroup->Checkbox( _( "Planted Bomb" ), Config::Get<bool>( Vars.VisBomb ) );
 				EspGroup->Checkbox( _( "Local bullet impacts" ), Config::Get<bool>( Vars.VisLocalBulletImpacts ) );
 				EspGroup->ColorPicker( _( "Local bullet impacts col" ), Config::Get<Color>( Vars.VisLocalBulletImpactsCol ) );
@@ -744,7 +753,7 @@ void Menu::DrawVisual( ) {
 		}
 
 		{
-			const auto EspGroup{ std::make_unique< MenuGroup >( ) };
+			static auto EspGroup{ std::make_unique< MenuGroup >( ) };
 			EspGroup->Begin( _( "Modifications" ), CompensatedLength );
 			{
 				EspGroup->Checkbox( _( "Full bright" ), Config::Get<bool>( Vars.WorldFullbright ) );

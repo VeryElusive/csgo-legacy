@@ -22,16 +22,17 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 		maxDistance -= curDistance;
 
 		// create end point of bullet
-		Vector vecEnd{ src + ( dir * maxDistance ) };
+		Vector vecEnd{ src + dir * maxDistance };
 
-		traceFilter.pSkip2 = trace.pHitEntity;
+		traceFilter.pSkip2 = lastHitPlayer;
 
+		// AMD cpus cant do this on a thread bruh
 		Interfaces::EngineTrace->TraceRay(
 			{ src, vecEnd }, MASK_SHOT_PLAYER,
 			reinterpret_cast< ITraceFilter* >( &traceFilter ), &trace
 		);
 
-		if ( traceFilter.ShouldHitEntity( target, MASK_SHOT_PLAYER ) )
+		if ( target && traceFilter.ShouldHitEntity( target, MASK_SHOT_PLAYER ) )
 			ClipTraceToPlayer( vecEnd + ( dir * 40.f ), src, &trace, target );
 
 		// we didn't hit anything
@@ -48,7 +49,7 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 		const auto hitPlayer = static_cast< CBasePlayer* >( trace.pHitEntity );
 		if ( hitPlayer
 			&& hitPlayer == target ) {
-			if ( trace.iHitGroup >= HITGROUP_HEAD && trace.iHitGroup <= HITGROUP_RIGHTLEG ) {
+			if ( ( trace.iHitGroup >= HITGROUP_HEAD && trace.iHitGroup <= HITGROUP_RIGHTLEG ) || trace.iHitGroup == HITGROUP_GEAR ) {
 				data.target = hitPlayer;
 				data.hitbox = trace.iHitbox;
 				data.hitgroup = trace.iHitGroup;
@@ -56,7 +57,7 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 				if ( isTaser )
 					data.hitgroup = 0;
 
-				data.dmg = ScaleDamage( hitPlayer, data.dmg, weaponData->flArmorRatio, data.hitgroup );
+				ScaleDamage( hitPlayer, data.dmg, weaponData->flArmorRatio, data.hitgroup, weaponData->flHeadShotMultiplier );
 
 				return data;
 			}
@@ -80,59 +81,46 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 	return { };
 }
 
-float CAutowall::ScaleDamage( CBasePlayer* player, float damage, float armourRatio, int hitgroup ) {
-	auto hasArmor = [ ]( CBasePlayer* player, int hitGroup ) -> bool {
-		if ( player->m_ArmorValue( ) > 0 ) {
-			if ( ( hitGroup == HITGROUP_HEAD && player->m_bHasHelmet( ) ) || ( hitGroup >= HITGROUP_CHEST && hitGroup <= HITGROUP_RIGHTARM ) )
-				return true;
-		}
-		return false;
-	};
-
-	bool bHasHeavyArmor{ player->m_bHasHeavyArmor( ) };
+void CAutowall::ScaleDamage( CBasePlayer* player, float& damage, float ArmourRatio, int hitgroup, float headshotMultiplier ) {
+	const auto hasHeavyArmor = player->m_bHasHeavyArmor( );
 
 	switch ( hitgroup ) {
-	case HITGROUP_HEAD:
-		if ( !bHasHeavyArmor )
-			damage *= 4.0f;
-		else
-			damage = ( damage * 4.0f ) * 0.5f;
+	case 1:
+		damage *= headshotMultiplier;
+
+		if ( hasHeavyArmor )
+			damage *= 0.5f;
+
 		break;
-	case HITGROUP_STOMACH:
-		damage *= 1.25f;
-		break;
-	case HITGROUP_LEFTLEG:
-	case HITGROUP_RIGHTLEG:
+	case 3: damage *= 1.25f; break;
+	case 6:
+	case 7:
 		damage *= 0.75f;
+
 		break;
 	}
 
-	if ( player && hasArmor( player, hitgroup ) ) {
-		float flHeavyRatio = 1.0f;
-		float flBonusRatio = 0.5f;
-		float flRatio = armourRatio * 0.5f;
-		float flNewDamage;
+	const auto armor_value = player->m_ArmorValue( );
+	if ( !armor_value
+		|| hitgroup < 0
+		|| hitgroup > 5
+		|| ( hitgroup == 1 && !player->m_bHasHelmet( ) ) )
+		return;
 
-		if ( !bHasHeavyArmor )
-			flNewDamage = damage * flRatio;
-		else {
-			flBonusRatio = 0.33f;
-			flRatio = armourRatio * 0.25f;
-			flHeavyRatio = 0.33f;
-			flNewDamage = ( damage * flRatio ) * 0.85f;
-		}
+	auto heavy_ratio = 1.f, bonus_ratio = 0.5f, ratio = ArmourRatio * 0.5f;
 
-		const int iArmor = player->m_ArmorValue( );
-
-		if ( ( ( damage - flNewDamage ) * ( flHeavyRatio * flBonusRatio ) ) > iArmor )
-			flNewDamage = damage - ( iArmor / flBonusRatio );
-
-		damage = flNewDamage;
+	if ( hasHeavyArmor ) {
+		ratio *= 0.2f;
+		heavy_ratio = 0.25f;
+		bonus_ratio = 0.33f;
 	}
 
-	damage = floorf( damage );
+	auto dmg_to_hp = damage * ratio;
 
-	return damage;
+	if ( ( ( damage - dmg_to_hp ) * ( bonus_ratio * heavy_ratio ) ) > armor_value )
+		damage -= armor_value / bonus_ratio;
+	else
+		damage = dmg_to_hp;
 }
 
 void CAutowall::ClipTraceToPlayer( Vector dst, Vector src, CGameTrace* oldtrace, CBasePlayer* ent ) {
@@ -414,16 +402,18 @@ PenetrationData CAutowall::FireEmulated( CBasePlayer* const shooter, CBasePlayer
 	const auto max_dist = dir.NormalizeInPlace( );
 
 	CGameTrace trace{ };
-	CTraceFilter trace_filter{ shooter };
+	CTraceFilterSkipTwoEntities traceFilter{ shooter };
 
 	while ( cur_dmg > 0.f ) {
 		const auto dist_remaining = wpn_data.flRange - cur_dist;
 
 		const auto cur_dst = src + dir * dist_remaining;
 
+		traceFilter.pSkip2 = trace.pHitEntity && trace.pHitEntity->IsPlayer( ) ? trace.pHitEntity : nullptr;
+
 		Interfaces::EngineTrace->TraceRay(
 			{ src, cur_dst }, MASK_SHOT_PLAYER,
-			reinterpret_cast< ITraceFilter* >( &trace_filter ), &trace
+			reinterpret_cast< ITraceFilter* >( &traceFilter ), &trace
 		);
 
 		Vector ExEnd{ cur_dst + dir * 40.f };
@@ -438,6 +428,10 @@ PenetrationData CAutowall::FireEmulated( CBasePlayer* const shooter, CBasePlayer
 		cur_dist += trace.flFraction * dist_remaining;
 		cur_dmg *= std::pow( wpn_data.flRangeModifier, cur_dist / 500.f );
 
+		if ( cur_dist > 3000.f
+			&& wpn_data.flPenetration > 0.f )
+			break;
+
 		if ( trace.pHitEntity ) {
 			const auto is_player = trace.pHitEntity->IsPlayer( );
 			if ( trace.pHitEntity == target ) {
@@ -449,10 +443,6 @@ PenetrationData CAutowall::FireEmulated( CBasePlayer* const shooter, CBasePlayer
 				return data;
 			}
 		}
-
-		if ( cur_dist > 3000.f
-			&& wpn_data.flPenetration > 0.f )
-			break;
 
 		const auto enter_surface = Interfaces::PhysicsProps->GetSurfaceData( trace.surface.nSurfaceProps );
 		if ( enter_surface->game.flPenetrationModifier < 0.1f

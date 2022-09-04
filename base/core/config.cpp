@@ -89,8 +89,6 @@ bool Config::Save(std::string_view szFileName)
 
 				// fill node with all color values
 				sub.push_back( keyVariable.key );
-				sub.push_back( keyVariable.enabled );
-				sub.push_back( keyVariable.prevState );
 				sub.push_back( keyVariable.mode );
 
 				entry[ _( "value" ) ] = sub.dump( );
@@ -168,7 +166,6 @@ bool Config::Save(std::string_view szFileName)
 		return false;
 	}
 
-	Features::Antiaim.ManualSide = 0;
 
 	return true;
 }
@@ -255,9 +252,9 @@ bool Config::Load(std::string_view szFileName)
 
 				entry.Set<keybind_t>( keybind_t(
 					vector.at( 0 ).get<std::int32_t>( ),
-					vector.at( 1 ).get<bool>( ),
-					vector.at( 2 ).get<bool>( ),
-					vector.at( 3 ).get<int>( )
+					0,
+					0,
+					vector.at( 1 ).get<int>( )
 				) );
 
 				break;
@@ -313,6 +310,8 @@ bool Config::Load(std::string_view szFileName)
 	{
 		return false;
 	}
+
+	Features::Antiaim.ManualSide = 0;
 
 	return true;
 }

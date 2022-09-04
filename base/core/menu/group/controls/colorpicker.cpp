@@ -1,11 +1,8 @@
 #include "../group.h"
 
 void MenuGroup::ColorPicker( const char* name, Color& value, bool doalpha ) {
-	constexpr auto Size = Vector2D( 24, 12 );
+	const auto Size = Vector2D( 24, std::min( 12.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 	const bool opened = Menu::OpenedID == name;
-
-	if ( Size.y + Menu::CursorPos.y > OldCursorPos.y + size.y )
-		return;
 
 	auto pos = Menu::CursorPos + Vector2D( size.x - 57, - 18 );
 

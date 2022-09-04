@@ -1,11 +1,9 @@
 #include "../group.h"
 
 bool MenuGroup::Button( const char* name ) {
-	const auto Size = Vector2D( size.x - 30, 24 );
-	bool ret{ };
+	auto Size = Vector2D( size.x - 30, std::min( 24.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 
-	if ( Size.y + Menu::CursorPos.y > OldCursorPos.y + size.y )
-		return ret;
+	bool ret{ };
 
 	auto FillCol = Menu::ControlCol;
 

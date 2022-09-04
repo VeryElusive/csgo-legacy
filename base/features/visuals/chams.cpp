@@ -4,7 +4,7 @@
 #include "../../context.h"
 
 void CChams::InitMaterials( ) {
-	RegularMat = CreateMaterial(
+	/*RegularMat = CreateMaterial(
 		_( "mb_regular.vmt" ),
 		_( "VertexLitGeneric" ),
 		_(
@@ -96,7 +96,7 @@ void CChams::InitMaterials( ) {
 		return;
 
 	if ( !GalaxyMat || GalaxyMat->IsErrorMaterial( ) )
-		return;
+		return;*/
 
 	init = true;
 }
@@ -104,10 +104,12 @@ void CChams::InitMaterials( ) {
 IMaterial* CChams::CreateMaterial( 
 	const std::string_view name, const std::string_view shader, const std::string_view material 
 ) const {
-	CKeyValues* pKeyValues = new CKeyValues( shader.data( ) );
-	pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
+	//CKeyValues* pKeyValues = new CKeyValues( shader.data( ) );
+	//pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
 
-	return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
+	//return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
+
+	return nullptr;
 }
 
 void CChams::OverrideMaterial(
@@ -196,8 +198,8 @@ void CChams::Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, ma
 						continue;
 
 					std::memcpy(
-						matrix, record->m_cAnimData.m_cAnimSides.at( 0 ).m_pMatrix,
-						record->m_cAnimData.m_cAnimSides.at( 0 ).m_iBonesCount * sizeof( matrix3x4_t )
+						matrix, record->m_pMatrix,
+						record->m_iBonesCount * sizeof( matrix3x4_t )
 					);
 
 					valid = true;
@@ -358,6 +360,8 @@ void CChams::OnPostScreenEffects( ) {
 		m_bFakeModel = true;
 		Interfaces::ModelRender->DrawModelExecute( Interfaces::MaterialSystem->GetRenderContext( ), hit.state, hit.info, hit.pBoneToWorld );
 		m_bFakeModel = false;
+
+		Interfaces::StudioRender->ForcedMaterialOverride( nullptr );
 	}
 }
 

@@ -12,6 +12,8 @@ void FASTCALL Hooks::hkPhysicsSimulate( CBasePlayer* player, int time ) {
 		return;
 	}
 
+	//player->m_vphysicsCollisionState( ) = 0;
+
 	auto cctx = &player->m_CmdContext( );
 
 	if ( cctx->cmd.iTickCount >= INT_MAX ) {

@@ -4,19 +4,22 @@
 
 inline void PlayerEntry::reset( ) {
 	this->m_pRecords.clear( );
-	this->m_pInterpolatedData.clear( );
 
 	this->m_optPreviousData.reset( );
 	this->m_flSpawnTime = 0;
-	this->m_iMissedShots = 0;
+	//this->m_iMissedShots = 0;
 
-	this->m_vecUpdatedOrigin = { 0,0,0 };
+	//this->m_vecUpdatedOrigin = { 0,0,0 };
+	this->m_vecLastOrigin = { 0,0,0 };
 	this->m_pPlayer = nullptr;
 
 	this->m_bBrokeLC = false;
+
+	this->m_iLastUnchoked = 0;
+	this->m_iRealChoked = 0;
 }
 
-inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, std::optional<AnimData_t>& previous ) {
+inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optional<AnimData_t>& previous, int chokedReal ) {
 	if ( !previous.has_value( ) )
 		return;
 
@@ -28,8 +31,8 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, std::optional<An
 
 	/* choked fix */
 	if ( prevLayers[ 11 ].flPlaybackRate == curLayers[ 11 ].flPlaybackRate ) {
-		if ( this->m_cAnimData.m_pWeapon == previous->m_pWeapon
-			&& curLayers[ 11 ].flPlaybackRate > 0.f 
+		if ( curLayers[ 11 ].flPlaybackRate > 0.f 
+			&& ( !curWeapon || curWeapon == previous->m_pWeapon )
 			&& curLayers[ 11 ].flCycle > prevLayers[ 11 ].flCycle ) {
 			const auto tickDifference = TIME_TO_TICKS( ( curLayers[ 11 ].flCycle - prevLayers[ 11 ].flCycle ) / curLayers[ 11 ].flPlaybackRate );
 
@@ -39,8 +42,8 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, std::optional<An
 		}
 	}
 
-	/* jump_fall fix */
-	const auto chokedTime = TICKS_TO_TIME( this->m_iNewCmds );
+	/* jump_fall fix */ 
+	auto chokedTime{ TICKS_TO_TIME( this->m_iNewCmds ) };
 
 	if ( this->m_iNewCmds > 1 ) {
 		const auto UpdateStartTime = this->m_cAnimData.m_flSimulationTime - chokedTime;
@@ -53,6 +56,7 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, std::optional<An
 		}
 	}
 
+	chokedTime = TICKS_TO_TIME( chokedReal );
 
 	/* velo fix */
 	if ( chokedTime > 0.f
@@ -60,79 +64,28 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, std::optional<An
 		curVel = ( this->m_cAnimData.m_vecOrigin - previous->m_vecOrigin ) / chokedTime;
 
 	if ( this->m_cAnimData.m_iFlags & FL_ONGROUND && previous->m_iFlags & FL_ONGROUND ) {
+		curVel.z = 0.f;
+
+		const auto maxCurrentSpeed{ curWeapon ? std::max( 0.1f, ( player->m_bIsScoped( ) ? curWeapon->GetCSWeaponData( )->flMaxSpeedAlt : curWeapon->GetCSWeaponData( )->flMaxSpeed ) ) : player->m_flMaxSpeed( ) };
+
 		if ( curLayers[ 6 ].flPlaybackRate == 0.f )
 			curVel = { 0, 0, 0 };
-		else if ( curWeapon
-			&& curWeapon == previous->m_pWeapon
+		else if ( ( !curWeapon || curWeapon == previous->m_pWeapon )
 			&& curLayers[ 11 ].flPlaybackRate == prevLayers[ 11 ].flPlaybackRate
-			&& this->m_iNewCmds > 1 ) {
-			const auto maxCurrentSpeed{ std::max( 0.1f, ( player->m_bIsScoped( ) ? curWeapon->GetCSWeaponData( )->flMaxSpeedAlt : curWeapon->GetCSWeaponData( )->flMaxSpeed ) ) };
+			&& !player->m_flDuckAmount( ) 
+			&& !player->m_bIsWalking( ) ) {
 
-			const auto speed{ ( 0.55f - ( ( curLayers[ 11 ].flWeight - 1.f ) * 0.35f ) ) * maxCurrentSpeed };
-			const auto avgSpeed = curVel.Length2D( );
+			const auto avgSpeed{ curVel.Length2D( ) };
+			if ( curLayers[ 11 ].flWeight > 0.f && curLayers[ 11 ].flWeight < 1.f ) {
+				const auto m_flSpeedAsPortionOfRunTopSpeed{ 0.55f + ( 1.f - curLayers[ 11 ].flWeight ) * 0.35f };
 
-			if ( curLayers[ 11 ].flWeight < 1.f ) {
-				if ( curLayers[ 11 ].flWeight <= 0.f && speed <= avgSpeed )
-					return;
-			}
-			else {
-				if ( avgSpeed <= speed )
-					return;
-			}
-
-			if ( avgSpeed != 0.f ) {
-				curVel.y /= avgSpeed;
-				curVel.x /= avgSpeed;
-			}
-
-			curVel.x *= speed;
-			curVel.y *= speed;
-
-			//ctx.m_strDbgLogs.push_back( std::make_pair( "X: " + std::to_string( curVel.x ) + " Y: " + std::to_string( curVel.y ), player ) );
-		}
-	}
-
-	/*if ( this->m_cAnimData.m_iFlags & FL_ONGROUND
-		&& this->m_iNewCmds > 1 ) {
-		const auto average_speed = curVel.Length2D( );
-		if ( average_speed > 0.1f ) {
-			const auto alive_loop_weight = curLayers[ 11 ].flWeight;
-			if ( alive_loop_weight > 0.f
-				&& alive_loop_weight < 1.f ) {
-				const auto unk = ( 1.f - alive_loop_weight ) * 0.35f;
-				if ( unk > 0.f
-					&& unk < 1.f ) {
-					const auto modifier = ( ( unk + 0.55f ) * maxCurrentSpeed ) / average_speed;
-
-					curVel.x *= modifier;
-					curVel.y *= modifier;
-					
+				const auto maxAverage{ avgSpeed * maxCurrentSpeed };
+				if ( maxAverage > 0.f && maxAverage <= 1.f ) {
+					curVel.x *= ( m_flSpeedAsPortionOfRunTopSpeed / maxAverage );
+					curVel.y *= ( m_flSpeedAsPortionOfRunTopSpeed / maxAverage );
 				}
 			}
-
-			curVel.z = 0.f;
 		}
-	}*/
-}
-
-inline void LagRecord_t::SelectResolverSide( PlayerEntry& entry ) {
-	if ( !this->m_bMultiMatrix )
-		return;
-
-	if ( !entry.m_iMissedShots ) {
-		if ( std::abs( entry.m_pPlayer->m_angEyeAngles( ).y - this->m_cAnimData.m_cAnimSides.at( LEFT ).m_flAbsYaw )
-			< std::abs( entry.m_pPlayer->m_angEyeAngles( ).y - this->m_cAnimData.m_cAnimSides.at( RIGHT ).m_flAbsYaw ) )
-			this->m_iResolverSide = LEFT;
-		else
-			this->m_iResolverSide = RIGHT;
-
-		if ( std::abs( entry.m_pPlayer->m_angEyeAngles( ).y - this->m_cAnimData.m_cAnimSides.at( this->m_iResolverSide ).m_flAbsYaw )
-			> std::abs( entry.m_pPlayer->m_angEyeAngles( ).y - this->m_cAnimData.m_cAnimSides.at( MIDDLE ).m_flAbsYaw ) )
-			this->m_iResolverSide = MIDDLE;
-	}
-	else {
-		Features::AnimSys.GetSide( entry );
-		this->m_iResolverSide = entry.m_iResolverSide;
 	}
 }
 
@@ -151,7 +104,7 @@ inline bool LagRecord_t::IsValid( ) {
 	const auto ticksAllowed = ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) && Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ? ctx.m_iTicksAllowed : 0;
 	const auto correct = std::clamp( ctx.m_flOutLatency + ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Offsets::Cvars.sv_maxunlag->GetFloat( ) );
 	const auto delta = correct - ( TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) - ticksAllowed ) - this->m_cAnimData.m_flSimulationTime );
-	return std::fabsf( delta ) <= 0.2f;
+	return std::abs( delta ) < 0.2f;
 }
 
 inline void LagRecord_t::Apply( CBasePlayer* ent, bool onlyAnim ) {
@@ -160,15 +113,13 @@ inline void LagRecord_t::Apply( CBasePlayer* ent, bool onlyAnim ) {
 		ent->SetAbsOrigin( this->m_cAnimData.m_vecOrigin );
 
 		ent->SetCollisionBounds(
-			this->m_vecMins, this->m_vecMaxs
+			this->m_cAnimData.m_vecMins, this->m_cAnimData.m_vecMaxs
 		);
 	}
 
-	const auto& side = this->m_cAnimData.m_cAnimSides.at( this->m_iResolverSide );
+	ent->SetAbsAngles( { 0.f, this->m_flAbsYaw, 0.f } );
 
-	ent->SetAbsAngles( { 0.f, side.m_flAbsYaw, 0.f } );
-
-	memcpy( ent->m_CachedBoneData( ).Base( ), side.m_pMatrix, side.m_iBonesCount * sizeof( matrix3x4_t ) );
+	memcpy( ent->m_CachedBoneData( ).Base( ), this->m_pMatrix, this->m_iBonesCount * sizeof( matrix3x4_t ) );
 
 	ent->g_iModelBoneCounter( ) = **reinterpret_cast< unsigned long** >( Offsets::Sigs.InvalidateBoneCache + 0xau );
 }

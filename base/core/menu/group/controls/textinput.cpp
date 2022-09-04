@@ -1,11 +1,8 @@
 #include "../group.h"
 
 void MenuGroup::TextInput( std::string& val ) {
-	const auto Size = Vector2D( size.x - 30, 24 );
+	const auto Size = Vector2D( size.x - 30, std::min( 24.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 	bool Opened = Menu::OpenedID == val;
-
-	if ( Size.y + Menu::CursorPos.y > OldCursorPos.y + size.y )
-		return;
 
 	auto FillCol = Menu::ControlCol;
 

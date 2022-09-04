@@ -149,6 +149,7 @@
     <ClInclude Include="utils\threading\packed_heap.h" />
     <ClInclude Include="utils\threading\semaphores.h" />
     <ClInclude Include="utils\threading\shared_mutex.h" />
+    <ClInclude Include="utils\ray_tracer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sdk\convar.cpp" />
@@ -218,13 +219,13 @@
     <ClCompile Include="features\rage\exploits.cpp" />
     <ClCompile Include="features\visuals\grenade_prediction.cpp" />
     <ClCompile Include="features\visuals\bullet_tracers.cpp" />
-    <ClCompile Include="features\visuals\onshot_chams.cpp" />
-    <ClCompile Include="features\animations\resolver.cpp" />
     <ClCompile Include="utils\threading\mutex.cpp" />
     <ClCompile Include="utils\threading\threading.cpp" />
     <ClCompile Include="utils\threading\packed_heap.cpp" />
     <ClCompile Include="utils\threading\semaphores.cpp" />
     <ClCompile Include="utils\threading\shared_mutex.cpp" />
+    <ClCompile Include="features\misc\autostop.cpp" />
+    <ClCompile Include="utils\ray_tracer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="features\animations\anim_utils.inl" />

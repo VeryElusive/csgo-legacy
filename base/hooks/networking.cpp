@@ -1,6 +1,7 @@
 #include "../core/hooks.h"
 #include "../context.h"
 #include "../features/visuals/visuals.h"
+#include "../features/rage/exploits.h"
 
 void FASTCALL Hooks::hkPacketEnd( void* cl_state, void* EDX ) {
 	static auto oPacketEnd = DTR::PacketEnd.GetOriginal<decltype( &Hooks::hkPacketEnd )>( );
@@ -10,6 +11,16 @@ void FASTCALL Hooks::hkPacketEnd( void* cl_state, void* EDX ) {
 		return oPacketEnd( cl_state, EDX );
 
 	Features::Visuals.DormantESP.GetActiveSounds( );
+
+	/*if ( ctx.m_iTicksAllowed >= 14
+		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
+		&& !Features::Exploits.m_iShiftAmount
+		&& ctx.m_pWeapon
+		&& !ctx.m_pWeapon->IsGrenade( )
+		&& ctx.CalcCorrectionTicks( ) != -1 )
+		&& Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ) {
+		ctx.m_pLocal->m_nTickBase( ) -= ctx.m_iTicksAllowed;
+	}*/
 
 	const auto& local_data = ctx.m_cLocalData.at( Interfaces::ClientState->iCommandAck % 150 )	;
 	if ( local_data.m_flSpawnTime == ctx.m_pLocal->m_flSpawnTime( )

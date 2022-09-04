@@ -40,7 +40,7 @@ void CEnginePrediction::RunCommand( CUserCmd& cmd ) {
 
 	Interfaces::GameMovement->StartTrackPredictionErrors( ctx.m_pLocal );
 
-	memset( &MoveData, 0, sizeof( CMoveData ) );
+	std::memset( &MoveData, 0, sizeof( CMoveData ) );
 
 	Interfaces::Prediction->SetupMove( ctx.m_pLocal, &cmd, Interfaces::MoveHelper, &MoveData );
 	Interfaces::GameMovement->ProcessMovement( ctx.m_pLocal, &MoveData );
@@ -148,7 +148,7 @@ bool CEnginePrediction::AddToDataMap( ) {
 			TypeDescription_t velocityModifier{ };
 			velocityModifier.szFieldName = _( "m_flVelocityModifier" );
 			velocityModifier.fFlags = 0x100;
-			velocityModifier.fieldTolerance = 0.001f;
+			velocityModifier.fieldTolerance = 0.01f;
 			velocityModifier.iFieldOffset = static_cast< int >( Offsets::m_flVelocityModifier );
 			velocityModifier.uFieldSize = 0x1;
 			velocityModifier.fieldSizeInBytes = 0x4;
@@ -182,8 +182,8 @@ bool CEnginePrediction::AddToDataMap( ) {
 
 			// FTYPEDESC_PRIVATE.
 			// the field is local to the client or server only (not referenced by prediction code and not replicated by networking).
-			const auto m_vphysicsCollisionState = get_typedescription( datamap, _( "m_vphysicsCollisionState" ) );
-			m_vphysicsCollisionState->fFlags = 0x0200;
+			//const auto m_vphysicsCollisionState = get_typedescription( datamap, _( "m_vphysicsCollisionState" ) );
+			//m_vphysicsCollisionState->fFlags = 0x0200;
 
 			// reinitialize datamap.
 			datamap->pOptimizedDataMap = nullptr;

@@ -91,15 +91,15 @@ namespace Menu {
 	inline std::optional<colorpickerinfo> ColorPicker;
 	inline std::optional<keybindinfo> KeyBind;
 
-	inline Vector2D Size = { 800, 550 };
+	inline Vector2D Size = { 650, 650 };
 	inline Vector2D Pos = { 500, 200 };
 
 	inline Vector2D CursorPos = { 500, 200 };
 
-	inline Color OutlineLight = Color( 65, 65, 65 );
-	inline Color BackgroundCol = Color( 28, 28, 28 );
-	inline Color GroupCol = Color( 32, 32, 32 );
-	inline Color ControlCol = Color( 32, 32, 32 );
+	inline Color OutlineLight = Color( 55, 55, 55 );
+	inline Color BackgroundCol = Color( 20, 20, 20 );
+	inline Color GroupCol = Color( 25, 25, 25 );
+	inline Color ControlCol = Color( 25, 25, 25 );
 	inline Color Accent2Col = Color( 182, 139, 252 );
 	inline Color AccentCol = Color( 115, 155, 255 );
 

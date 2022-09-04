@@ -24,11 +24,41 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 		}
 	}
 	else {
-		if ( ctx.m_pWeapon ) {
-			if ( !ctx.m_pWeapon->m_zoomLevel( ) )
-				pSetup->flFOV = 90.f + Config::Get<int>( Vars.MiscFOV );
-		}
+		if ( !ctx.m_pLocal->m_bIsScoped( ) )
+			pSetup->flFOV = 90.f + Config::Get<int>( Vars.MiscFOV );
 	}
+
+	/*		if ( Config::Get<bool>( Vars.RemovalScope ) ) {
+		const auto addAmt{ 15.f * Interfaces::Globals->flFrameTime };
+
+		static float fov{ pSetup->flFOV };
+
+		if ( ctx.m_pWeapon ) {
+			if ( ctx.m_pLocal->m_bIsScoped( ) ) {
+				if ( !ctx.m_pWeapon->m_zoomLevel( ) )
+					fov = Math::Interpolate( fov, 90.f + Config::Get<int>( Vars.MiscFOV ), addAmt );
+				else if ( ctx.m_pWeapon->m_zoomLevel( ) == 1 && !Config::Get<bool>( Vars.RemovalZoom ) )
+					fov = Math::Interpolate( fov, 70.f + Config::Get<int>( Vars.MiscFOV ), addAmt );
+				else if ( ctx.m_pWeapon->m_zoomLevel( ) == 2 ) {
+					if ( Config::Get<bool>( Vars.RemovalZoom ) ) {
+						if ( ctx.m_pWeapon ) {
+							if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER )
+								fov = Math::Interpolate( fov, static_cast< float >( 1.f - std::clamp<float>( Config::Get<int>( Vars.SecondZoomAmt ), 1, 99 ) / 100.f ) * ( 90.f + Config::Get<int>( Vars.MiscFOV ) ), addAmt );
+						}
+					}
+					else
+						fov = Math::Interpolate( fov, 50.f + Config::Get<int>( Vars.MiscFOV ), addAmt );
+				}
+				else
+					fov = Math::Interpolate( fov, 90.f + Config::Get<int>( Vars.MiscFOV ), addAmt );
+			}
+			else
+				fov = Math::Interpolate( fov, 90.f + Config::Get<int>( Vars.MiscFOV ), addAmt );
+		}
+
+		pSetup->flFOV = fov;
+	}
+	*/
 
 	if ( Config::Get<bool>( Vars.VisThirdPerson ) && Config::Get<keybind_t>( Vars.VisThirdPersonKey ).enabled )
 		Features::Misc.Thirdperson( );

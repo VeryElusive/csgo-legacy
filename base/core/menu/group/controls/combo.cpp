@@ -1,11 +1,8 @@
 #include "../group.h"
 
 void MenuGroup::Combo( const char* name, int& value, std::vector<std::string> options ) {
-	const auto Size{ Vector2D( size.x - 30, 18 ) };
+	const auto Size = Vector2D( size.x - 30, std::min( 18.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 	const bool opened{ Menu::OpenedID == name };
-
-	if ( Size.y + Menu::CursorPos.y > OldCursorPos.y + size.y + 18 )
-		return;
 
 	auto FillCol{ Menu::ControlCol };
 
@@ -47,8 +44,7 @@ void MenuGroup::Combo( const char* name, int& value, std::vector<std::string> op
 	Render::Rectangle( Menu::CursorPos, Size + 2, Color( 0, 0, 0 ) );
 	Render::Rectangle( Menu::CursorPos + 1, Size, Menu::OutlineLight );
 
-	if ( !opened )
-		Render::Text( Fonts::Menu, Menu::CursorPos, Color( 255, 255, 255 ), 0, options.at( value ).c_str( ) );
+	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( 6, 3 ), Color( 255, 255, 255 ), 0, options.at( value ).c_str( ) );
 
 	Menu::CursorPos += Vector2D( 0, 24 );
 }

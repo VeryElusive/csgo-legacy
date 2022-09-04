@@ -208,10 +208,10 @@ public:
 	// @todo: sig ctracefiltersimple constructor and use it
 
 	CTraceFilterSkipTwoEntities( const IHandleEntity* pSkipEntity, const IHandleEntity* pSkipEntity2, ETraceType iTraceType = TRACE_EVERYTHING )
-		: pSkip( pSkipEntity ), pSkip2( pSkipEntity2 ), iTraceType( iTraceType ), checkCallback( *reinterpret_cast< FilterCallbackFn* >( Offsets::Sigs.TraceFilterSkipTwoEntities ) ) { }
+		: pSkip( pSkipEntity ), pSkip2( pSkipEntity2 ), iTraceType( iTraceType ), checkCallback( nullptr ) { }
 
 	CTraceFilterSkipTwoEntities( const IHandleEntity* pSkipEntity )
-		: pSkip( pSkipEntity ), iTraceType( TRACE_EVERYTHING ), checkCallback( *reinterpret_cast< FilterCallbackFn*>( Offsets::Sigs.TraceFilterSkipTwoEntities ) ) { }
+		: pSkip( pSkipEntity ), iTraceType( TRACE_EVERYTHING ), checkCallback( nullptr ) { }
 
 	bool ShouldHitEntity( IHandleEntity* pHandleEntity, int fContentsMask ) override {
 		// if given user defined callback - check it

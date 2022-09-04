@@ -28,44 +28,36 @@ void CVisuals::Main( ) {
 		Render::Line( Vector2D( 0, h / 2 ), Vector2D( w, h / 2 ), Color( 0, 0, 0 ) );
 		Render::Line( Vector2D( w / 2, 0 ), Vector2D( w / 2, h ), Color( 0, 0, 0 ) );
 	}
-
-	AutoPeekIndicator( );
-	ManageHitmarkers( );
-
+	
 	if ( !ctx.m_pLocal->IsDead( ) ) {
 		if ( Config::Get<bool>( Vars.VisPenetrationCrosshair ) ) {
 			const auto center = ctx.m_ve2ScreenSize / 2;
-			const Color color = ( ctx.m_bCanPenetrate ? Color( 0, 255, 0 ) : Color( 255, 0, 0 ) ).Set<COLOR_A>( 155 );
+			const Color color = ctx.m_bCanPenetrate ? Color( 0, 255, 0, 155 ) : Color( 255, 0, 0, 155 );
 
-			Render::FilledRectangle( center.x - 2, center.y - 2, 4, 4, color );
-			Render::Rectangle( Vector2D( center.x - 2, center.y - 2 ), Vector2D( 4, 4 ), color.Set<COLOR_A>( 255 ) );
+			Render::Line( center - Vector2D( 1, 0 ), center + Vector2D( 2, 0 ), color );
+			Render::Line( center - Vector2D( 0, 1 ), center + Vector2D( 0, 2 ), color );
+		}
+
+		if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
+			const auto& col{ Config::Get<Color>( Vars.AntiaimManualCol ) };
+
+			Vector2D
+				p1{ w / 2 - 55, h / 2 + 10 },
+				p2{ w / 2 - 75, h / 2 },
+				p3{ w / 2 - 55, h / 2 - 10 };
+
+			Render::Triangle( p1, p2, p3, Features::Antiaim.ManualSide == 1 ? col : Color( 125, 125, 125, 150 ) );
+
+			p1 = { w / 2 + 55, h / 2 - 10 };
+			p2 = { w / 2 + 75, h / 2 };
+			p3 = { w / 2 + 55, h / 2 + 10 };
+
+			Render::Triangle( p1, p2, p3, Features::Antiaim.ManualSide == 2 ? col : Color( 125, 125, 125, 150 ) );
 		}
 	}
 
-	if ( Features::Antiaim.ManualSide == 1 ) {
-		Vector2D
-			p1{ w / 2 - 55, h / 2 + 10 },
-			p2{ w / 2 - 75, h / 2 },
-			p3{ w / 2 - 55, h / 2 - 10 };
-
-		Render::Triangle( p1, p2, p3, Config::Get<Color>( Vars.AntiaimManualCol ).Set<COLOR_A>( Config::Get<Color>( Vars.AntiaimManualCol ).Get<COLOR_A>( ) / 4 ) );
-
-		Render::Line( p1, p2, Config::Get<Color>( Vars.AntiaimManualCol ) );
-		Render::Line( p2, p3, Config::Get<Color>( Vars.AntiaimManualCol ) );
-		Render::Line( p3, p1, Config::Get<Color>( Vars.AntiaimManualCol ) );
-	}
-	else if ( Features::Antiaim.ManualSide == 2 ) {
-		Vector2D
-			p1{ w / 2 + 55, h / 2 - 10 },
-			p2{ w / 2 + 75, h / 2 },
-			p3{ w / 2 + 55, h / 2 + 10 };
-
-		Render::Triangle( p1, p2, p3, Config::Get<Color>( Vars.AntiaimManualCol ).Set<COLOR_A>( Config::Get<Color>( Vars.AntiaimManualCol ).Get<COLOR_A>( ) / 4 ) );
-
-		Render::Line( p1, p2, Config::Get<Color>( Vars.AntiaimManualCol ) );
-		Render::Line( p2, p3, Config::Get<Color>( Vars.AntiaimManualCol ) );
-		Render::Line( p3, p1, Config::Get<Color>( Vars.AntiaimManualCol ) );
-	}
+	AutoPeekIndicator( );
+	ManageHitmarkers( );
 
 	GrenadePrediction.Paint( );
 
@@ -106,11 +98,11 @@ void CVisuals::Watermark( ) {
 	Render::Text( Fonts::Menu, pos + Vector2D( 20, 3 ), Menu::AccentCol, 0, name );
 	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 20, 3 ), Color( 150, 150, 150 ), 0, pstr.c_str( ) );
 
-	int i{ 1 };
+	/*int i{ 1 };
 	for ( auto& dbg : ctx.m_strDbgLogs ) {
 		Render::Text( Fonts::Menu, pos + Vector2D( 0, 10 * i ), Color( 255, 255, 255 ), 0, dbg.first.c_str( ) );
 		++i;
-	}
+	}*/
 
 
 	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 10 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_angRotation( ).y ).c_str( ) );
@@ -150,7 +142,8 @@ void CVisuals::OtherEntities( CBaseEntity* ent ) {
 
 	float maxAlpha{ std::min( distTo < 1245.f ? 255.f : 1500.f - distTo, 255.f ) };
 
-	if ( maxAlpha )
+	if ( !maxAlpha )
+		return;
 
 	if ( class_id != EClassIndex::CBaseWeaponWorldModel && ( strstr( client_class->szNetworkName, _( "Weapon" ) ) ) ) {
 		if ( Config::Get<bool>( Vars.VisDroppedWeapon ) ) {
@@ -166,18 +159,25 @@ void CVisuals::OtherEntities( CBaseEntity* ent ) {
 		}
 	}
 	else {
+		const auto owner{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientNetworkableFromHandle( ent->m_hOwnerEntity( ) ) ) };
+		if ( !owner || !owner->IsPlayer( ) )
+			return;
+
 		if ( strstr( client_class->szNetworkName, _( "Projectile" ) ) ) {
-			if ( Config::Get<bool>( Vars.VisGrenades ) )
+			if ( ( ( owner->IsTeammate( ) && Config::Get<bool>( Vars.VisGrenadesTeam ) )
+				|| ( !owner->IsTeammate( ) && Config::Get<bool>( Vars.VisGrenadesEnemy ) ) ) )
 				DrawGrenade( ent, maxAlpha );
 		}
 
-		if ( Config::Get<bool>( Vars.VisGrenades ) && class_id == EClassIndex::CInferno ) {
+		if ( ( ( owner->IsTeammate( ) && Config::Get<bool>( Vars.VisGrenadesTeam ) )
+			|| ( !owner->IsTeammate( ) && Config::Get<bool>( Vars.VisGrenadesEnemy ) ) )
+			&& class_id == EClassIndex::CInferno ) {
 			Vector min, max;
 			ent->GetClientRenderable( )->GetRenderBounds( min, max );
 
 			const auto radius = ( max - min ).Length2D( ) * 0.5f;
 
-			DrawWrappingRing( ent, 7, _( "FIRE" ), *( float* )( ( uintptr_t )ent + 0x20 ), radius, maxAlpha );
+			DrawWrappingRing( ent, 7, _( "FIRE" ), static_cast< CBaseCSGrenadeProjectile* >( ent )->m_flSpawnTime( ), radius, maxAlpha );
 		}
 	}
 }
@@ -257,15 +257,13 @@ void CVisuals::DrawGrenade( CBaseEntity* ent, int maxAlpha ) {
 }
 
 void CVisuals::DrawWrappingRing( CBaseEntity* entity, float seconds, const char* name, float spawntime, float radius, int maxAlpha ) {
-	const auto weapon = ( CWeaponCSBase* )entity;
-	if ( !weapon )
-		return;
-
 	const auto fadeAlpha = std::min( std::max( seconds - ( Interfaces::Globals->flCurTime - spawntime ), 0.f ) * 2, 1.f );
 
-	const auto owner = static_cast< CBasePlayer * >( Interfaces::ClientEntityList->GetClientEntityFromHandle( weapon->m_hOwnerEntity( ) ) );
+	const auto owner = static_cast< CBasePlayer * >( Interfaces::ClientEntityList->GetClientEntityFromHandle( entity->m_hOwnerEntity( ) ) );
 	if ( !owner || !owner->IsPlayer( ) )
 		return;
+
+	const auto color{ owner->IsTeammate() ? Config::Get<Color>( Vars.VisGrenadesTeamCol ) : Config::Get<Color>( Vars.VisGrenadesEnemyCol ) };
 
 	Vector text_pos = entity->m_vecOrigin( );
 	text_pos.z += 5.f;
@@ -309,7 +307,7 @@ void CVisuals::DrawWrappingRing( CBaseEntity* entity, float seconds, const char*
 						{ w2s_old },
 						{ w2s_new }
 					};
-					Color col = Color( 255,255,255 );
+					Color col = color;
 					col[ 3 ] *= alpha;
 
 					Render::Line( Vector2D( w2s_old.x, w2s_old.y ), Vector2D( w2s_new.x, w2s_new.y ), col.Set<COLOR_A>( std::min( maxAlpha, static_cast< int >( col[ 3 ] * fadeAlpha ) ) ) );
@@ -319,7 +317,7 @@ void CVisuals::DrawWrappingRing( CBaseEntity* entity, float seconds, const char*
 			last_pos = rotated_pos;
 		}
 
-		Render::Text( Fonts::HealthESP, world, Color( 255, 255, 255, static_cast<int>( maxAlpha * fadeAlpha ) ), FONT_CENTER, name );
+		Render::Text( Fonts::HealthESP, world, Color( 255, 255, 255, static_cast<int>( maxAlpha * fadeAlpha ) ), FONT_CENTER, name );//color.Set<COLOR_A>( static_cast<int>( maxAlpha * fadeAlpha ) )
 	}
 }
 
@@ -436,18 +434,8 @@ void CVisuals::KeybindsList( ) {
 		keyBindSize.y += 9 + binds.size( ) * appendLength;
 
 	// gimme that lerped size
-	const float multiplier = static_cast< float >( 10.f * Interfaces::Globals->flFrameTime );
-
-	if ( keyBindSize.x - m_vec2KeyBindAbsSize.x > 0.f )
-		m_vec2KeyBindAbsSize.x += std::ceil( static_cast< float >( keyBindSize.x - m_vec2KeyBindAbsSize.x ) * multiplier );
-	else
-		m_vec2KeyBindAbsSize.x += std::floor( static_cast< float >( keyBindSize.x - m_vec2KeyBindAbsSize.x ) * multiplier );
-
-	if ( keyBindSize.y - m_vec2KeyBindAbsSize.y > 0.f )
-		m_vec2KeyBindAbsSize.y += std::ceil( static_cast< float >( keyBindSize.y - m_vec2KeyBindAbsSize.y ) * multiplier );
-	else
-		m_vec2KeyBindAbsSize.y += std::floor( static_cast< float >( keyBindSize.y - m_vec2KeyBindAbsSize.y ) * multiplier );
-
+	m_vec2KeyBindAbsSize.x = Math::Interpolate( m_vec2KeyBindAbsSize.x, keyBindSize.x, 10.f * Interfaces::Globals->flFrameTime );
+	m_vec2KeyBindAbsSize.y = Math::Interpolate( m_vec2KeyBindAbsSize.y, keyBindSize.y, 10.f * Interfaces::Globals->flFrameTime );
 
 	// gimme alpha
 	auto alpha_mod = 1.f;
@@ -496,13 +484,11 @@ void CVisuals::KeybindsList( ) {
 		Render::Text( Fonts::Menu, pos + Vector2D( size.x / 2 - 3, 3 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ), FONT_LEFT, _( "binds" ) );
 
 		// gimme text
-		for ( auto i = 0; i < binds.size( ); i++ ) {
-			if ( size.y >= 36 + appendLength * i ) {
-				const auto& bind = binds.at( i );
-				Render::Text( Fonts::Menu, pos + Vector2D( 20, 25 + appendLength * i + 1 ), Color( 255, 255, 255, static_cast< int >( 255 * alpha_mod ) ), FONT_LEFT, bind.m_szName );
+		for ( auto i{ 0 }; i < binds.size( ); i++ ) {
+			const auto& bind = binds.at( i );
+			Render::Text( Fonts::Menu, pos + Vector2D( 20, 25 + appendLength * i + 1 ), Color( 255, 255, 255, static_cast< int >( 255 * alpha_mod ) ), FONT_LEFT, bind.m_szName );
 
-				Render::Text( Fonts::Menu, pos + Vector2D( size.x - 20, 25 + appendLength * i ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ), FONT_RIGHT, bind.m_szMode );
-			}
+			Render::Text( Fonts::Menu, pos + Vector2D( size.x - 20, 25 + appendLength * i ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ), FONT_RIGHT, bind.m_szMode );
 		}
 	}
 	Interfaces::Surface->SetClipRect( 0, 0, ctx.m_ve2ScreenSize.x, ctx.m_ve2ScreenSize.y );

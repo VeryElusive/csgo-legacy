@@ -28,6 +28,7 @@ namespace Render {
 
 	// used these on menu when i was still using my dx render
 	void FilledRectangle( Vector2D pos, Vector2D size, Color col );
+	void FilledRoundedBox( Vector2D pos, Vector2D size, int points, int radius, Color color );
 	void Rectangle( Vector2D a, Vector2D b, Color col );
 	void FilledCircle( Vector2D pos, float radius, Color col, int percent );
 	void Line( Vector2D a, Vector2D b, Color col );

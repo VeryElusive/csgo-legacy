@@ -55,13 +55,15 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 
 	auto yaw = cmd.viewAngles.y;
 
-	if ( ManualSide == 1 ) {
-		yaw += 90.f;
-		return yaw;
-	}
-	else if ( ManualSide == 2 ) {
-		yaw -= 90.f;
-		return yaw;
+	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
+		if ( ManualSide == 1 ) {
+			yaw += 90.f;
+			return yaw;
+		}
+		else if ( ManualSide == 2 ) {
+			yaw -= 90.f;
+			return yaw;
+		}
 	}
 
 	AtTarget( yaw );
@@ -195,6 +197,12 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, bool sendPacket ) {
 
 	if ( Condition( cmd ) ) {
 		Features::Misc.NormalizeMovement( cmd );
+
+		if ( ctx.m_bFilledAnims ) {
+			ctx.m_pLocal->m_flPoseParameter( ) = ctx.m_flPoseParameter;
+			ctx.m_pLocal->SetAbsAngles( { 0, ctx.m_flAbsYaw, 0 } );
+			*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cAnimstate;
+		}
 
 		Features::AnimSys.UpdateLocal( cmd.viewAngles, false );
 

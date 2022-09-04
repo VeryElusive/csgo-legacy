@@ -1,11 +1,9 @@
 #include "../group.h"
 
 void MenuGroup::MultiCombo( const char* name, std::vector<multi_item_t> options ) {
-	const auto Size = Vector2D( size.x - 30, 18 );
-	const bool opened{ Menu::OpenedID == name };
+	const auto Size = Vector2D( size.x - 30, std::min( 18.f, ( size.y + OldCursorPos.y ) - Menu::CursorPos.y ) );
 
-	if ( Size.y + Menu::CursorPos.y > OldCursorPos.y + size.y + 18 )
-		return;
+	const bool opened{ Menu::OpenedID == name };
 
 	auto FillCol{ Menu::ControlCol };
 
@@ -48,6 +46,19 @@ void MenuGroup::MultiCombo( const char* name, std::vector<multi_item_t> options 
 	//const auto SizeEnd = opened ? Vector2D( Size.x, Size.y * ( options.size( ) + 1 ) ) : Size;
 	Render::Rectangle( Menu::CursorPos, Size + 2, Color( 0, 0, 0 ) );
 	Render::Rectangle( Menu::CursorPos + 1, Size, Menu::OutlineLight );
+
+	std::string accumulatedValues{ };
+	for ( const auto o : options ) {
+		if ( *o.value )
+			accumulatedValues += accumulatedValues.empty( ) ? o.name : ", " + o.name;
+	}
+
+	if ( accumulatedValues.length( ) * 7 > size.x ) {
+		accumulatedValues.erase( ( size.x - 30 ) / 7 + 4, accumulatedValues.length( ) - ( size.x - 30 ) / 7 + 4 );
+		accumulatedValues.append( "..." );
+	}
+
+	Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( 6, 3 ), Color( 255, 255, 255 ), 0, accumulatedValues.c_str( ) );
 
 	Menu::CursorPos += Vector2D( 0, 24 );
 }

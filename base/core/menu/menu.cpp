@@ -30,34 +30,45 @@ void Menu::render( ) {
 	else if ( DraggingMouse && !Inputsys::down( VK_LBUTTON ) )
 		DraggingMouse = false;
 
-	Render::FilledRectangle( Pos, Size, BackgroundCol );
+	Render::FilledRoundedBox( Pos - Vector2D( 1, 1 ), Size + 2, 5, 5, Color( 10, 10, 10 ) );
+	Render::FilledRoundedBox( Pos, Size, 90, 5, OutlineLight );
+	Render::FilledRoundedBox( Pos + 1, Size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10 ) );
+	Render::FilledRoundedBox( Pos + 2, Size - Vector2D( 3, 3 ), 5, 5, BackgroundCol );
 
-	/* {
-		for ( int i{ }; i < 12; ++i ) {
-			Render::Line( Pos + Vector2D( 20 - i, 0 ), Pos + Vector2D( 120, 100 + i ), Menu::AccentCol );
-			Render::Line( Pos + Vector2D( 44 - i, 0 ), Pos + Vector2D( 120, 76 + i ), Menu::Accent2Col );
+	Render::Line( Pos + Vector2D( 1, 51 ), Pos + Vector2D( Size.x - 2, 51 ), Color( 10, 10, 10 ) );
+	Render::Line( Pos + Vector2D( 0, 50 ), Pos + Vector2D( Size.x, 50 ), OutlineLight );
+	Render::Line( Pos + Vector2D( 1, 49 ), Pos + Vector2D( Size.x - 2, 49 ), Color( 10, 10, 10 ) );
+
+	for ( int i{ }; i < 12; ++i ) {
+		Render::Line( Pos + Vector2D( Size.x - 56 - i, 2 ), Pos + Vector2D( Size.x - 9 - i, 49 ), Menu::AccentCol );
+		Render::Line( Pos + Vector2D( Size.x - 32 - i, 2 ), Pos + Vector2D( Size.x - 2, 32 + i ), Menu::Accent2Col );
+
+		Render::Line( Pos + Vector2D( 31 + i, 2 ), Pos + Vector2D( 1, 32 + i ), Menu::Accent2Col );
+		Render::Line( Pos + Vector2D( 55 + i, 2 ), Pos + Vector2D( 8 + i, 49 ), Menu::AccentCol );
+	}
+
+	Render::Line( Pos + Vector2D( 1, 79 ), Pos + Vector2D( Size.x - 2, 79 ), Color( 10, 10, 10 ) );
+	Render::Line( Pos + Vector2D( 0, 80 ), Pos + Vector2D( Size.x, 80 ), OutlineLight );
+	Render::Line( Pos + Vector2D( 1, 81 ), Pos + Vector2D( Size.x - 2, 81 ), Color( 10, 10, 10 ) );
+
+	Render::Gradient( Pos.x + 40, Pos.y + 80, Size.x / 2 + 40, 1, OutlineLight, AccentCol, true );
+	Render::Gradient( Pos.x + Size.x / 2 + 40, Pos.y + 80, Size.x / 2 - 40, 1, AccentCol, OutlineLight, true );
 
 
-			//Render::Line( Pos + Vector2D( 0, size.y - 16 - i ), Pos + Vector2D( 16 + i, size.y ), Menu::AccentCol );
-			//Render::Line( Pos + Vector2D( 0, size.y - 10 - i ), Pos + Vector2D( 10 + i, size.y ), Menu::Accent2Col );
-		}
-	}*/
-
-	Render::Gradient( Pos.x, Pos.y, Size.x / 2, 50, BackgroundCol, Color( 35, 35, 35 ), true );
-	Render::Gradient( Pos.x + Size.x / 2, Pos.y, Size.x / 2, 50, Color( 35, 35, 35 ), BackgroundCol, true );
-
-	Render::Gradient( Pos.x + 40, Pos.y + 50, Size.x / 2 + 40, 1, BackgroundCol, AccentCol, true );
-	Render::Gradient( Pos.x + Size.x / 2 + 40, Pos.y + 50, Size.x / 2 - 40, 1, AccentCol, BackgroundCol, true );
-
-	Render::Gradient( Pos.x, Pos.y + 51, Size.x, ( Size.y / 2 ) - 51, Color( 20, 20, 20 ), BackgroundCol, false );
+	//Render::Gradient( Pos.x, Pos.y + 51, Size.x, ( Size.y / 2 ) - 51, Color( 20, 20, 20 ), BackgroundCol, false );
 
 
-	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x / 2, 50), Color( 100, 100, 100 ), FONT_CENTER, _( "This menu is TEMPORARY! I have only coded barebone menu framework and will create cool design soon." ) );
-	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x / 2, 2 ), AccentCol, FONT_CENTER, _( "Havoc" ) );
-	Render::Text( Fonts::Menu, Pos + Vector2D( 20, Size.y - 17 ), Color( 50, 50, 50 ), 0, _( "Developed by" ) );
-	Render::Text( Fonts::Menu, Pos + Vector2D( 89, Size.y - 17 ), AccentCol, 0, _( "Elusive" ) );
+	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x / 2, 85), Color( 100, 100, 100 ), FONT_CENTER, _( "This menu is TEMPORARY! I have only coded barebone menu framework and will create cool design soon. (ish) (eventually) (maybe)" ) );
 
-	Menu::CursorPos = Pos + Vector2D( 20, 75 );
+	Render::Line( Pos + Vector2D( 2, Size.y - 29 ), Pos + Vector2D( Size.x - 2, Size.y - 29 ), Color( 10, 10, 10 ) );
+	Render::Line( Pos + Vector2D( 1, Size.y - 30 ), Pos + Vector2D( Size.x - 1, Size.y - 30 ), OutlineLight );
+	Render::Line( Pos + Vector2D( 2, Size.y - 31 ), Pos + Vector2D( Size.x - 2, Size.y - 31 ), Color( 10, 10, 10 ) );
+
+	Render::Text( Fonts::Menu, Pos + Vector2D( 20, Size.y - 22 ), AccentCol, 0, _( "Havoc" ) );
+	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x - 125, Size.y - 22 ), Color( 50, 50, 50 ), 0, _( "Developed by" ) );
+	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x - 56, Size.y - 22 ), AccentCol, 0, _( "Elusive" ) );
+
+	Menu::CursorPos = Pos + Vector2D( 20, 100 );
 }
 
 void Menu::NewGroupRow( float append_x ) {

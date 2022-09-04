@@ -147,6 +147,7 @@
     <ClInclude Include="utils\math.h" />
     <ClInclude Include="utils\memory.h" />
     <ClInclude Include="utils\memory\pe32.h" />
+    <ClInclude Include="utils\ray_tracer.h" />
     <ClInclude Include="utils\render.h" />
     <ClInclude Include="utils\threading\mutex.h" />
     <ClInclude Include="utils\threading\packed_heap.h" />
@@ -173,7 +174,7 @@
     <ClCompile Include="core\menu\menu.cpp" />
     <ClCompile Include="features\animations\animations.cpp" />
     <ClCompile Include="features\animations\local_animations.cpp" />
-    <ClCompile Include="features\animations\resolver.cpp" />
+    <ClCompile Include="features\misc\autostop.cpp" />
     <ClCompile Include="features\misc\engine_prediction.cpp" />
     <ClCompile Include="features\misc\logger.cpp" />
     <ClCompile Include="features\misc\misc.cpp" />
@@ -187,7 +188,6 @@
     <ClCompile Include="features\visuals\extended_esp.cpp" />
     <ClCompile Include="features\visuals\grenade_prediction.cpp" />
     <ClCompile Include="features\visuals\hitmarker.cpp" />
-    <ClCompile Include="features\visuals\onshot_chams.cpp" />
     <ClCompile Include="features\visuals\player_esp.cpp" />
     <ClCompile Include="features\visuals\visuals.cpp" />
     <ClCompile Include="hooks\client.cpp" />
@@ -224,6 +224,7 @@
     <ClCompile Include="sdk\weapon.cpp" />
     <ClCompile Include="utils\math.cpp" />
     <ClCompile Include="utils\memory.cpp" />
+    <ClCompile Include="utils\ray_tracer.cpp" />
     <ClCompile Include="utils\render.cpp" />
     <ClCompile Include="utils\threading\mutex.cpp" />
     <ClCompile Include="utils\threading\packed_heap.cpp" />
@@ -241,7 +242,7 @@
     <ProjectGuid>{0ae1f3a9-87f5-4f11-9ad3-5846b76b6565}</ProjectGuid>
     <RootNamespace>havoc</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>havoc-legacy</ProjectName>
+    <ProjectName>havoc-sdk</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

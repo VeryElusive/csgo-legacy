@@ -63,6 +63,7 @@ struct LocalData_t {
 	FORCEINLINE void Save( CBasePlayer* local, CUserCmd& cmd, CWeaponCSBase* weapon ) {
 		this->m_flSpawnTime = local->m_flSpawnTime( );
 		this->m_bOverrideTickbase = false;
+		this->m_iShiftAmount = 0;
 		this->m_iCommandNumber = cmd.iCommandNumber;
 		this->m_iTickbase = local->m_nTickBase( );
 		this->m_MoveType = local->m_MoveType( );
@@ -142,13 +143,13 @@ struct HAVOCCTX {
 			return;
 		}
 
-		m_pLocal = ( CBasePlayer* )Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetLocalPlayer( ) );
+		m_pLocal = static_cast< CBasePlayer * >( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetLocalPlayer( ) ) );
 
 		//return *reinterpret_cast< CBasePlayer** >( Offsets::Sigs.LocalPlayer );
 	};
 
 	FORCEINLINE int CalcCorrectionTicks( ) {
-		return 64 <= 1
+		return Interfaces::Globals->nMaxClients <= 1
 			? -1 : TIME_TO_TICKS( std::clamp<float>( Offsets::Cvars.sv_clockcorrection_msecs->GetFloat( ) / 1000.f, 0.f, 1.f ) );
 	}
 };

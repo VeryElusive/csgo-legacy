@@ -6,18 +6,19 @@
 #include "../features/rage/exploits.h"
 #include "../features/misc/engine_prediction.h"
 #include "../features/misc/misc.h"
+#include "../features/visuals/visuals.h"
 
 void KeepCommunication( ) {
-	const auto NetChannel = Interfaces::ClientState->pNetChannel;
+	auto& NetChannel = Interfaces::ClientState->pNetChannel;
 
-	if ( NetChannel && !ctx.m_pLocal->IsDead( ) ) {
-		const auto backup_choked_packets = NetChannel->iChokedPackets;
+	if ( NetChannel ) {
+		const auto backupChokedPackets{ NetChannel->iChokedPackets };
 
 		NetChannel->iChokedPackets = 0;
 		NetChannel->SendDatagram( 0 );
 		--NetChannel->iOutSequenceNr;
 
-		NetChannel->iChokedPackets = backup_choked_packets;
+		NetChannel->iChokedPackets = backupChokedPackets;
 	}
 }
 
@@ -28,13 +29,13 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 		return;
 
 	if ( ctx.m_iTicksAllowed ) {
-		if ( ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot && ctx.m_iTicksAllowed >= 14
+		if ( ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot /* && ctx.m_iTicksAllowed >= 14*/
 			&& ctx.m_pWeaponData->nWeaponType > WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 )
 			|| ( !ctx.m_bExploitsEnabled || ctx.m_bFakeDucking ) ) {
 			const bool isDTEnabled{ ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) };
 
 			Features::Exploits.m_bRealCmds = ( !ctx.m_bExploitsEnabled || isDTEnabled || ctx.m_bFakeDucking );
-			Features::Exploits.m_iShiftAmount = ctx.m_iTicksAllowed;// everyone does 9 but it actually does not matter at all as long as it's above 6 u all g
+			Features::Exploits.m_iShiftAmount = Features::Exploits.m_bRealCmds ? ctx.m_iTicksAllowed : 9;
 		}
 	}
 }
@@ -152,19 +153,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 	Features::EnginePrediction.RunCommand( cmd );
 	{
-		{
-			const auto backupPoseParam = ctx.m_pLocal->m_flPoseParameter( ).at( 12u );
-
-			ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
-				0
-				- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 
-				360.f
-			), -90.f, 90.f ) + 90.f ) / 180.f;
-
-			ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( );
-
-			ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
-		}
+		ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( ctx.m_angOriginalViewangles.x );
 
 		Features::Ragebot.Main( cmd );
 
@@ -203,6 +192,9 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 		if ( !Features::Exploits.m_iShiftAmount
 			|| !Features::Exploits.m_bRealCmds )
 		ctx.m_iSentCmds.push_back( cmd.iCommandNumber );
+		Features::Exploits.m_bWasDefensiveTick = false;
+
+		static int timer{ };
 
 		if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand ) {
 			LocalData.m_bOverrideTickbase = true;
@@ -210,9 +202,37 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 			LocalData.m_iAdjustedTickbase = Features::Exploits.AdjustTickbase(
 				Interfaces::ClientState->nChokedCommands + 1, 1, -Interfaces::ClientState->nChokedCommands
 			);
+
+			timer = 0;
 		}
-		else
+		else {
+			if ( ctx.m_iTicksAllowed >= 14
+				&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
+				&& !Features::Exploits.m_iShiftAmount
+				&& ctx.m_pWeapon
+				&& !ctx.m_pWeapon->IsGrenade( )
+				//&& !cmd.iWeaponSelect
+				&& ctx.CalcCorrectionTicks( ) != -1 ) {
+
+				++timer;
+				timer = std::min( timer, 15 );
+				const auto peek{ Features::Misc.InPeek( ) };
+
+				if ( Features::Exploits.m_bAlreadyPeeked
+					|| !peek 
+					|| timer <= 14 )
+					Features::Exploits.m_bWasDefensiveTick = true;
+				else if ( !Features::Exploits.m_bAlreadyPeeked ) {
+					//Features::Visuals.Chams.AddHitmatrix( ctx.m_pLocal, ctx.m_matRealLocalBones );
+					Features::Exploits.m_bAlreadyPeeked = true;
+					timer = 0;
+				}
+			}
+			else
+				timer = 0;
+
 			ctx.m_iLastSentCmdNumber = cmd.iCommandNumber;
+		}
 	}
 	else
 		KeepCommunication( );
@@ -238,6 +258,9 @@ void CDECL Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) 
 
 	//readpacket fix
 	if ( const auto net{ Interfaces::Engine->GetNetChannelInfo( ) }; !net || !net->IsLoopback( ) ) {
+		if ( !Interfaces::Engine->IsPaused( ) )
+			Interfaces::ClientState->iClientTick -= 1;
+
 		const auto backupClockCorrection{ Offsets::Cvars.cl_clock_correction->GetBool( ) };
 		Offsets::Cvars.cl_clock_correction->SetValue( 0 );
 
@@ -249,13 +272,13 @@ void CDECL Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) 
 		const auto backupCSFrametime{ Interfaces::ClientState->flFrameTime };
 		//const auto backupChokedCommands{ Interfaces::ClientState->nChokedCommands };
 		//const auto backupServerTick{ Interfaces::ClientState->iServerTick };
-		const auto backupClientTick{ Interfaces::ClientState->iClientTick };
+		//const auto backupClientTick{ Interfaces::ClientState->iClientTick };
 
 		//const auto backupChokedPackets{ Interfaces::ClientState->pNetChannel->iChokedPackets };
 		//const auto backupOutSeqNum{ Interfaces::ClientState->pNetChannel->iOutSequenceNr };
 
 		typedef void( __fastcall* CL_ReadPacketsFn )( bool );
-		( ( CL_ReadPacketsFn )Offsets::Sigs.CL_ReadPackets )( bFinalTick );
+		( ( CL_ReadPacketsFn )Offsets::Sigs.CL_ReadPackets )( false );
 
 		ctx.m_pLocal->m_nTickBase( ) = backupTickbase;
 
@@ -268,7 +291,7 @@ void CDECL Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) 
 		Interfaces::ClientState->flFrameTime = backupCSFrametime;
 		//Interfaces::ClientState->nChokedCommands = backupChokedCommands;
 		//Interfaces::ClientState->iServerTick = backupServerTick;
-		Interfaces::ClientState->iClientTick = backupClientTick;
+		//Interfaces::ClientState->iClientTick = backupClientTick;
 
 		//Interfaces::ClientState->pNetChannel->iChokedPackets = backupChokedPackets;
 		//Interfaces::ClientState->pNetChannel->iOutSequenceNr = backupOutSeqNum;

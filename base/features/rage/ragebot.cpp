@@ -3,20 +3,6 @@
 #include "../visuals/visuals.h"
 #include "../../utils/threading/threading.h"
 
-void CRageBot::GetTargets( void* i ) {
-	auto actualI{ ( int )i };
-
-	auto& entry = Features::AnimSys.m_arrEntries.at( actualI - 1 );
-
-	const auto record{ Features::Ragebot.GetBestLagRecord( entry ) };
-	if ( !record )
-		return;
-
-	Features::Ragebot.m_pMutex.lock( );
-	Features::Ragebot.m_cAimTargets.push_back( { record, entry.m_pPlayer, entry.m_iMissedShots } );
-	Features::Ragebot.m_pMutex.unlock( );
-}
-
 // TODO: are these vector rotate shit right?
 void CRageBot::Main( CUserCmd& cmd ) {
 	Reset( );
@@ -48,17 +34,23 @@ void CRageBot::Main( CUserCmd& cmd ) {
 
 	for ( auto i{ 1 }; i <= 64; i++ ) {
 		auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-		if ( !player || !player->IsPlayer( ) || player == ctx.m_pLocal || player->m_bGunGameImmunity( ) || player->IsTeammate( ) )
+		if ( !player || player == ctx.m_pLocal || !player->IsPlayer( ) || player->m_bGunGameImmunity( ) || player->IsTeammate( ) || !player->m_pAnimState( ) )
 			continue;
 
-		const auto fov = Math::GetFov( ctx.m_angOriginalViewangles, Math::CalcAngle( ctx.m_vecEyePos, player->GetAbsOrigin( ) ) );
+		const auto fov{ Math::GetFov( ctx.m_angOriginalViewangles, Math::CalcAngle( ctx.m_vecEyePos, player->GetAbsOrigin( ) ) ) };
 		if ( fov > RagebotFOV )
 			continue;
 
-		Threading::QueueJobRef( GetTargets, (void*)i );
-	}
+		auto& entry{ Features::AnimSys.m_arrEntries.at( i - 1 ) };
+		if ( entry.m_pPlayer != player )
+			continue;
 
-	Threading::FinishQueue( );
+		const auto record{ Features::Ragebot.GetBestLagRecord( entry ) };
+		if ( !record )
+			continue;
+
+		m_cAimTargets.push_back( { record, entry.m_pPlayer, entry.m_iMissedShots } );
+	}
 
 	ScanTargets( );
 	Fire( cmd );
@@ -69,22 +61,29 @@ void CRageBot::Main( CUserCmd& cmd ) {
 
 void CRageBot::ScanTargets( ) {
 	for ( auto& target : m_cAimTargets ) {
-		const auto backup = std::make_unique< LagBackup_t >( target.m_pPlayer );
-
 		if ( !CreatePoints( target, target.m_cPoints ) )
 			continue;
+
+		const auto backup{ std::make_unique< LagBackup_t >( target.m_pPlayer ) };
 
 		target.m_pRecord->Apply( target.m_pPlayer );
 
 		for ( auto& point : target.m_cPoints )
 			ScanPoint( target.m_pPlayer, target.m_pRecord, point );
-		
-		target.m_cAimPoint = PickPoints( target.m_pPlayer, target.m_cPoints );
-
-		target.m_cPoints.clear( );
 
 		backup->Apply( target.m_pPlayer );
 	}
+
+	m_cAimTargets.erase(
+		std::remove_if(
+			m_cAimTargets.begin( ), m_cAimTargets.end( ),
+			[ & ]( AimTarget_t& target ) {
+				target.m_cAimPoint = PickPoints( target.m_pPlayer, target.m_cPoints );
+				return !target.m_cAimPoint.has_value( );
+			}
+		),
+		m_cAimTargets.end( )
+				);
 }
 
 std::size_t CRageBot::CalcPointCount( mstudiohitboxset_t* hitboxSet ) {
@@ -112,28 +111,10 @@ std::size_t CRageBot::CalcPointCount( mstudiohitboxset_t* hitboxSet ) {
 		if ( hitbox->flRadius <= 0.f )
 			ret += 2;
 		else {
-			if ( hb ) {
-				if ( hb != 3 ) {
-					if ( hb != 2
-						&& hb != 6 ) {
-						if ( hb == 4
-							|| hb == 5 )
-							ret++;
-
-						continue;
-					}
-
-					if ( hb == 6 ) {
-						ret++;
-						continue;
-					}
-				}
-
-				ret += 6;
-				continue;
-			}
-
-			ret += 4;
+			if ( hb == HITBOX_HEAD )
+				ret += 4;
+			else
+				ret += 2;
 		}
 
 	}
@@ -146,12 +127,10 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 	if ( !hitboxSet )
 		return false;
 
-	const auto& missed = aimTarget.m_iMissedShots;
-
 	aimPoints.reserve( CalcPointCount( hitboxSet ) );
 
 	for ( const auto& hb : m_iHitboxes ) {
-		const auto hitbox = hitboxSet->GetHitbox( hb );
+		const auto hitbox{ hitboxSet->GetHitbox( hb ) };
 		if ( !hitbox )
 			continue;
 
@@ -180,15 +159,13 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 
 		float scaleFloat{ scale / 100.f };
 
-		auto& matrix{ aimTarget.m_pRecord->m_cAnimData.m_cAnimSides.at( aimTarget.m_pRecord->m_iResolverSide ).m_pMatrix[ hitbox->iBone ] };
+		auto& matrix{ aimTarget.m_pRecord->m_pCompensatedMatrix[ hitbox->iBone ] };
 
 		Vector center{ ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f };
 		center = Math::VectorTransform( center, matrix );
 
-		auto& point{ aimPoints.emplace_back( center, hitbox->iGroup ) };
+		aimPoints.emplace_back( center, hitbox->iGroup, center );
 
-		//ScanPoint( aimTarget.m_pPlayer, aimTarget.m_pRecord, point );
-		
 		// opt
 		if ( IsMultiPointEnabled( hb ) /* && point.m_flDamage > 0*/ )
 			Multipoint( center, matrix, aimPoints, hitbox, hitboxSet, scaleFloat, hb );
@@ -197,84 +174,79 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 	return !aimPoints.empty( );
 }
 
+// TODO: multipoints
 void CRageBot::Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index ) {
 	if ( hitbox->flRadius <= 0.f ) {
 		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x + ( hitbox->vecBBMin.x - center.x ) * scale, center.y, center.z ), matrix ),
-			hitbox->iGroup );
+			hitbox->iGroup, center );
 
 		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x + ( hitbox->vecBBMax.x - center.x ) * scale, center.y, center.z ), matrix ),
-			hitbox->iGroup );
+			hitbox->iGroup, center );
 
 		return;
 	}
 
-	if ( index ) {
-		if ( index == 3 ) {
-			if ( !RagebotStaticPointscale && scale > 0.9f )
-				scale = 0.9f;
-		}
-		else {
-			if ( index != 2
-				&& index != 6 ) {
-				if ( index == 4
-					|| index == 5 ) {
-					if ( !RagebotStaticPointscale && scale > 0.9f )
-						scale = 0.9f;
 
-					aimPoints.emplace_back( Math::VectorTransform( Vector( center.x, hitbox->vecBBMax.y - hitbox->flRadius * scale, center.z ), matrix ), hitbox->iGroup );
-				}
+	const auto min{ Math::VectorTransform( hitbox->vecBBMin, matrix ) };
+	const auto max{ Math::VectorTransform( hitbox->vecBBMax, matrix ) };
 
-				return;
-			}
+	const auto maxMin{ ( max - min ).Normalized( ) };
 
-			if ( !RagebotStaticPointscale && scale > 0.9f )
-				scale = 0.9f;
+	auto delta{ ( center - ctx.m_vecEyePos ) };
+	auto cr{ maxMin.CrossProduct( delta ) };
 
-			if ( index == 6 ) {
-				aimPoints.emplace_back( Math::VectorTransform( Vector( center.x, hitbox->vecBBMax.y - hitbox->flRadius * scale, center.z ), matrix ), hitbox->iGroup );
+	Vector right{ }, up{ };
+	if ( index == HITBOX_HEAD ) {
+		QAngle cr_angle{ }, tmp{ };
 
-				return;
-			}
-		}
+		Math::VectorAngles( cr, cr_angle );
+		Math::AngleVectors( cr_angle, nullptr, &right, &up );
 
-		return CalcCapsulePoints( aimPoints, hitbox, matrix, scale );
+		Math::VectorAngles( delta, tmp );
+		cr_angle.x = tmp.x;
+
+		right = cr;
 	}
+	else
+		Math::AngleVectors( { delta.x, delta.y, delta.z }, nullptr, &right, &up );
 
-	aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x + 0.70710678f * ( hitbox->flRadius * scale ), hitbox->vecBBMax.y - 0.70710678f * ( hitbox->flRadius * scale ), hitbox->vecBBMax.z ), matrix ), hitbox->iGroup );
+	RayTracer::Hitbox box( min, max, hitbox->flRadius );
+	RayTracer::Trace trace;
 
-	aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z + hitbox->flRadius * scale ), matrix ), hitbox->iGroup );
+	if ( index == HITBOX_HEAD ) {
+		Vector middle = ( right.Normalized( ) + up.Normalized( ) ) * 0.5f;
+		Vector middle2 = ( right.Normalized( ) - up.Normalized( ) ) * 0.5f;
 
-	aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z - hitbox->flRadius * scale ), matrix ), hitbox->iGroup );
+		RayTracer::Ray ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( middle * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
 
-	aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y - hitbox->flRadius * scale, hitbox->vecBBMax.z ), matrix ), hitbox->iGroup );
-}
+		ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( middle2 * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
 
-void CRageBot::CalcCapsulePoints( std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* const hitbox, matrix3x4_t& matrix, float scale ) {
-	const auto min = Math::VectorTransform( hitbox->vecBBMin, matrix );
-	const auto max = Math::VectorTransform( hitbox->vecBBMax, matrix );
+		ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( up * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
 
-	static matrix3x4_t matrix0 = Math::VectorMatrix( { 0.f, 0.f, 1.f } );
-	const matrix3x4_t matrix1 = Math::VectorMatrix( ( max - min ).Normalized( ) );
+		ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( up * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
+	}
+	else {
+		RayTracer::Ray ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( up * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
 
-	for ( const auto& vertices : {
-		Vector{ 0.95f, 0.f, 0.f },
-		Vector{ -0.95f, 0.f, 0.f },
-		Vector{ 0.f, 0.95f, 0.f },
-		Vector{ 0.f, -0.95f, 0.f },
-		Vector{ 0.f, 0.f, 0.95f },
-		Vector{ 0.f, 0.f, -0.95f }
-		} ) {
-		Vector point{ };
-
-		Math::VectorIRotate( vertices, matrix0, point );
-		Math::VectorIRotate( point, matrix1, point );
-
-		point *= scale;
-
-		if ( vertices.z > 0.f )
-			point += min - max;
-
-		aimPoints.emplace_back( point + max, hitbox->iGroup );
+		ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( up * 1000.0f ) );
+		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
+		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
+			hitbox->iGroup, center );
 	}
 }
 
@@ -287,9 +259,11 @@ void CRageBot::ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> reco
 	const auto data{ Features::Autowall.FireBullet( ctx.m_pLocal, player, ctx.m_pWeaponData,
 		ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER,
 		ctx.m_vecEyePos, point.m_vecPoint, RagebotAutowall ) };
-		
 
-	point.m_flDamage = data.dmg;
+	if ( static_cast<int>( data.dmg ) < 1 )
+		return;
+
+	point.m_flDamage = static_cast< int >( data.dmg );
 	point.m_iHitgroup = data.hitgroup;
 
 	if ( std::find( m_iHitboxes.begin( ), m_iHitboxes.end( ), data.hitbox ) == m_iHitboxes.end( ) )
@@ -308,18 +282,19 @@ void CRageBot::ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> reco
 	if ( point.m_flDamage < mindmg )
 		return;
 
-	point.m_iIntersections = record->m_bMultiMatrix ? SafePoint( player, record, point.m_vecPoint, data.hitbox ) : 3;
-
+	//point.m_iIntersections = record->m_bMultiMatrix ? SafePoint( player, record, point.m_vecPoint, data.hitbox ) : 3;
+	m_bShouldStop = true;
 	point.m_bValid = true;
 }
 
 std::optional< AimPoint_t> CRageBot::PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints ) {
 	std::optional< AimPoint_t> point{ };
 
+	const int hitchance = ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER ? 80 : RagebotHitchance;
+
 	for ( const auto& p : aimPoints ) {
 		if ( !p.m_bValid )
 			continue;
-
 
 		if ( !point.has_value( ) ) {
 			point = p;
@@ -328,6 +303,9 @@ std::optional< AimPoint_t> CRageBot::PickPoints( CBasePlayer* player, std::vecto
 
 		// headpoints are scanned last
 		if ( p.m_iHitgroup == HITGROUP_HEAD ) {
+			//if ( !FastHitChance( player, p.m_vecPoint, mins, maxs, headHB->flRadius, hitchance ) )
+			//	continue;
+
 			// prefer baim
 			if ( RagebotPreferBaim && point->m_iHitgroup != HITGROUP_HEAD )
 				break;
@@ -340,9 +318,9 @@ std::optional< AimPoint_t> CRageBot::PickPoints( CBasePlayer* player, std::vecto
 				break;
 		}
 
-		// always prefer intersections
-		if ( p.m_iIntersections >= point->m_iIntersections ) {
-			if ( p.m_flDamage >= point->m_flDamage || ( p.m_flDamage > player->m_iHealth( ) && p.m_iIntersections > point->m_iIntersections ) )
+		// safer point for middle
+		if ( p.m_flCenterAmt <= point->m_flCenterAmt ) {
+			if ( p.m_flDamage >= point->m_flDamage || ( p.m_flDamage > player->m_iHealth( ) && p.m_flCenterAmt < point->m_flCenterAmt ) )
 				point = p;
 		}
 	}
@@ -355,8 +333,6 @@ void CRageBot::Fire( CUserCmd& cmd ) {
 	if ( !target.has_value( ) )
 		return;
 
-	m_bShouldStop = true;
-
 	if ( !ctx.m_bCanShoot )
 		return;
 
@@ -366,22 +342,15 @@ void CRageBot::Fire( CUserCmd& cmd ) {
 	QAngle angle;
 	Math::VectorAngles( target->m_cAimPoint->m_vecPoint - ctx.m_vecEyePos, angle );
 
-	{
-		const auto backupPoseParam{ ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) };
+	ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( angle.x );
 
-		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
-			angle.x
-			- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 360.f
-		), -90.f, 90.f ) + 90.f ) / 180.f;
+	Math::VectorAngles( target->m_cAimPoint->m_vecPoint - ctx.m_vecEyePos, angle );
 
-		ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( );
-		Math::VectorAngles( target->m_cAimPoint->m_vecPoint - ctx.m_vecEyePos, angle );
+	const int hitchance{ ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER ? 80 : RagebotHitchance };
 
-		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
-	}
+	const auto& max{ target->m_pPlayer->m_vecMaxs( ) };
 
-	const int hitchance = ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER ? 80 : RagebotHitchance;
-
+	//target->m_pPlayer->SetCollisionBounds( target->m_pPlayer->m_vecMins( ), { max.x, max.y, max.z + 5 } );
 	if ( HitChance( target->m_pPlayer, angle, hitchance, target->m_cAimPoint->m_iHitgroup ) ) {
 		if ( RagebotAutoFire )
 			cmd.iButtons |= IN_ATTACK;
@@ -398,11 +367,9 @@ void CRageBot::Fire( CUserCmd& cmd ) {
 
 			cmd.iTickCount = TIME_TO_TICKS( target->m_pRecord->m_cAnimData.m_flSimulationTime + ctx.m_flLerpTime );
 
-			auto& entry{ Features::AnimSys.m_arrEntries.at( ( target->m_pPlayer->Index( ) - 1 ) ) };
+			/*auto& entry{ Features::AnimSys.m_arrEntries.at( ( target->m_pPlayer->Index( ) - 1 ) ) };
 			if ( !entry.m_iMissedShots )
-				entry.m_iFirstResolverSide = target->m_pRecord->m_iResolverSide;
-
-			/*ctx.doubletapping = false;*/
+				entry.m_iFirstResolverSide = target->m_pRecord->m_iResolverSide;*/
 
 			// dont shoot at the same record we just shot at
 			//target->m_pRecord->m_bAnimated = false;
@@ -411,22 +378,19 @@ void CRageBot::Fire( CUserCmd& cmd ) {
 
 
 			if ( Config::Get<bool>( Vars.MiscHitMatrix ) )
-				Features::Visuals.Chams.AddHitmatrix( target->m_pPlayer, target->m_pRecord->m_cAnimData.m_cAnimSides.at( target->m_pRecord->m_iResolverSide ).m_pMatrix );
+				Features::Visuals.Chams.AddHitmatrix( target->m_pPlayer, target->m_pRecord->m_pCompensatedMatrix );
 
 			const std::string message =
 				_( "shot " ) + ( std::string )Interfaces::Engine->GetPlayerInfo( target->m_pPlayer->Index( ) )->szName +
 				_( " | hitgroup: " ) + Hitgroup2Str( target->m_cAimPoint->m_iHitgroup ) +
 				_( " | pred damage: " ) + std::to_string( int( target->m_cAimPoint->m_flDamage ) ).c_str( ) +
 				_( " | backtrack: " ) + std::to_string( Interfaces::ClientState->iServerTick - target->m_pRecord->m_iReceiveTick ) + _( " ticks" ) +
-				_( " | resolver side: " ) + std::to_string( target->m_pRecord->m_iResolverSide ) +
-				_( " | simulated: " ) + std::to_string( target->m_pRecord->m_iNewCmds ) +
-				_( " | safety: " ) + std::to_string( ( target->m_cAimPoint->m_iIntersections ) );
+				_( " | simulated: " ) + std::to_string( target->m_pRecord->m_iNewCmds );// +
+				//_( " | safety: " ) + std::to_string( ( target->m_cAimPoint->m_iIntersections ) );
 
 			Features::Logger.Log( message, false );
 		}
 	}
-	
-
 	backup->Apply( target->m_pPlayer );
 }
 
@@ -440,7 +404,7 @@ bool CRageBot::HitChance( CBasePlayer* player, const QAngle& ang, int hitchance,
 	const auto item_index = ctx.m_pWeapon->m_iItemDefinitionIndex( );
 	const auto recoil_index = ctx.m_pWeapon->m_flRecoilIndex( );
 
-	for ( int i = 0u; i < 128u; ++i ) {
+	for ( int i{ }; i < 128u; ++i ) {
 		const auto spread_angle = CalcSpreadAngle( item_index, recoil_index, i );
 
 		const auto dir = ( fwd + ( right * spread_angle.x ) + ( up * spread_angle.y ) ).Normalized( );
@@ -556,63 +520,18 @@ std::optional<AimTarget_t> CRageBot::PickTarget( ) {
 	return retTarget;
 }
 
-// check if this is actually working
-int CRageBot::SafePoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, Vector aimpoint, int index ) {
-	const auto hitboxSet = player->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( player->m_nHitboxSet( ) );
-	if ( !hitboxSet )
-		return 0;
-
-	const auto hitbox = hitboxSet->GetHitbox( index );
-	if ( !hitbox )
-		return 0;
-
-	QAngle angle;
-	Math::VectorAngles( aimpoint - ctx.m_vecEyePos, angle );
-
-	Vector forward;
-	Math::AngleVectors( angle, &forward );
-
-	const Vector end = ctx.m_vecEyePos + forward * ctx.m_pWeaponData->flRange;
-
-	int hits = 0;
-	for ( int i = 0; i <= 2; i++ ) {
-		Vector mins{ };
-		Vector maxs{ };
-		const auto& matrix{ record->m_cAnimData.m_cAnimSides.at( i ).m_pMatrix[ hitbox->iBone ] };
-
-		mins = Math::VectorTransform( hitbox->vecBBMin, matrix );
-		maxs = Math::VectorTransform( hitbox->vecBBMax, matrix );
-
-		if ( hitbox->flRadius < 0 ) {
-			Math::VectorITransform( ctx.m_vecEyePos, matrix, mins );
-			Math::VectorITransform( aimpoint, matrix, maxs );
-		}
-		else {
-			if ( Math::SegmentToSegment( ctx.m_vecEyePos, end, mins, maxs ) < hitbox->flRadius )
-				++hits;
-
-			continue;
-		}
-
-
-		if ( Math::IntersectionBoundingBox( ctx.m_vecEyePos, end, mins, maxs ) )
-			++hits;
-	}
-
-	return hits;
-}
-
 int CRageBot::OffsetDelta( CBasePlayer* player, std::shared_ptr<LagRecord_t> record ) {
 	QAngle shootAngle;
 
-	const auto eye_pos = record->m_cAnimData.m_vecOrigin + player->m_vecViewOffset( );
+	auto eye_pos = record->m_cAnimData.m_vecOrigin;
+	eye_pos.z += 64.f;
 
 	const auto hitboxSet{ player->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( player->m_nHitboxSet( ) ) };
-	const auto hitbox = hitboxSet->GetHitbox( HITBOX_PELVIS );
+	const auto hitbox = hitboxSet->GetHitbox( HITBOX_CHEST );
 	if ( !hitbox )
 		return 90;
 
-	const auto point = Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ HITBOX_PELVIS ] );
+	const auto point = Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ HITBOX_CHEST ] );
 
 	Math::VectorAngles( point - eye_pos, shootAngle );
 
@@ -624,7 +543,7 @@ int CRageBot::OffsetDelta( CBasePlayer* player, std::shared_ptr<LagRecord_t> rec
 	return abs( delta );
 }
 
-bool CRageBot::CheckHeadSafepoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record ) {
+bool canHitHead( CBasePlayer* player, std::shared_ptr<LagRecord_t> record ) {
 	const auto hitboxSet{ player->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( player->m_nHitboxSet( ) ) };
 	const auto hitbox = hitboxSet->GetHitbox( HITBOX_HEAD );
 	if ( !hitbox )
@@ -632,7 +551,18 @@ bool CRageBot::CheckHeadSafepoint( CBasePlayer* player, std::shared_ptr<LagRecor
 
 	const auto point = Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ HITBOX_HEAD ] );
 
-	return SafePoint( player, record, point, HITBOX_HEAD ) >= 3;
+	const auto dir{ ( point - ctx.m_vecEyePos ).Normalized( ) };
+	Vector vecEnd{ ctx.m_vecEyePos + ( dir * ctx.m_pWeaponData->flRange ) };
+
+	CGameTrace trace{ };
+	CTraceFilter traceFilter{ ctx.m_pLocal };
+
+	Interfaces::EngineTrace->TraceRay(
+		{ ctx.m_vecEyePos, vecEnd }, MASK_SHOT_PLAYER,
+		&traceFilter, &trace
+	);
+
+	return trace.iHitbox == HITBOX_HEAD;
 }
 
 std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
@@ -641,51 +571,32 @@ std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 
 	std::shared_ptr<LagRecord_t> bestRecord{ };
 
-	int bestDamage{ };
-	int bestEyedelta{ INT_MAX };
-	bool dontScan{ };
 	const auto backup = std::make_unique< LagBackup_t >( entry.m_pPlayer );
 
 	const int pingTicks{ TIME_TO_TICKS( ctx.m_flOutLatency ) };
 
-	auto predServerAngle{ entry.m_pPlayer->m_angEyeAngles( ).y };
-	// wtf is the maths equation for this?
-	/*if ( pingTicks > 0
-		&& pingTicks >= entry.m_iRealChoked ) {
-		bool tog{ };
-		for ( int i{ }; i <= pingTicks; ++i ) {
-			if ( i % entry.m_iRealChoked == 0 )
-				tog = !tog;
-		}
-
-		if ( !tog )
-			predServerAngle += entry.m_flJitterAmount;
-	}
-
-	if ( std::find( entry.m_pRecords.begin( ), entry.m_pRecords.end( ), 
-		[ & ]( const std::shared_ptr< LagRecord_t >& lag_record ) -> bool {
-			return lag_record->m_bBrokeLC; } 
-	)  == entry.m_pRecords.end( ) )*/
-
 	if ( const auto& record{ entry.m_pRecords.back( ) }; record->m_bBrokeLC ) {
-		if ( entry.m_vecUpdatedOrigin != entry.m_pPlayer->m_vecOrigin( ) )
+		if ( record->m_cAnimData.m_vecOrigin != entry.m_pPlayer->m_vecOrigin( ) )
 			return nullptr;
 
-		if ( !record->m_bAnimated )//!record->IsValid( ) || don tneed
+		if ( !record->m_bAnimated
+			|| pingTicks >= entry.m_iRealChoked )//!record->IsValid( ) || don tneed
 			return nullptr;
 
-		record->SelectResolverSide( entry );
-
-		const int dmg{ QuickScan( entry.m_pPlayer, record, dontScan ) };
+		bool a{ };
+		const int dmg{ QuickScan( entry.m_pPlayer, record, a ) };
 
 		if ( dmg > 0 )
 			return record;
+		
+		return nullptr;
 	}
+
+	int bestDamage{ };
+	int bestEyedelta{ INT_MAX };
 
 	for ( auto it = entry.m_pRecords.rbegin( ); it != entry.m_pRecords.rend( ); it = std::next( it ) ) {
 		const auto& record{ *it };
-		if ( !record )
-			continue;
 
 		if ( record->m_bBrokeLC )
 			break;
@@ -694,10 +605,10 @@ std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 			|| !record->m_bAnimated )
 			continue;
 
-		record->SelectResolverSide( entry );
+		bool metScaled{ };
 
-		const int dmg{ QuickScan( entry.m_pPlayer, record, dontScan ) };
-		const auto eyeDelta{ std::abs( Math::AngleDiff( record->m_angEyeAngles.y, predServerAngle ) ) };
+		const int dmg{ QuickScan( entry.m_pPlayer, record, metScaled ) };
+		const auto eyeDelta{ std::abs( 90.f - OffsetDelta( entry.m_pPlayer, record ) ) };
 
 		if ( dmg > bestDamage ) {
 			bestDamage = dmg;
@@ -705,29 +616,19 @@ std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 			bestEyedelta = eyeDelta;
 		}
 
-		if ( dontScan ) {
+		if ( canHitHead( entry.m_pPlayer, record ) && metScaled ) {
 			bool metScaled{ };
-			if ( eyeDelta < 15.f ) {
-				if ( !dmg ) {
-					QuickScan( entry.m_pPlayer, record, metScaled );
-					if ( metScaled ) {
-						bestRecord = record;
-						break;
-					}
-				}
-				else {
-					bestRecord = record;
-					break;
-				}
+			if ( record->m_angEyeAngles.x < 55.f ) {
+				bestRecord = record;
+				break;
+			}
+			else if ( eyeDelta < 25.f ) {
+				bestRecord = record;
+				break;
 			}
 			else if ( eyeDelta < bestEyedelta ) {
-				if ( !dmg ) {
-					QuickScan( entry.m_pPlayer, record, metScaled );
-					if ( metScaled ) {
-						bestRecord = record;
-						bestEyedelta = eyeDelta;
-					}
-				}
+				bestEyedelta = eyeDelta;
+				bestRecord = record;
 			}
 		}
 	}
@@ -738,13 +639,9 @@ std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 }
 
 int CRageBot::QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, bool& metScaled ) {
-	if ( metScaled )
-		return 0;
-
 	record->Apply( player );
 
 	const auto hitboxSet{ player->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( player->m_nHitboxSet( ) ) };
-	const auto& side{ record->m_cAnimData.m_cAnimSides.at( record->m_iResolverSide ) };
 
 	int dmg{ };
 
@@ -753,15 +650,21 @@ int CRageBot::QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> recor
 		if ( !hitbox )
 			continue;
 
-		const auto point{ Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, side.m_pMatrix[ hitbox->iBone ] ) };
+		const auto point{ Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, record->m_pMatrix[ hitbox->iBone ] ) };
 
 		const auto data{ Features::Autowall.FireBullet( ctx.m_pLocal, player, ctx.m_pWeaponData,
 			ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER,
 			ctx.m_vecEyePos, point, RagebotAutowall ) };
 
+		if ( static_cast< int >( data.dmg ) < 1 )
+			continue;
+
 		if ( hb == HITBOX_STOMACH || hb == HITBOX_HEAD ) {
-			if ( Features::Autowall.ScaleDamage( player, ctx.m_pWeaponData->iDamage,
-				ctx.m_pWeaponData->flArmorRatio, data.hitgroup ) - data.dmg <= 5.f
+			float dmg{ static_cast< float >( ctx.m_pWeaponData->iDamage ) };
+			Features::Autowall.ScaleDamage( player, dmg,
+				ctx.m_pWeaponData->flArmorRatio, data.hitgroup, ctx.m_pWeaponData->flHeadShotMultiplier );
+
+			if ( dmg - data.dmg <= 5.f
 				|| ( data.dmg >= 110 ) )
 				metScaled = true;
 		}

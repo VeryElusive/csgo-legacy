@@ -428,6 +428,8 @@ public:
 	OFFSET( int, m_iTeamNum( ), Offsets::m_iTeamNum );
 	OFFSET( int, m_CollisionGroup( ), Offsets::m_CollisionGroup );
 	OFFSET( std::uint8_t, m_MoveType( ), Offsets::m_nRenderMode + 0x1 );
+	OFFSET( float, m_flSimulationTime( ), Offsets::m_flSimulationTime );
+	OFFSET( float, m_flOldSimulationTime( ), Offsets::m_flSimulationTime + 4 );
 
 	OFFSET( int, m_iHealth( ), Offsets::m_iHealth ); // part of dtbaseplayer dont ask
 
@@ -473,6 +475,7 @@ class CBaseCSGrenadeProjectile : public CBaseEntity { // whack
 public:
 	OFFSET( Vector, m_vecVelocity( ), Offsets::m_vecVelocityGRENADE );
 	OFFSET( int, m_nExplodeEffectTickBegin( ), Offsets::m_nExplodeEffectTickBegin );
+	OFFSET( float, m_flSpawnTime( ), 0x20 );
 };
 
 class CBaseCombatCharacter : public CBaseEntity
@@ -528,8 +531,6 @@ public:
 	OFFSET( Vector, m_aimPunchAngleVel( ), Offsets::m_aimPunchAngleVel );
 	OFFSET( float, m_flDuckSpeed( ), Offsets::m_flDuckSpeed );
 	OFFSET( float, m_flDuckAmount( ), Offsets::m_flDuckAmount );
-	OFFSET( float, m_flSimulationTime( ), Offsets::m_flSimulationTime );
-	OFFSET( float, m_flOldSimulationTime( ), Offsets::m_flSimulationTime + 4 );
 	OFFSET( float, m_flMaxSpeed( ), Offsets::m_flMaxSpeed );
 	OFFSET( float, m_flLowerBodyYawTarget( ), Offsets::m_flLowerBodyYawTarget );
 	OFFSET( float, m_flSpawnTime( ), Offsets::m_iAddonBits - 0x4 );
@@ -543,6 +544,10 @@ public:
 	OFFSET( bool, m_bStrafing( ), Offsets::m_bStrafing );
 	OFFSET( int, m_iMoveState( ), Offsets::m_iMoveState );
 	OFFSET( bool, m_bIsWalking( ), Offsets::m_bIsWalking );
+	OFFSET( int, m_nModelIndex( ), Offsets::m_nModelIndex );
+	OFFSET( uint8_t, m_hRender( ), Offsets::m_nRenderMode + 0x17 );// 0x172
+	OFFSET( uint8_t, m_VisibilityBits( ), Offsets::m_nRenderMode + 0x19 ); // 0x174
+	OFFSET( bool, m_bUseNewAnimstate( ), Offsets::m_flLowerBodyYawTarget + 0x38 ); // 0x998b
 	OFFSET( int, m_iAnimationLayersCount( ), 0x299C );
 	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2990 );
 	OFFSET( CCommandContext, m_CmdContext( ), 0x350cu );
@@ -582,6 +587,10 @@ public:
 		reinterpret_cast< void( __thiscall* )( void*, const QAngle& ) >( Offsets::Sigs.SetAbsAngles )( this, angles );
 	}
 
+	void InvalidatePhysicsRecursive( int change ) {
+		reinterpret_cast< void( __thiscall* )( void*, int ) >( Offsets::Sigs.InvalidatePhysicsRecursive )( this, change );
+	}
+
 	void UpdateClientsideAnimations( ) {
 		return MEM::CallVFunc<void>( this, 224 );
 	}
@@ -590,14 +599,11 @@ public:
 		return *reinterpret_cast< std::array<float, MAXSTUDIOPOSEPARAM>* >( reinterpret_cast< std::uintptr_t >( this ) + Offsets::m_flPoseParameter );
 	}
 
-	FORCEINLINE void SetupBones_AttachmentHelper( ) {
-		return ( ( void( __thiscall* )( LPVOID, LPVOID ) )( Offsets::Sigs.SetupBones_AttachmentHelper ) )( this, this->m_pStudioHdr( ) );
-	}
 
 	bool IsTeammate( CBasePlayer* Player = nullptr );
 	bool IsDead( );
 	CWeaponCSBase* GetWeapon( );
-	Vector GetEyePosition( );
+	Vector GetEyePosition( float pitch );
 	bool CanShoot( );
 	bool IsHostage( );
 

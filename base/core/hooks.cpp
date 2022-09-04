@@ -49,14 +49,11 @@ bool Hooks::Setup( ) {
 	if ( !DTR::IsPaused.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISPAUSED ), &hkIsPaused ) )
 		return false;
 
-	//if ( !DTR::IsHLTV.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISHLTV ), &hkIsHltv ) )
-	//	return false;
+	if ( !DTR::IsHLTV.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISHLTV ), &hkIsHltv ) )
+		return false;
 	
-	if ( !DTR::EmitSound.Create( MEM::GetVFunc( Interfaces::EngineSound, VTABLE::EMITSOUND ), &hkEmitSound ) )
-		return false;
-
-	if ( !DTR::ListLeavesInBox.Create( MEM::GetVFunc( Interfaces::Engine->GetBSPTreeQuery( ), VTABLE::LISTLEAVESINBOX ), &hkListLeavesInBox ) )
-		return false;
+	//if ( !DTR::EmitSound.Create( MEM::GetVFunc( Interfaces::EngineSound, VTABLE::EMITSOUND ), &hkEmitSound ) )
+	//	return false;
 
 	void* pClientStateSwap = ( void* )( uint32_t( Interfaces::ClientState ) + 8 );
 	if ( !DTR::PacketEnd.Create( MEM::GetVFunc( pClientStateSwap, 6 ), &Hooks::hkPacketEnd ) )
@@ -74,9 +71,6 @@ bool Hooks::Setup( ) {
 	if ( !DTR::ProcessMovement.Create( MEM::GetVFunc( Interfaces::GameMovement, VTABLE::PROCESSMOVEMENT ), &hkProcessMovement ) )
 		return false;
 	
-	//if ( !DTR::AddBoxOverlay.Create( MEM::GetVFunc( Interfaces::DebugOverlay, 1 ), &hkAddBoxOverlay ) )
-	//	return false;
-
 	if ( !DTR::SvCheatsGetBool.Create( MEM::GetVFunc( Interfaces::ConVar->FindVar( _( "sv_cheats" ) ), VTABLE::GETBOOL ), &hkSvCheatsGetBool ) )
 		return false;
 
@@ -105,10 +99,15 @@ bool Hooks::Setup( ) {
 		return false;
 
 	if ( !DTR::UpdateClientsideAnimation.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 56 8B F1 80 BE ? ? ? ? ? 74 36" ) ) ),
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 56 8B F1 80 BE ? ? 00 00 00 74 36" ) ) ),
 		&Hooks::hkUpdateClientsideAnimation ) )
 		return false;
 
+	if ( !DTR::GetEyeAngles.Create(
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 85 F6 74 32" ) ) ),
+		&Hooks::hkGetEyeAngles ) )
+		return false;		
+	
 	/*if ( !DTR::GlowEffectSpectator.Create(
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 8B 5D 0C 56 57 85 DB 74 47" ) ) ),//wrong sig
 		&Hooks::hkGlowEffectSpectator ) )
@@ -117,19 +116,14 @@ bool Hooks::Setup( ) {
 	if ( !DTR::GetColorModulation.Create(
 		( byte* )( MEM::FindPattern( MATERIALSYSTEM_DLL, _( "55 8B EC 83 EC ? 56 8B F1 8A 46" ) ) ),
 		&Hooks::hkGetColorModulation ) )
-		return false;
+		return false;		
 	
 	if ( !DTR::GetAlphaModulation.Create(
 		( byte* )( MEM::FindPattern( MATERIALSYSTEM_DLL, _( "56 8B F1 8A 46 20 C0 E8 02 A8 01 75 0B 6A 00 6A 00 6A 00 E8 ? ? ? ? 80 7E 22 05 76 0E" ) ) ),
 		&Hooks::hkGetAlphaModulation ) )
 		return false;	
 	
-	/*if ( !DTR::CheckForSequenceChange.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 53 8B 5D 08 56 8B F1 57 85" ) ) ),
-		&Hooks::hkCheckForSequenceChange ) )
-		return false;
-		
-	if ( !DTR::PostDataUpdate.Create(
+	/*if ( !DTR::PostDataUpdate.Create(
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 53 56 8B F1 57 80 BE ? ? ? ? ? 74 0A 83 7D 08" ) ) ),
 		&Hooks::hkPostDataUpdate ) )
 		return false; */
@@ -155,7 +149,7 @@ bool Hooks::Setup( ) {
 	};
 
 	if ( !DTR::PhysicsSimulate.Create(
-		( byte* )rel32_resolve( ( MEM::FindPattern( CLIENT_DLL, _( "E8 ? ? ? ? 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 8B 06" ) ) ) ),// IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
+		( byte* )rel32_resolve( ( MEM::FindPattern( CLIENT_DLL, _( "E8 ? ? ? ? 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 8B 06" ) ) ) ),// TODO: IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
 		&Hooks::hkPhysicsSimulate ) )
 		return false;
 
@@ -179,6 +173,21 @@ bool Hooks::Setup( ) {
 		&Hooks::hkOnLatchInterpolatedVariables ) )
 		return false;		
 
+	/*if ( !DTR::CL_Move.Create(
+		( byte* )( MEM::FindPattern( ENGINE_DLL, _( "55 8B EC 81 EC ? ? ? ? 53 56 8A F9 F3 0F 11 45 ? 8B 4D 04" ) ) ),
+		&Hooks::hkCL_Move ) )
+		return false;
+
+		if ( !DTR::CClientStateIsPaused.Create(
+		( byte* )( MEM::FindPattern( ENGINE_DLL, _( "80 B9 ? ? ? ? ? 75 62" ) ) ),
+		&Hooks::hkCClientStateIsPaused ) )
+		return false;
+
+	if ( !DTR::ShouldInterpolate.Create(
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 E8 ? ? ? ? 3B F0" ) ) ),
+		&Hooks::hkShouldInterpolate ) )
+		return false;*/
+
 	return true;
 }
 
@@ -192,9 +201,6 @@ void Hooks::Restore( ) {
 		SetWindowLongPtrW( hWindow, GWLP_WNDPROC, reinterpret_cast< LONG_PTR >( pOldWndProc ) );
 		pOldWndProc = nullptr;
 	}
-
-	PropManager::Get( ).Hook( m_bClientSideAnimationHook, _( "DT_BaseAnimating" ), _( "m_bClientSideAnimation" ) );
-	PropManager::Get( ).Destroy( );
 
 	// reset input state
 	Interfaces::InputSystem->EnableInput( true );

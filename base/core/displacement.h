@@ -2,19 +2,17 @@
 #include "prop_manager.h"
 
 struct signatures {
-	uintptr_t LocalPlayer;
-
 	uintptr_t uPredictionRandomSeed;
 	uintptr_t pPredictionPlayer;
 
-	uintptr_t InitKeyValues;
+	/*uintptr_t InitKeyValues;
 	uintptr_t DestructKeyValues;
 	uintptr_t oFromString;
 	uintptr_t oLoadFromBuffer;
 	uintptr_t oLoadFromFile;
 	uintptr_t oFindKey;
 	uintptr_t oSetString;
-	uintptr_t oGetString;
+	uintptr_t oGetString;*/
 
 	uintptr_t oCreateAnimationState;
 	uintptr_t oUpdateAnimationState;
@@ -24,6 +22,7 @@ struct signatures {
 
 	uintptr_t SetAbsOrigin;
 	uintptr_t SetAbsAngles;
+	uintptr_t InvalidatePhysicsRecursive;
 
 	uintptr_t PostProcess;
 
@@ -35,19 +34,12 @@ struct signatures {
 	uintptr_t CL_ReadPackets;
 	uintptr_t ClanTag;
 
-	uintptr_t ClearNotices;
-
 	uintptr_t StartDrawing;
 	uintptr_t FinishDrawing;
 
 	uintptr_t ReturnToExtrapolate;
 
 	uintptr_t SetupVelocityReturn;
-
-	uintptr_t uInsertIntoTree;
-
-	uintptr_t uAllocKeyValuesEngine;
-	uintptr_t uAllocKeyValuesClient;
 
 	uintptr_t SetupBonesTiming;
 
@@ -63,15 +55,8 @@ struct signatures {
 
 	uintptr_t WriteUsercmd;
 
-	uintptr_t AddBoxOverlayReturn;
-
-	uintptr_t CL_SendMove;
-
 	uintptr_t GetSequenceActivity;
 
-	uintptr_t SetupBones_AttachmentHelper;
-
-	uintptr_t TraceFilterSkipTwoEntities;
 	uintptr_t numticks;
 };
 
@@ -98,6 +83,8 @@ struct cvars {
 	CConVar* mat_ambient_light_g;
 	CConVar* mat_ambient_light_b;
 	CConVar* sv_gravity;
+	CConVar* sv_stopspeed;
+	CConVar* sv_maxvelocity;
 	CConVar* weapon_molotov_maxdetonateslope;
 	CConVar* molotov_throw_detonate_time;
 	CConVar* sv_showimpacts;
@@ -106,6 +93,7 @@ struct cvars {
 	CConVar* cl_mouseenable;
 	CConVar* weapon_debug_spread_show;
 	CConVar* cl_csm_shadows;
+	CConVar* sv_friction;
 };
 
 namespace Offsets {
@@ -188,6 +176,7 @@ namespace Offsets {
 	inline int m_bStrafing;
 	inline int m_hWeapon;
 	inline int m_nAnimationParity;
+	inline int m_nModelIndex;
 
 	inline signatures Sigs;
 	inline cvars Cvars;
