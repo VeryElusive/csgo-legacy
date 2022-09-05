@@ -17,8 +17,8 @@ bool Hooks::Setup( ) {
 	if ( !DTR::LockCursor.Create( MEM::GetVFunc( Interfaces::Surface, VTABLE::LOCKCURSOR ), &hkLockCursor ) )
 		return false;
 
-	if ( !DTR::PaintTraverse.Create( MEM::GetVFunc( Interfaces::Panel, VTABLE::PAINTTRAVERSE ), &hkPaintTraverse ) )
-		return false;
+	//if ( !DTR::PaintTraverse.Create( MEM::GetVFunc( Interfaces::Panel, VTABLE::PAINTTRAVERSE ), &hkPaintTraverse ) )
+	//	return false;
 
 	if ( !DTR::CreateMoveProxy.Create( MEM::GetVFunc( Interfaces::Client, VTABLE::CREATEMOVE ), &hkCreateMoveProxy ) )
 		return false;
@@ -68,6 +68,9 @@ bool Hooks::Setup( ) {
 
 	if ( !DTR::InPrediction.Create( MEM::GetVFunc( Interfaces::Prediction, VTABLE::INPREDICTION ), &hkInPrediction ) )
 		return false;
+	
+	if ( !DTR::RunCommand.Create( MEM::GetVFunc( Interfaces::Prediction, VTABLE::RUNCOMMAND ), &hkRunCommand ) )
+		return false;
 
 	if ( !DTR::ProcessMovement.Create( MEM::GetVFunc( Interfaces::GameMovement, VTABLE::PROCESSMOVEMENT ), &hkProcessMovement ) )
 		return false;
@@ -104,9 +107,9 @@ bool Hooks::Setup( ) {
 		&Hooks::hkUpdateClientsideAnimation ) )
 		return false;
 
-	if ( !DTR::GetEyeAngles.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 85 F6 74 32" ) ) ),
-		&Hooks::hkGetEyeAngles ) )
+	if ( !DTR::CHudScope_Paint.Create(
+		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 78 56 57 8B 3D" ) ) ),
+		&Hooks::hkCHudScope_Paint ) )
 		return false;		
 	
 	/*if ( !DTR::GlowEffectSpectator.Create(
@@ -142,11 +145,6 @@ bool Hooks::Setup( ) {
 	if ( !DTR::Setupbones.Create(
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F0 B8 D8" ) ) ),
 		&Hooks::hkSetupbones ) )
-		return false;
-
-	if ( !DTR::PhysicsSimulate.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 0C 56 8B F1 8B 0D ? ? ? ? 80" ) ) ),// TODO: IDK IF THIS IS EVEN RIGHT BUT I WILL HOOK IT PROPERLY I PROMISE I CANNOT BE FUCKED CUZ IM UPDATING SO MUCH SHIT RN
-		&Hooks::hkPhysicsSimulate ) )
 		return false;
 
 	if ( !DTR::ModifyEyePosition.Create(

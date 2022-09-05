@@ -195,7 +195,6 @@
     <ClCompile Include="hooks\createmove.cpp" />
     <ClCompile Include="hooks\detours\animation_detours.cpp" />
     <ClCompile Include="hooks\detours\other_detours.cpp" />
-    <ClCompile Include="hooks\detours\prediction_detours.cpp" />
     <ClCompile Include="hooks\WndProc.cpp" />
     <ClCompile Include="hooks\engine.cpp" />
     <ClCompile Include="hooks\enginesound.cpp" />

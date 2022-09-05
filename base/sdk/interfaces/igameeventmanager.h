@@ -39,16 +39,13 @@ public:
 class IGameEventListener2
 {
 public:
-	virtual			~IGameEventListener2() { }
-	virtual void	FireGameEvent(IGameEvent* pEvent) = 0;
-	virtual int		GetEventDebugID()
-	{
-		return nDebugID;
-	}
-public:
-	int	nDebugID;
+	virtual ~IGameEventListener2( void ) {}
+
+	virtual void FireGameEvent( IGameEvent* event ) = 0;
+	virtual int  GetEventDebugID( void ) = 0;
 };
 
+#undef CreateEvent
 class CSVCMsg_GameEvent;
 class IGameEventManager2
 {
@@ -67,3 +64,4 @@ public:
 	virtual bool        SerializeEvent( IGameEvent* event, bf_write* buf ) = 0;
 	virtual IGameEvent* UnserializeEvent( bf_read* buf ) = 0;
 };
+#define CreateEvent  CreateEventA

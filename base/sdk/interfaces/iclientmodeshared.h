@@ -96,15 +96,15 @@ private:
 class CEventInfo
 {
 public:
-	uint16_t iClassID;          //0x0000 0 implies not in use
-	char pad_0002[ 2 ];          //0x0002
-	float flFireDelay;          //0x0004 If non-zero, the delay time when the event should be fired ( fixed up on the client )
-	char pad_0008[ 4 ];          //0x0008
-	const CBaseClient* pClientClass; //0x000C
-	void* pData;               //0x0010 Raw event data
-	char pad_0014[ 36 ];         //0x0014
-	CEventInfo* next;          //0x0038
-	char pad_003C[ 8 ]; // 0x003C
+	short					iClassID;
+	float					flFireDelay;
+	const void* vSendTable;
+	const CBaseClient* pClientClass;
+	int						m_bits;
+	uint8_t* pData;
+	int						m_flags;
+	char pad_0[ 0x18 ];
+	CEventInfo* next;
 };
 
 class INetChannel;

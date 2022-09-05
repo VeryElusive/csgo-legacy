@@ -120,11 +120,11 @@ bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
 	if ( !weapon )
 		return false;
 
-	if ( weapon->m_iItemDefinitionIndex( ) == WEAPON_C4 || weapon->m_iItemDefinitionIndex( ) == WEAPON_HEALTHSHOT || weapon->IsGrenade( ) || weapon->IsKnife( ) )
+	if ( weapon->m_iItemDefinitionIndex( ) == WEAPON_C4 || weapon->IsGrenade( ) || weapon->IsKnife( ) )
 		return false;
 
 	const auto weapon_info = weapon->GetCSWeaponData( );
-	if ( !weapon_info )
+	if ( !weapon_info || weapon_info->nWeaponType == WEAPONTYPE_HEALTHSHOT )
 		return false;
 
 	const auto ammo = weapon->m_iClip1( );

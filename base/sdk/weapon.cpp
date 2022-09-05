@@ -24,29 +24,18 @@ bool CWeaponCSBase::IsKnife( )
 		return false;
 
 	switch ( m_iItemDefinitionIndex( ) ) {
-	case WEAPON_KNIFE:
+	case WEAPON_KNIFE_T:
+	case WEAPON_KNIFE_CT:
 	case WEAPON_KNIFE_FLIP:
-	case WEAPON_KNIFE_PUSH:
-	case WEAPON_KNIFE_GG:
-	case WEAPON_KNIFE_URSUS:
-	case WEAPON_KNIFE_CORD:
 	case WEAPON_KNIFE_BAYONET:
 	case WEAPON_KNIFE_GUT:
-	case WEAPON_KNIFE_SURVIVAL_BOWIE:
-	case WEAPON_KNIFE_GHOST:
-	case WEAPON_KNIFE_WIDOWMAKER:
-	case WEAPON_KNIFE_OUTDOOR:
 	case WEAPON_KNIFE_BUTTERFLY:
 	case WEAPON_KNIFE_KARAMBIT:
-	case WEAPON_KNIFE_T:
-	case WEAPON_KNIFE_GYPSY_JACKKNIFE:
-	case WEAPON_KNIFE_CSS:
-	case WEAPON_KNIFE_SKELETON:
 	case WEAPON_KNIFE_FALCHION:
 	case WEAPON_KNIFE_M9_BAYONET:
-	case WEAPON_KNIFE_TACTICAL:
-	case WEAPON_KNIFE_STILETTO:
-	case WEAPON_KNIFE_CANIS:
+	case WEAPON_KNIFE_SHADOW_DAGGERS:
+	case WEAPON_KNIFE_BOWIE:
+	case WEAPON_KNIFE_HUNTSMAN:
 		return true;
 	default: return false;
 	}
@@ -56,6 +45,9 @@ std::string CBaseCombatWeapon::GetIcon( )
 {
 	if ( !this )
 		return "";
+
+	if ( ( ( CWeaponCSBase* )this )->IsKnife( ) )
+		return _( "]" );
 
 	switch ( this->m_iItemDefinitionIndex( ) )
 	{
@@ -121,8 +113,6 @@ std::string CBaseCombatWeapon::GetIcon( )
 		return _( "V" );
 	case WEAPON_SSG08:
 		return _( "a" );
-	case WEAPON_KNIFE:
-		return _( "]" );
 	case WEAPON_FLASHBANG:
 		return _( "i" );
 	case WEAPON_HEGRENADE:
@@ -139,9 +129,7 @@ std::string CBaseCombatWeapon::GetIcon( )
 		return _( "o" );
 	case WEAPON_KNIFE_T:
 		return _( "[" );
-	case WEAPON_M4A1_SILENCER:
-		return _( "T" );
-	case WEAPON_USP_SILENCER:
+	case WEAPON_USPS:
 		return _( "G" );
 	case WEAPON_CZ75A:
 		return _( "I" );
@@ -158,32 +146,11 @@ std::string CBaseCombatWeapon::GetGunName( ) {
 	if ( !this )
 		return "";
 
+	if ( ( ( CWeaponCSBase* )this )->IsKnife( ) )
+		return _( "KNIFE" );
+
 	switch ( m_iItemDefinitionIndex( ) )
 	{
-	case WEAPON_KNIFE:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_T:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_BAYONET:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_SURVIVAL_BOWIE:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_BUTTERFLY:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_FALCHION:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_FLIP:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_GUT:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_KARAMBIT:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_M9_BAYONET:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_TACTICAL:
-		return _( "KNIFE" );
-	case WEAPON_KNIFE_PUSH:
-		return _( "KNIFE" );
 	case WEAPON_DEAGLE:
 		return _( "DEAGLE" );
 	case WEAPON_ELITE:
@@ -196,7 +163,7 @@ std::string CBaseCombatWeapon::GetGunName( ) {
 		return _( "P2000" );
 	case WEAPON_P250:
 		return _( "P250" );
-	case WEAPON_USP_SILENCER:
+	case WEAPON_USPS:
 		return _( "USP-S" );
 	case WEAPON_TEC9:
 		return _( "TEC-9" );
@@ -218,8 +185,6 @@ std::string CBaseCombatWeapon::GetGunName( ) {
 		return _( "GALIL AR" );
 	case WEAPON_FAMAS:
 		return _( "FAMAS" );
-	case WEAPON_M4A1_SILENCER:
-		return _( "M4A1-S" );
 	case WEAPON_M4A1:
 		return _( "M4A4" );
 	case WEAPON_AUG:

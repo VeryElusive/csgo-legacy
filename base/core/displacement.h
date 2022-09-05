@@ -33,6 +33,7 @@ struct signatures {
 	uintptr_t LoadNamedSkys;
 	uintptr_t CL_ReadPackets;
 	uintptr_t ClanTag;
+	uintptr_t CL_FireEvents;
 
 	uintptr_t StartDrawing;
 	uintptr_t FinishDrawing;

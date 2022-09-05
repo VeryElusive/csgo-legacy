@@ -49,6 +49,14 @@ float FASTCALL Hooks::hkCalcViewmodelBob( CWeaponCSBase* pWeapon, void* edx ) {
 	return 0.f;
 }
 
+void FASTCALL Hooks::hkCHudScope_Paint( void* ecx ) {
+	static auto oCHudScope_Paint = DTR::CHudScope_Paint.GetOriginal<decltype( &hkCHudScope_Paint )>( );
+	if ( Config::Get<bool>( Vars.RemovalScope ) )
+		return;
+
+	return oCHudScope_Paint( ecx );
+}
+
 bool FASTCALL Hooks::hkShouldInterpolate( CBasePlayer* ecx, const std::uintptr_t edx ) {
 	static auto oShouldInterpolate = DTR::ShouldInterpolate.GetOriginal<decltype( &hkShouldInterpolate )>( );
 	if ( ecx == ctx.m_pLocal

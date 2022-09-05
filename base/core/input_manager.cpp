@@ -27,8 +27,8 @@ void Inputsys::update( ) {
 #define DODAKEYBINDCUH( bindname ) KeysToCheck.emplace_back( Config::Get<keybind_t>( Vars.##bindname ).key ); Config::Get<keybind_t>( Vars.##bindname ).Resolve( );
 
 void Inputsys::updateNeededKeys( ) {
-	//if ( !Interfaces::Engine->IsActiveApp( ) )
-	//	return;
+	if ( !Interfaces::Engine->IsActiveApp( ) )
+		return;
 
 	if ( Menu::Opened ) {
 		for ( int i = 0; i < 256; i++ )

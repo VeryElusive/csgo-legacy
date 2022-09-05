@@ -213,10 +213,20 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 				&& ctx.m_pWeapon
 				&& !ctx.m_pWeapon->IsGrenade( )
 				//&& !cmd.iWeaponSelect
+				&& ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f
 				&& ctx.CalcCorrectionTicks( ) != -1 ) {
 
 				++timer;
-				timer = std::min( timer, 15 );
+				if ( timer > 14 ) {
+					timer = 0;
+				}
+				else {
+					Features::Exploits.m_bAlreadyPeeked = true;
+					if ( timer < 10 )
+						cmd.viewAngles.y += 180;
+				}
+				//timer = std::min( timer, 15 );
+				/*
 				const auto peek{ Features::Misc.InPeek( ) };
 
 				if ( Features::Exploits.m_bAlreadyPeeked
@@ -227,7 +237,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 					//Features::Visuals.Chams.AddHitmatrix( ctx.m_pLocal, ctx.m_matRealLocalBones );
 					Features::Exploits.m_bAlreadyPeeked = true;
 					timer = 0;
-				}
+				}*/
 			}
 			else
 				timer = 0;

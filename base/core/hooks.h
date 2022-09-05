@@ -138,10 +138,9 @@ namespace DTR
 	inline CDetourHook DoExtraBonesProcessing;
 	inline CDetourHook StandardBlendingRules;
 	inline CDetourHook UpdateClientsideAnimation;
-	inline CDetourHook GetEyeAngles;
+	inline CDetourHook CHudScope_Paint;
 	inline CDetourHook CheckForSequenceChange;
 	inline CDetourHook AccumulateLayers;
-	inline CDetourHook PhysicsSimulate;
 	inline CDetourHook ModifyEyePosition;
 	inline CDetourHook CalcView;
 	inline CDetourHook CalcViewmodelBob;
@@ -198,13 +197,12 @@ namespace Hooks
 	void	FASTCALL	hkStandardBlendingRules( CBasePlayer* const ent, const std::uintptr_t edx, CStudioHdr* const mdl_data, int a1, int a2, float a3, int mask );
 	void	FASTCALL	hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx );
 	bool	FASTCALL	hkShouldSkipAnimFrame( void* ecx, uint32_t ebx );
-	QAngle* FASTCALL	hkGetEyeAngles( CBasePlayer* ecx, void* edx );
 	void	FASTCALL	hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate );
 	void	FASTCALL	hkAccumulateLayers( CBasePlayer* const ecx, const std::uintptr_t edx, int a0, int a1, float a2, int a3 );
-	void	FASTCALL	hkPhysicsSimulate( CBasePlayer* player, int time );
 	void	FASTCALL	hkModifyEyePosition( CCSGOPlayerAnimState* ecx, void* edx, Vector& pos );
 	void	FASTCALL	hkCalcView( CBasePlayer* pPlayer, void* edx, Vector& vecEyeOrigin, QAngle& angEyeAngles, float& flZNear, float& flZFar, float& flFov );
 	float	FASTCALL	hkCalcViewmodelBob( CWeaponCSBase* pWeapon, void* EDX );
+	void	FASTCALL	hkCHudScope_Paint( void* ecx );
 	bool	FASTCALL	hkSetupbones( const std::uintptr_t ecx, const std::uintptr_t edx, matrix3x4_t* const bones, int max_bones, int mask, float time );
 	void	CDECL		hkCL_Move( float accumulated_extra_samples, bool bFinalTick );
 	bool	STDCALL		hkCMCreateMove( float input_sample_frametime, CUserCmd* cmd );
@@ -215,6 +213,7 @@ namespace Hooks
 	void	FASTCALL	hkGetColorModulation( IMaterial* const ecx, const std::uintptr_t edx, float* const r, float* const g, float* const b );
 	float	FASTCALL	hkGetAlphaModulation( IMaterial* ecx, uint32_t ebx );
 	void	FASTCALL	hkOnLatchInterpolatedVariables( CBasePlayer* const ecx, const std::uintptr_t edx, const int flags );
+	void	FASTCALL	hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* ucmd, IMoveHelper* moveHelper );
 
 	void	CDECL		m_bClientSideAnimationHook( CRecvProxyData* data, void* entity, void* output );
 }

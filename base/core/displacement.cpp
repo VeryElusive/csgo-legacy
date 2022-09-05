@@ -206,6 +206,8 @@ void Offsets::Init( ) {
 
 	Sigs.GetSequenceActivity = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 7D 08 FF 56 8B F1 74 3D" ) );// @xref: "Need to handle the activity %d\n"
 
+	Sigs.CL_FireEvents = MEM::FindPattern( ENGINE_DLL, _( "55 8B EC 83 EC 08 53 8B 1D ? ? ? ? 56 57 83 BB ? ? 00 00 06" ) );
+
 	Sigs.ClanTag = MEM::FindPattern( ENGINE_DLL, _( "53 56 57 8B DA 8B F9 FF 15" ) );
 	//Sigs.CL_ReadPackets = MEM::FindPattern( ENGINE_DLL, _( "53 8A D9 8B 0D ? ? ? ? 56 57 8B B9" ) ); WHEN U DO READPACKETS FIX CHECK THIS OK TIM YES OK THANK 
 	Sigs.LoadNamedSkys = MEM::FindPattern( ENGINE_DLL, _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) );
