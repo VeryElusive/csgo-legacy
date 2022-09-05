@@ -406,8 +406,8 @@ void CMisc::AutoPeek( CUserCmd& cmd ) {
 }
 
 void CMisc::Thirdperson( ) {
-	if ( !Interfaces::Input->bCameraInThirdPerson )
-		Interfaces::Input->bCameraInThirdPerson = true;
+	if ( !Interfaces::Input->CAM_IsThirdPerson( ) )
+		Interfaces::Input->CAM_ToThirdPerson( );
 
 	Vector camForward;
 	QAngle camAngles;

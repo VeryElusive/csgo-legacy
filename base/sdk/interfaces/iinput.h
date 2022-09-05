@@ -7,17 +7,17 @@
 class IInput
 {
 public:
-	void*				vtable;					// 0x00
-	bool				m_bTrackIR;				// 0x04
-	bool				bMouseInitialized;		// 0x05
-	bool				bMouseActive;			// 0x06
-	std::byte			pad1[ 0x96 ];			// 0x07
-	bool				bCameraInThirdPerson;	// 0x9D
-	std::byte			pad2[0x2];				// 0x9E
-	Vector				vecCameraOffset;		// 0xA0
-	std::byte			pad3[ 0x40 ];			// 0xAC
-	CUserCmd*			pCommands;				// 0xEC
-	CVerifiedUserCmd*	pVerifiedCommands;		// 0xF0
+	std::uint8_t        pad0[ 4u ]{ };
+	bool                m_bTrackIR{ },
+		bMouseInitialized{ },
+		bMouseActive{ };
+	std::byte			pad1[ 158u ];
+	bool                bCameraInThirdPerson{ };
+	std::uint8_t        pad2[ 1u ]{ };
+	Vector         vecCameraOffset{ };
+	std::uint8_t        pad3[ 54u ]{ };
+	CUserCmd* pCommands{ };
+	CVerifiedUserCmd* pVerifiedCommands{ };
 
 	[[nodiscard]] CUserCmd* GetUserCmd(const int nSequenceNumber) const
 	{
@@ -27,5 +27,18 @@ public:
 	[[nodiscard]] CVerifiedUserCmd* GetVerifiedCmd(const int nSequenceNumber) const
 	{
 		return &pVerifiedCommands[nSequenceNumber % MULTIPLAYER_BACKUP];
+	}
+
+	__forceinline int CAM_IsThirdPerson( int slot = -1 )
+	{
+		return MEM::CallVFunc<int>( this, 32, slot );
+	}
+
+	__forceinline void CAM_ToThirdPerson( ) {
+		return MEM::CallVFunc<void>( this, 35 );
+	}
+
+	__forceinline void CAM_ToFirstPerson( ) {
+		return MEM::CallVFunc<void>( this, 36 );
 	}
 };

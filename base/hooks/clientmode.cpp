@@ -19,7 +19,7 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 	if ( Config::Get<bool>( Vars.RemovalZoom ) ) {
 		pSetup->flFOV = 90.f + Config::Get<int>( Vars.MiscFOV );
 		if ( ctx.m_pWeapon ) {
-			if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER && ctx.m_pWeapon->m_zoomLevel( ) == 2 && ctx.m_pLocal->m_bIsScoped( ) )
+			if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER_RIFLE && ctx.m_pWeapon->m_zoomLevel( ) == 2 && ctx.m_pLocal->m_bIsScoped( ) )
 				pSetup->flFOV = static_cast< float >( 1.f - std::clamp<float>( Config::Get<int>( Vars.SecondZoomAmt ), 1, 99 ) / 100.f ) * pSetup->flFOV;
 		}
 	}
@@ -42,7 +42,7 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 				else if ( ctx.m_pWeapon->m_zoomLevel( ) == 2 ) {
 					if ( Config::Get<bool>( Vars.RemovalZoom ) ) {
 						if ( ctx.m_pWeapon ) {
-							if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER )
+							if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER_RIFLE )
 								fov = Math::Interpolate( fov, static_cast< float >( 1.f - std::clamp<float>( Config::Get<int>( Vars.SecondZoomAmt ), 1, 99 ) / 100.f ) * ( 90.f + Config::Get<int>( Vars.MiscFOV ) ), addAmt );
 						}
 					}
@@ -62,8 +62,10 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 
 	if ( Config::Get<bool>( Vars.VisThirdPerson ) && Config::Get<keybind_t>( Vars.VisThirdPersonKey ).enabled )
 		Features::Misc.Thirdperson( );
-	else
-		Interfaces::Input->bCameraInThirdPerson = Features::Misc.TPFrac = 0;
+	else {
+		Interfaces::Input->CAM_ToFirstPerson( );
+		Features::Misc.TPFrac = 0;
+	}
 
 
 	if ( ctx.m_bFakeDucking && !ctx.m_pLocal->IsDead( ) )

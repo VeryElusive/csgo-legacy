@@ -85,12 +85,12 @@ public:
 
 	int	SendDatagram(bf_write* pDatagram)
 	{
-		return MEM::CallVFunc<int>(this, 46, pDatagram);
+		return MEM::CallVFunc<int>(this, 48, pDatagram);
 	}
 
 	bool Transmit(bool bOnlyReliable = false)
 	{
-		return MEM::CallVFunc<bool>(this, 49, bOnlyReliable);
+		return MEM::CallVFunc<bool>(this, 51, bOnlyReliable);
 	}
 }; // Size: 0x0444
 

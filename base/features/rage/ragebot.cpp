@@ -158,10 +158,9 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 
 		float scaleFloat{ scale / 100.f };
 
-		auto& matrix{ aimTarget.m_pRecord->m_pCompensatedMatrix[ hitbox->iBone ] };
+		auto& matrix{ aimTarget.m_pRecord->m_pMatrix[ hitbox->iBone ] };
 
-		Vector center{ ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f };
-		center = Math::VectorTransform( center, matrix );
+		const auto center{ Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, matrix ) };
 
 		aimPoints.emplace_back( center, hitbox->iGroup, center );
 
@@ -174,7 +173,7 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 }
 
 // TODO: multipoints
-void CRageBot::Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index ) {
+void CRageBot::Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index ) {
 	if ( hitbox->flRadius <= 0.f ) {
 		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x + ( hitbox->vecBBMin.x - center.x ) * scale, center.y, center.z ), matrix ),
 			hitbox->iGroup, center );
@@ -377,7 +376,7 @@ void CRageBot::Fire( CUserCmd& cmd ) {
 
 
 			if ( Config::Get<bool>( Vars.MiscHitMatrix ) )
-				Features::Visuals.Chams.AddHitmatrix( target->m_pPlayer, target->m_pRecord->m_pCompensatedMatrix );
+				Features::Visuals.Chams.AddHitmatrix( target->m_pPlayer, target->m_pRecord->m_pMatrix );
 
 			const std::string message =
 				_( "shot " ) + ( std::string )Interfaces::Engine->GetPlayerInfo( target->m_pPlayer->Index( ) )->szName +
@@ -661,7 +660,7 @@ int CRageBot::QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> recor
 		if ( hb == HITBOX_STOMACH || hb == HITBOX_HEAD ) {
 			float dmg{ static_cast< float >( ctx.m_pWeaponData->iDamage ) };
 			Features::Autowall.ScaleDamage( player, dmg,
-				ctx.m_pWeaponData->flArmorRatio, data.hitgroup, ctx.m_pWeaponData->flHeadShotMultiplier );
+				ctx.m_pWeaponData->flArmorRatio, data.hitgroup, 4.f );//ctx.m_pWeaponData->flHeadShotMultiplier
 
 			if ( dmg - data.dmg <= 5.f
 				|| ( data.dmg >= 110 ) )

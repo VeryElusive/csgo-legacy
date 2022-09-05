@@ -197,22 +197,18 @@ enum EItemDefinitionIndex : short
 
 enum EWeaponType : int
 {
-	WEAPONTYPE_KNIFE = 0,
-	WEAPONTYPE_PISTOL = 1,
-	WEAPONTYPE_SUBMACHINEGUN = 2,
-	WEAPONTYPE_RIFLE = 3,
-	WEAPONTYPE_SHOTGUN = 4,
-	WEAPONTYPE_SNIPER = 5,
-	WEAPONTYPE_MACHINEGUN = 6,
-	WEAPONTYPE_C4 = 7,
-	WEAPONTYPE_PLACEHOLDER = 8,
-	WEAPONTYPE_GRENADE = 9,
-	WEAPONTYPE_HEALTHSHOT = 11,
-	WEAPONTYPE_FISTS = 12,
-	WEAPONTYPE_BREACHCHARGE = 13,
-	WEAPONTYPE_BUMPMINE = 14,
-	WEAPONTYPE_TABLET = 15,
-	WEAPONTYPE_MELEE = 16
+	WEAPONTYPE_UNKNOWN = -1,
+	WEAPONTYPE_KNIFE,
+	WEAPONTYPE_PISTOL,
+	WEAPONTYPE_SUBMACHINEGUN,
+	WEAPONTYPE_RIFLE,
+	WEAPONTYPE_SHOTGUN,
+	WEAPONTYPE_SNIPER_RIFLE,
+	WEAPONTYPE_MACHINEGUN,
+	WEAPONTYPE_C4,
+	WEAPONTYPE_TASER,
+	WEAPONTYPE_GRENADE,
+	WEAPONTYPE_HEALTHSHOT = 11
 };
 #pragma endregion
 
@@ -611,68 +607,114 @@ public:
 class CCSWeaponData
 {
 public:
-	std::byte pad0[0x14];			// 0x0000
-	int iMaxClip1;					// 0x0014
-	int iMaxClip2;					// 0x0018
-	int iDefaultClip1;				// 0x001C
-	int iDefaultClip2;				// 0x0020
-	int iPrimaryMaxReserveAmmo;		// 0x0024
-	int iSecondaryMaxReserveAmmo;	// 0x0028
-	const char* szWorldModel;		// 0x002C
-	const char* szViewModel;		// 0x0030
-	const char* szDroppedModel;		// 0x0034
-	std::byte pad1[0x50];			// 0x0038
-	const char* szHudName;			// 0x0088
-	const char* szWeaponName;		// 0x008C
-	std::byte pad2[0x2];			// 0x0090
-	bool bIsMeleeWeapon;			// 0x0092
-	std::byte pad3[0x9];			// 0x0093
-	float flWeaponWeight;			// 0x009C
-	std::byte pad4[0x4];			// 0x00A0
-	int iSlot;						// 0x00A4
-	int iPosition;					// 0x00A8
-	std::byte pad5[0x1C];			// 0x00AC
-	int nWeaponType;				// 0x00C8
-	std::byte pad6[0x4];			// 0x00CC
-	int iWeaponPrice;				// 0x00D0
-	int iKillAward;					// 0x00D4
-	const char* szAnimationPrefix;	// 0x00D8
-	float flCycleTime;				// 0x00DC
-	float flCycleTimeAlt;			// 0x00E0
-	std::byte pad8[0x8];			// 0x00E4
-	bool bFullAuto;					// 0x00EC
-	std::byte pad9[0x3];			// 0x00ED
-	int iDamage;					// 0x00F0
-	float flHeadShotMultiplier;		// 0x00F4
-	float flArmorRatio;				// 0x00F8
-	int iBullets;					// 0x00FC
-	float flPenetration;			// 0x0100
-	std::byte pad10[0x8];			// 0x0104
-	float flRange;					// 0x010C
-	float flRangeModifier;			// 0x0110
-	float flThrowVelocity;			// 0x0114
-	std::byte pad11[0xC];			// 0x0118
-	bool bHasSilencer;				// 0x0124
-	std::byte pad12[0xF];			// 0x0125
-	float flMaxSpeed;				// 0x0134
-	float flMaxSpeedAlt;			// 0x0134
-	std::byte pad13[0x4];			// 0x013C
-	float flSpread[2];				// 0x0140
-	float flInaccuracyCrouch[2];	// 0x0148
-	float flInaccuracyStand[2];		// 0x0150
-	std::byte pad14[0x8];			// 0x0158
-	float flInaccuracyJump[2];		// 0x0160
-	float flInaccuracyLand[2];		// 0x0168
-	float flInaccuracyLadder[2];	// 0x0170
-	float flInaccuracyFire[2];		// 0x0178
-	float flInaccuracyMove[2];		// 0x0180
-	float flInaccuracyReload;		// 0x0188
-	int iRecoilSeed;				// 0x018C
-	float flRecoilAngle[2];			// 0x0190
-	float flRecoilAngleVariance[2];	// 0x0198
-	float flRecoilMagnitude[2];		// 0x01A0
-	float flRecoilMagnitudeVariance[2]; // 0x01A8
-	int iSpreadSeed;				// 0x01B0
+	
+	private:
+	std::byte pad0[ 0x4 ];											// 0x0000
+
+public:
+	const char* m_weapon_name;						// 0x0004 -- actual weapon name, even for usp-s and revolver. ex: "weapon_revolver"
+	std::byte pad1[ 0xC ];// 0x0008
+	int               iMaxClip1;							// 0x0014
+	int				  iMaxClip2;							// 0x0018
+	int				  iDefaultclip1;						// 0x001C
+	int		          iDefaultclip2;						// 0x0020
+	int               iMaxReserve;						// 0x0024
+	std::byte pad2[ 0x4 ];												// 0x0028
+	const char* szWorldModel;						// 0x002C
+	const char* szViewModel;							// 0x0030
+	const char* szWorldDroppedModel;				// 0x0034
+	std::byte pad3[ 0x48 ];											// 0x0038
+	const char* szAmmoType;							// 0x0080
+	uint8_t           pad_0084[ 4 ];						// 0x0084
+	const char* szHudName;							// 0x0088
+	const char* zWeaponName;				// 0x008C -- shitty weapon name, shows "weapon_deagle" for revolver / etc.
+	uint8_t           pad_0090[ 56 ];						// 0x0090
+	int      nWeaponType;						// 0x00C8
+	int			      iWeaponPrice;						// 0x00CC
+	int               iKillAward;							// 0x00D0
+	const char* szAnimationPrefix;					// 0x00D4
+	float			  flCycleTime;							// 0x00D8
+	float			  flCycleTime2;						// 0x00DC
+	float			  flTimeToIdle;						// 0x00E0
+	float			  flIdleInterval;						// 0x00E4
+	bool			  bIsFullAuto;						// 0x00E5
+	std::byte pad4[ 0x3 ];												// 0x00E8
+	int               iDamage;								// 0x00EC
+	float             flArmorRatio;						// 0x00F0
+	int               iBullets;							// 0x00F4
+	float             flPenetration;						// 0x00F8
+	float             flFlinchVelocityModifierLarge;		// 0x00FC
+	float             flFlinchVelocityModifierSmall;		// 0x0100
+	float             flRange;								// 0x0104
+	float             flRangeModifier;						// 0x0108
+	float			  flThrowVelocity;						// 0x010C
+	std::byte pad5[ 0xC ];												// 0x0118
+	bool			  bHasSilencer;						// 0x0119
+	std::byte pad6[ 0x3 ];												// 0x011C
+	const char* szSilencerModel;						// 0x0120
+	int				  iCrosshairMinDistance;				// 0x0124
+	int				  iCrosshairDeltaDistance;			// 0x0128
+	float             flMaxSpeed;					// 0x012C
+	float             flMaxSpeedAlt;				// 0x0130
+	float			  flSpread;								// 0x0134
+	float			  flSpreadAlt;							// 0x0138
+	float		flInaccuracyCrouch;			// 0x013C
+	float		flInaccuracyCrouchAlt;		// 0x0140
+	float		flInaccuracyStand;			// 0x0144
+	float		flInaccuracyStandAlt;		// 0x0148
+	float		flInaccuracyJumpInitial;	// 0x014C
+	float		flInaccuracyJump;			// 0x0150
+	float		flInaccuracyJumpAlt;		// 0x0154
+	float		flInaccuracyLand;			// 0x0158
+	float		flInaccuracyLandAlt;		// 0x015C
+	float		flInaccuracyLadder;			// 0x0160
+	float		flInaccuracyLadderAlt;		// 0x0164
+	float		flInaccuracyFire;			// 0x0168
+	float		flInaccuracyFireAlt;		// 0x016C
+	float		flInaccuracyMove;			// 0x0170
+	float		flInaccuracyMoveAlt;		// 0x0174
+	float		flInaccuracyReload;			// 0x0178
+	int			iRecoilSeed;				// 0x017C
+	float		flRecoilAngle;				// 0x0180
+	float		flRecoilAngleAlt;			// 0x0184
+	float		flRecoilAngleVariance;		// 0x0188
+	float		flRecoilAngleVarianceAlt;	// 0x018C
+	float		flRecoilMagnitude;			// 0x0190
+	float		flRecoilMagnitudeAlt;		// 0x0194
+	float		flRecoilMagnitudeVariance;	// 0x0198
+	float		flRecoilMagnitudeVarianceAlt;	// 0x019C
+	float		flRecoveryTimeCrouch;		// 0x01A0
+	float		flRecoveryTimeStand;		// 0x01A4
+	float		flRecoveryTimeCrouchFinal;	// 0x01A8
+	float		flRecoveryTimeStandFinal;	// 0x01AC
+	int			iRecoveryTransitionStartBullet;	// 0x01B0 
+	int			iRecoveryTransitionEndBullet;	// 0x01B4
+	bool		bUnzoomAfterShot;			// 0x01B8
+	std::byte pad7 [0x3 ];												// 0x01B8
+	bool		      bHideViewModelZoomed;				// 0x01B9// TODO: USE THIS!
+	bool			  bZoomLevels;						// 0x01BA
+	std::byte pad8 [0x2];												// 0x01BC
+	int				  iZoomFOV[ 2 ];						// 0x01C4
+	float			  flZoomTime[ 3 ];						// 0x01D0
+	std::byte pad9[ 0x8 ];												// 0x01D8
+	float             flAddonScale;						// 0x01DC
+	std::byte pad10[ 0x8 ];												// 0x01E4
+	int				  iTracerFrequencey;					// 0x01E8
+	int				  iTracerFrequenceyAlt;				// 0x01EC
+	std::byte pad11[ 0x18 ];											// 0x0200
+	int				  iHealthPerShot;					// 0x0204
+	std::byte pad12[ 0x8 ];												// 0x020C
+	float			  flInaccuracyPitchShift;				// 0x0210
+	float			  flInaccuracyAltSoundThreshold;		// 0x0214
+	float			  flBotAudibleRange;					// 0x0218
+	std::byte pad13[ 0x8 ];												// 0x0220
+	const char* szWrongTeamMessage;						// 0x0224
+	bool			  bHasBurstMode;						// 0x0225
+	std::byte pad14[ 0x3 ];												// 0x0228
+	bool			  bIsRevolver;						// 0x0229
+	bool			  bCanShootUnderwater;				// 0x022A
+	std::byte pad15[ 0x2 ];												// 0x022C			
+
 
 	bool IsGun() const
 	{
@@ -682,7 +724,7 @@ public:
 		case WEAPONTYPE_SUBMACHINEGUN:
 		case WEAPONTYPE_RIFLE:
 		case WEAPONTYPE_SHOTGUN:
-		case WEAPONTYPE_SNIPER:
+		case WEAPONTYPE_SNIPER_RIFLE:
 		case WEAPONTYPE_MACHINEGUN:
 			return true;
 		}

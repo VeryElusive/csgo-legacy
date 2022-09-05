@@ -70,7 +70,6 @@ struct LagRecord_t {
 
 	std::array<float, 24> m_flPoseParameter;
 
-	matrix3x4_t m_pCompensatedMatrix[ 256 ]{ };
 	matrix3x4_t m_pMatrix[ 256 ]{ };
 	int m_iBonesCount{ 256 };
 

@@ -172,40 +172,37 @@ class IClientRenderable;
 class IVModelInfo
 {
 public:
-	virtual							~IVModelInfo() { }
-	virtual const Model_t*			GetModel(int nModelIndex) const = 0;
-	virtual int						GetModelIndex(const char* szName) const = 0;
-	virtual const char*				GetModelName(const Model_t* pModel) const = 0;
-	virtual vcollide_t*				GetVCollide(const Model_t* pModel) const = 0;
-	virtual vcollide_t*				GetVCollide(int nModelIndex) const = 0;
-	virtual vcollide_t*				GetVCollide(const Model_t* pModel, float flScale) const = 0;
-	virtual vcollide_t*				GetVCollide(int nModelIndex, float flScale) const = 0;
-	virtual void					GetModelBounds(const Model_t* pModel, Vector& mins, Vector& maxs) const = 0;
-	virtual void					GetModelRenderBounds(const Model_t* pModel, Vector& mins, Vector& maxs) const = 0;
-	virtual int						GetModelFrameCount(const Model_t* pModel) const = 0;
-	virtual int						GetModelType(const Model_t* pModel) const = 0;
-	virtual void*					GetModelExtraData(const Model_t* pModel) = 0;
-	virtual bool					ModelHasMaterialProxy(const Model_t* pModel) const = 0;
-	virtual bool					IsTranslucent(Model_t const* pModel) const = 0;
-	virtual bool					IsTranslucentTwoPass(const Model_t* pModel) const = 0;
-private:
-	virtual void					unused0() { }
-public:
-	virtual ETranslucencyType		ComputeTranslucencyType(const Model_t* pModel, int nSkin, int nBody) = 0;
-	virtual int						GetModelMaterialCount(const Model_t* pModel) const = 0;
-	virtual void					GetModelMaterials(const Model_t* pModel, int iCount, IMaterial** ppMaterials) = 0;
-	virtual bool					IsModelVertexLit(const Model_t* pModel) const = 0;
-	virtual const char*				GetModelKeyValueText(const Model_t* pModel) = 0;
-	virtual bool					GetModelKeyValue(const Model_t* pModel, CUtlBuffer& buf) = 0;
-	virtual float					GetModelRadius(const Model_t* pModel) = 0;
-	virtual const studiohdr_t*		FindModel(const studiohdr_t* pStudioHdr, void** ppCache, const char* szModelName) const = 0;
-	virtual const studiohdr_t*		FindModel(void* pCache) const = 0;
-	virtual virtualmodel_t*			GetVirtualModel(const studiohdr_t* pStudioHdr) const = 0;
-	virtual std::uint8_t*			GetAnimBlock(const studiohdr_t* pStudioHdr, int iBlock) const = 0;
-	virtual bool					HasAnimBlockBeenPreloaded(studiohdr_t const* pStudioHdr, int iBlock) const = 0;
-	virtual void					GetModelMaterialColorAndLighting(const Model_t* pModel, const Vector& vecOrigin, const QAngle& angles, Trace_t* pTrace, Vector& vecLighting, Vector& matColor) = 0;
-	virtual void					GetIlluminationPoint(const Model_t* pModel, IClientRenderable* pRenderable, const Vector& vecOrigin, const QAngle& angles, Vector* pLightingCenter) = 0;
-	virtual int						GetModelContents(int nModelIndex) const = 0;
+	virtual							~IVModelInfo( ) { }
+	virtual const Model_t* GetModel( int nModelIndex ) const = 0;
+	virtual int						GetModelIndex( const char* szName ) const = 0;
+	virtual const char* GetModelName( const Model_t* pModel ) const = 0;
+	virtual vcollide_t* GetVCollide( const Model_t* pModel ) const = 0;
+	virtual vcollide_t* GetVCollide( int nModelIndex ) const = 0;
+	virtual vcollide_t* GetVCollide( const Model_t* pModel, float flScale ) const = 0;
+	virtual vcollide_t* GetVCollide( int nModelIndex, float flScale ) const = 0;
+	virtual void					GetModelBounds( const Model_t* pModel, Vector& mins, Vector& maxs ) const = 0;
+	virtual void					GetModelRenderBounds( const Model_t* pModel, Vector& mins, Vector& maxs ) const = 0;
+	virtual int						GetModelFrameCount( const Model_t* pModel ) const = 0;
+	virtual int						GetModelType( const Model_t* pModel ) const = 0;
+	virtual void* GetModelExtraData( const Model_t* pModel ) = 0;
+	virtual bool					ModelHasMaterialProxy( const Model_t* pModel ) const = 0;
+	virtual bool					IsTranslucent( Model_t const* pModel ) const = 0;
+	virtual bool					IsTranslucentTwoPass( const Model_t* pModel ) const = 0;
+	virtual ETranslucencyType    ComputeTranslucencyType( const Model_t* model, int nSkin, int nBody ) = 0;
+	virtual int                             GetModelMaterialCount( const Model_t* model ) const = 0;
+	virtual void                            GetModelMaterials( const Model_t* model, int count, IMaterial** ppMaterial ) = 0;
+	virtual bool                            IsModelVertexLit( const Model_t* model ) const = 0;
+	virtual const char* GetModelKeyValueText( const Model_t* model ) = 0;
+	virtual bool                            GetModelKeyValue( const Model_t* model, CUtlBuffer& buf ) = 0;
+	virtual float                           GetModelRadius( const Model_t* model ) = 0;
+	virtual CStudioHdr* GetStudioHdr( MDLHandle_t handle ) = 0;
+	virtual const studiohdr_t* FindModel( const studiohdr_t* pStudioHdr, void** cache, const char* modelname ) const = 0;
+	virtual const studiohdr_t* FindModel( void* cache ) const = 0;
+	virtual virtualmodel_t* GetVirtualModel( const studiohdr_t* pStudioHdr ) const = 0;
+	virtual uint8_t* GetAnimBlock( const studiohdr_t* pStudioHdr, int iBlock ) const = 0;
+	virtual void                            GetModelMaterialColorAndLighting( const Model_t* model, Vector const& origin, QAngle const& angles, void* pTrace, Vector& lighting, Vector& matColor ) = 0;
+	virtual void                            GetIlluminationPoint( const Model_t* model, IClientRenderable* pRenderable, Vector const& origin, QAngle const& angles, Vector* pLightingCenter ) = 0;
+	virtual int                             GetModelContents( int modelIndex ) const = 0;
 	virtual studiohdr_t*			GetStudioModel(const Model_t* pModel) = 0;
 	virtual int						GetModelSpriteWidth(const Model_t* pModel) const = 0;
 	virtual int						GetModelSpriteHeight(const Model_t* pModel) const = 0;

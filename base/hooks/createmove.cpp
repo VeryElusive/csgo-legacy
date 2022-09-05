@@ -40,6 +40,7 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 	}
 }
 
+// TODO: FIX SENDPACKET
 static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametime, bool bIsActive, bool& bSendPacket )
 {
 	static auto oCreateMove = DTR::CreateMoveProxy.GetOriginal<decltype( &Hooks::hkCreateMoveProxy )>( );
@@ -302,7 +303,7 @@ __declspec( naked ) void FASTCALL Hooks::hkCreateMoveProxy( [[maybe_unused]] IBa
 	{
 		push	ebp
 		mov		ebp, esp; // store the stack
-		push	ebx; // bSendPacket
+		push	bl; // bSendPacket
 		push	esp; // restore the stack
 		push	dword ptr[ bIsActive ]; // ebp + 16
 		push	dword ptr[ flInputSampleFrametime ]; // ebp + 12

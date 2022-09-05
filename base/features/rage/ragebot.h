@@ -13,7 +13,7 @@ case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) na
 case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<bool>( Vars.name##SMG );break; \
 case WEAPONTYPE_RIFLE: name = Config::Get<bool>( Vars.name##Rifle );break; \
 case WEAPONTYPE_SHOTGUN: name = Config::Get<bool>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<bool>( Vars.name##Scout ); else name = Config::Get<bool>( Vars.name##Auto );break; \
+case WEAPONTYPE_SNIPER_RIFLE: if ( idx == WEAPON_AWP ) name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<bool>( Vars.name##Scout ); else name = Config::Get<bool>( Vars.name##Auto );break; \
 case WEAPONTYPE_MACHINEGUN: name = Config::Get<bool>( Vars.name##Machine );break; }\
 
 #define SETRAGEINT( name ) switch ( type ) { \
@@ -21,7 +21,7 @@ case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) na
 case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<int>( Vars.name##SMG );break; \
 case WEAPONTYPE_RIFLE: name = Config::Get<int>( Vars.name##Rifle );break; \
 case WEAPONTYPE_SHOTGUN: name = Config::Get<int>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<int>( Vars.name##Scout ); else name = Config::Get<int>( Vars.name##Auto );break; \
+case WEAPONTYPE_SNIPER_RIFLE: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<int>( Vars.name##Scout ); else name = Config::Get<int>( Vars.name##Auto );break; \
 case WEAPONTYPE_MACHINEGUN: name = Config::Get<int>( Vars.name##Machine );break; }\
 
 struct AimPoint_t {
@@ -72,7 +72,7 @@ private:
 	void ScanTargets( );
 	bool CreatePoints( AimTarget_t& aim_target, std::vector<AimPoint_t>& aim_points );
 	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
-	void Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index );
+	void Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index );
 	void ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, AimPoint_t& point );
 	std::optional< AimPoint_t> PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
 	std::optional<AimTarget_t> PickTarget( );

@@ -35,8 +35,8 @@ bool Hooks::Setup( ) {
 	if ( !DTR::OverrideView.Create( MEM::GetVFunc( Interfaces::ClientMode, VTABLE::OVERRIDEVIEW ), &hkOverrideView ) )
 		return false;	
 
-	if ( !DTR::DoPostScreenEffects.Create( MEM::GetVFunc( Interfaces::ClientMode, VTABLE::DOPOSTSCREENEFFECTS ), &hkDoPostScreenEffects ) )
-		return false;	
+	//if ( !DTR::DoPostScreenEffects.Create( MEM::GetVFunc( Interfaces::ClientMode, VTABLE::DOPOSTSCREENEFFECTS ), &hkDoPostScreenEffects ) )
+	//	return false;	
 	
 	//if ( !DTR::CMCreateMove.Create( MEM::GetVFunc( Interfaces::ClientMode, 24 ), &hkCMCreateMove ) )
 	//	return false;
