@@ -19,6 +19,7 @@ struct AnimData_t {
 		m_vecMins( player->m_vecMins( ) ), 
 		m_vecMaxs( player->m_vecMaxs( ) ),
 		m_vecVelocity( player->m_vecVelocity( ) ),
+		m_flLowerBodyYawTarget( player->m_flLowerBodyYawTarget( ) ),
 		m_pWeapon( player->GetWeapon( ) )
 	{
 		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * player->m_iAnimationLayersCount( ) );
@@ -28,6 +29,7 @@ struct AnimData_t {
 
 	float m_flSimulationTime{ };
 	float m_flDuckAmount{ };
+	float m_flLowerBodyYawTarget{ };
 
 	Vector m_vecOrigin{ };
 	Vector m_vecMins{ };
@@ -57,6 +59,7 @@ struct LagRecord_t {
 	bool m_bAnimated{ };
 	//bool m_bMultiMatrix{ };
 	bool m_bDormant{ };
+	bool m_bBrokeLBY{ };
 
 	std::optional<bool> m_bLanded{ };
 	float m_flOnGroundTime{ };
@@ -141,6 +144,7 @@ public:
 
 	bool SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags );
 
+	void UpdateLocalFull( CUserCmd& cmd, bool sendPacket );
 	void SetupLocalMatrix( );
 	void UpdateLocal( const QAngle& view_angles, const bool only_anim_state );
 	void UpdateCommands( );

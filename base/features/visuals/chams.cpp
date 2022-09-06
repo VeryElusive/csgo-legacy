@@ -222,26 +222,6 @@ void CChams::Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, ma
 			}
 		}
 
-		if ( type == LOCAL && Config::Get<bool>( Vars.ChamDesync ) ) {
-			Color Col{ Config::Get<Color>( Vars.ChamDesyncCol ) };
-
-			int Mat{ Config::Get<int>( Vars.ChamDesyncMat ) };
-
-			OverrideMaterial(
-				Mat, false,
-				Col.Get<COLOR_R>( ),
-				Col.Get<COLOR_G>( ),
-				Col.Get<COLOR_B>( ),
-				Col.Get<COLOR_A>( ),
-				GlowStrength,
-				false
-			);
-
-			oDrawModel( Interfaces::StudioRender, 0, pResults, info, ctx.m_cFakeData.m_matMatrix, flFlexWeights, flFlexDelayedWeights, vecModelOrigin, nFlags );
-
-			Interfaces::StudioRender->ForcedMaterialOverride( nullptr );
-		}
-
 		CheckIfPlayer( ChamHid, type ) {
 			Color Col{ };
 			GetPlayerColorFig( type, ChamHidCol, Col );

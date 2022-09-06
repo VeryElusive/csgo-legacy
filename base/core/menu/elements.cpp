@@ -403,8 +403,11 @@ void Menu::DrawRage( ) {
 			{
 				AntiaimGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.AntiaimEnable ) );
 				AntiaimGroup->Combo( _( "Pitch" ), Config::Get<int>( Vars.AntiaimPitch ), { _( "Default" ), _( "Up" ), _( "Down" ), _( "Zero" ) } );
-				AntiaimGroup->Combo( _( "Yaw" ), Config::Get<int>( Vars.AntiaimYaw ), { _( "Default" ), _( "Backward" ), _( "Rotate" ), _( "Jitter" ) } );
-				if ( Config::Get<int>( Vars.AntiaimYaw ) == 2 || Config::Get<int>( Vars.AntiaimYaw ) == 3 )
+				AntiaimGroup->Combo( _( "Yaw" ), Config::Get<int>( Vars.AntiaimYaw ), { _( "Default" ), _( "Backward" ), _( "Left" ), _( "Right" ) } );
+
+				AntiaimGroup->Combo( _( "Yaw add" ), Config::Get<int>( Vars.AntiaimYawAdd ), { _( "None" ), _( "Jitter" ) } );
+
+				if ( Config::Get<int>( Vars.AntiaimYawAdd ) == 1 || Config::Get<int>( Vars.AntiaimYawAdd ) == 2 )
 					AntiaimGroup->Slider( _( "Yaw range" ), Config::Get<int>( Vars.AntiaimYawRange ), 2, 180 );
 
 				if ( Config::Get<int>( Vars.AntiaimYaw ) == 2 )
@@ -412,15 +415,22 @@ void Menu::DrawRage( ) {
 
 				AntiaimGroup->Combo( _( "At targets" ), Config::Get<int>( Vars.AntiaimAtTargets ), { _( "Off" ), _( "FOV" ), _( "Distance" ) } );
 
-				AntiaimGroup->Checkbox( _( "Desync" ), Config::Get<bool>( Vars.AntiaimDesync ) );
+				AntiaimGroup->Checkbox( _( "Fake angles" ), Config::Get<bool>( Vars.AntiaimDesync ) );
+				if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
+					AntiaimGroup->Combo( _( "Break angle" ), Config::Get<int>( Vars.AntiaimBreakAngle ), { _( "Opposite" ), _( "Back" ) } );
+
+					AntiaimGroup->Checkbox( _( "Yaw randomisation" ), Config::Get<bool>( Vars.AntiaimDistortion ) );
+					if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
+						AntiaimGroup->Slider( _( "Randomisation range" ), Config::Get<int>( Vars.AntiaimDistortionRange ), 0.f, 180.f );
+
+						AntiaimGroup->Checkbox( _( "Spike" ), Config::Get<bool>( Vars.AntiaimDistortionSpike ) );
+						if ( !Config::Get<bool>( Vars.AntiaimDistortionSpike ) )
+							AntiaimGroup->Slider( _( "Speed" ), Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, std::max( 2, Config::Get<int>( Vars.AntiaimDistortionRange ) / 2 ) );
+						
+					}
+				}
 
 				AntiaimGroup->Checkbox( _( "Anti backstab" ), Config::Get<bool>( Vars.AntiaimAntiBackStab ) );
-
-				AntiaimGroup->Label( _( "Flip desync" ) );
-				AntiaimGroup->Keybind( _( "Flip desync key" ), Config::Get<keybind_t>( Vars.AntiaimInvert ) );
-
-				AntiaimGroup->Label( _( "Constant invert" ) );
-				AntiaimGroup->Keybind( _( "Constant Invert key" ), Config::Get<keybind_t>( Vars.AntiaimInvertSpam ) );
 
 				//AntiaimGroup->Combo( _( "Auto direction" ), Config::Get<int>( Vars.AntiaimFreestand ), { _( "Off" ), _( "Desync side" ), _( "Yaw" ) } );
 
@@ -696,12 +706,6 @@ void Menu::DrawVisual( ) {
 					ChamGroup->Checkbox( _( "Onshot chams" ), Config::Get<bool>( Vars.MiscHitMatrix ) );
 					ChamGroup->ColorPicker( _( "Onshot chams Color" ), Config::Get<Color>( Vars.MiscHitMatrixCol ) );
 					ChamGroup->Combo( _( "Onshot chams material" ), Config::Get<int>( Vars.MiscHitMatrixMat ), items );
-				}
-
-				if ( ActiveSubTab == 0 ) {
-					ChamGroup->Checkbox( _( "Desync chams" ), Config::Get<bool>( Vars.ChamDesync ) );
-					ChamGroup->ColorPicker( _( "Desync chams Col" ), Config::Get<Color>( Vars.ChamDesyncCol ) );
-					ChamGroup->Combo( _( "Desync chams material" ), Config::Get<int>( Vars.ChamDesyncMat ), items );
 				}
 
 				PlayerIntSlider( ChamGroup, _( "Glow strength" ), ChamGlowStrength, ActiveSubTab, 0, 100 );

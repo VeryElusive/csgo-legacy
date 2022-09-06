@@ -412,12 +412,6 @@ void CVisuals::KeybindsList( ) {
 	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
 		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );
 
-	if ( Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
-		addBind( _( "Invert desync" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvert ).mode );
-
-	if ( Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).enabled )
-		addBind( _( "Constant Invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).mode );
-
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		addBind( _( "Slow walk" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).mode );
 

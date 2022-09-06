@@ -56,10 +56,6 @@ struct Variables_t {
 	C_ADD_VARIABLE( Color, MiscHitMatrixCol, Color( 255, 255, 255 ) );
 	C_ADD_VARIABLE( int, MiscHitMatrixMat, 0 );
 
-	C_ADD_VARIABLE( bool, ChamDesync, false );
-	C_ADD_VARIABLE( Color, ChamDesyncCol, Color( 255, 107, 107 ) );
-	C_ADD_VARIABLE( int, ChamDesyncMat, 0 );
-
 	// other
 	C_ADD_VARIABLE( bool, RemovalScope, false );
 	C_ADD_VARIABLE( bool, RemovalFlash, false );
@@ -235,12 +231,16 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, AntiaimAtTargets, 0 );
 	C_ADD_VARIABLE( int, AntiaimPitch, 0 );
 	C_ADD_VARIABLE( int, AntiaimYaw, 0 );
+	C_ADD_VARIABLE( int, AntiaimBreakAngle, 0 );
+	C_ADD_VARIABLE( int, AntiaimYawAdd, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawRange, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawSpeed, 0 );
 	C_ADD_VARIABLE( int, AntiaimFreestand, 0 );
+	C_ADD_VARIABLE( bool, AntiaimDistortion, false );
+	C_ADD_VARIABLE( int, AntiaimDistortionRange, 0 );
+	C_ADD_VARIABLE( int, AntiaimDistortionSpeed, 0 );
+	C_ADD_VARIABLE( bool, AntiaimDistortionSpike, false );
 	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
-	C_ADD_VARIABLE( keybind_t, AntiaimInvert, { } );
-	C_ADD_VARIABLE( keybind_t, AntiaimInvertSpam, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimRight, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimLeft, { } );
 	C_ADD_VARIABLE( Color, AntiaimManualCol, Color( 255, 255, 255 ) );

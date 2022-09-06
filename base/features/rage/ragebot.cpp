@@ -541,28 +541,6 @@ int CRageBot::OffsetDelta( CBasePlayer* player, std::shared_ptr<LagRecord_t> rec
 	return abs( delta );
 }
 
-bool canHitHead( CBasePlayer* player, std::shared_ptr<LagRecord_t> record ) {
-	const auto hitboxSet{ player->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( player->m_nHitboxSet( ) ) };
-	const auto hitbox = hitboxSet->GetHitbox( HITBOX_HEAD );
-	if ( !hitbox )
-		return false;
-
-	const auto point = Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ HITBOX_HEAD ] );
-
-	const auto dir{ ( point - ctx.m_vecEyePos ).Normalized( ) };
-	Vector vecEnd{ ctx.m_vecEyePos + ( dir * ctx.m_pWeaponData->flRange ) };
-
-	CGameTrace trace{ };
-	CTraceFilter traceFilter{ ctx.m_pLocal };
-
-	Interfaces::EngineTrace->TraceRay(
-		{ ctx.m_vecEyePos, vecEnd }, MASK_SHOT_PLAYER,
-		&traceFilter, &trace
-	);
-
-	return trace.iHitbox == HITBOX_HEAD;
-}
-
 std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 	if ( entry.m_pRecords.empty( ) )
 		return nullptr;
@@ -606,28 +584,15 @@ std::shared_ptr<LagRecord_t> CRageBot::GetBestLagRecord( PlayerEntry& entry ) {
 		bool metScaled{ };
 
 		const int dmg{ QuickScan( entry.m_pPlayer, record, metScaled ) };
-		const auto eyeDelta{ std::abs( 90.f - OffsetDelta( entry.m_pPlayer, record ) ) };
 
 		if ( dmg > bestDamage ) {
 			bestDamage = dmg;
 			bestRecord = record;
-			bestEyedelta = eyeDelta;
 		}
 
-		if ( canHitHead( entry.m_pPlayer, record ) && metScaled ) {
-			bool metScaled{ };
-			if ( record->m_angEyeAngles.x < 55.f ) {
-				bestRecord = record;
-				break;
-			}
-			else if ( eyeDelta < 25.f ) {
-				bestRecord = record;
-				break;
-			}
-			else if ( eyeDelta < bestEyedelta ) {
-				bestEyedelta = eyeDelta;
-				bestRecord = record;
-			}
+		if ( metScaled && record->m_bBrokeLBY ) {
+			bestRecord = record;
+			break;
 		}
 	}
 

@@ -1,25 +1,13 @@
 #include "animation.h"
 
-/*void CAnimationSys::UpdateCommands( ) {
-	if ( ctx.m_pQueuedCommands.empty( ) )
+void CAnimationSys::UpdateLocalFull( CUserCmd& cmd, bool sendPacket ) {
+	auto i = 1;
+	auto chokedCmds = Interfaces::ClientState->nChokedCommands;
+
+	const auto totalCmds = chokedCmds + 1;
+	if ( totalCmds < 1
+		|| !sendPacket )
 		return;
-	
-	if ( ctx.m_pLocal->IsDead( ) ) {
-		if ( !ctx.m_pQueuedCommands.empty( ) )
-			ctx.m_pQueuedCommands.clear( );
-
-		return;
-	}
-
-	CAnimationLayer BackupAnimLayers[ 13 ];
-	memcpy( BackupAnimLayers, ctx.m_pLocal->m_AnimationLayers( ), 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-
-	const int lastCmd{ ctx.m_pQueuedCommands.back( ).second };
-
-	const auto backupTickbase{ ctx.m_pLocal->m_nTickBase( ) };
-	const auto backupFlags{ ctx.m_pLocal->m_fFlags( ) };
-	const auto backupVelocity{ ctx.m_pLocal->m_vecVelocity( ) };
-	const auto backupAbsVelocitys{ ctx.m_pLocal->m_vecAbsVelocity( ) };
 
 	if ( ctx.m_bFilledAnims ) {
 		ctx.m_pLocal->m_flPoseParameter( ) = ctx.m_flPoseParameter;
@@ -27,33 +15,42 @@
 		*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cAnimstate;
 	}
 
-	for ( const auto& command : ctx.m_pQueuedCommands ) {
-		auto& curLocalData{ ctx.m_cLocalData.at( command.second ) };
+	const auto inShot = ctx.m_iLastShotNumber > Interfaces::ClientState->iLastOutgoingCommand
+		&& ctx.m_iLastShotNumber <= ( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 );
+
+	for ( ; i <= totalCmds; ++i, --chokedCmds ) {
+		const auto j = ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150;
+
+		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
+
+		if ( curLocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) )
+			continue;
+
+		if ( curUserCmd.iTickCount >= INT_MAX )
+			continue;
 
 		ctx.m_pLocal->m_nTickBase( ) = curLocalData.PredictedNetvars.m_nTickBase;
 		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
 		ctx.m_pLocal->m_vecVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
 		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecAbsVelocity;
 
-		Features::AnimSys.UpdateLocal( command.first, lastCmd != command.second );
+		const auto lastCmd{ curUserCmd.iCommandNumber == cmd.iCommandNumber };
+		Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd );
 	}
+
+	ctx.m_bFilledAnims = true;
+
+	if ( Features::Exploits.m_iShiftAmount
+		&& !Features::Exploits.m_bRealCmds )
+		return;
 
 	memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
 	ctx.m_flPoseParameter = ctx.m_pLocal->m_flPoseParameter( );
 	ctx.m_cAnimstate = *ctx.m_pLocal->m_pAnimState( );
 	ctx.m_flAbsYaw = ctx.m_cAnimstate.flAbsYaw;
-	ctx.m_bFilledAnims = true;
+}
 
-
-	ctx.m_pLocal->m_nTickBase( ) = backupTickbase;
-	ctx.m_pLocal->m_fFlags( ) = backupFlags;
-	ctx.m_pLocal->m_vecVelocity( ) = backupVelocity;
-	ctx.m_pLocal->m_vecAbsVelocity( ) = backupAbsVelocitys;
-
-	ctx.m_pQueuedCommands.clear( );
-
-	memcpy( ctx.m_pLocal->m_AnimationLayers( ), BackupAnimLayers, 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-}*/
 void CAnimationSys::UpdateLocal( const QAngle& view_angles, const bool only_anim_state ) {
 	const auto anim_state = ctx.m_pLocal->m_pAnimState( );
 	if ( !anim_state )
@@ -126,42 +123,6 @@ void CAnimationSys::SetupLocalMatrix( ) {
 	const auto backupAbsAngle{ ctx.m_pLocal->GetAbsAngles( ).y };
 	const auto backupAnimstate{ *ctx.m_pLocal->m_pAnimState( ) };
 
-	if ( Config::Get<bool>( Vars.ChamDesync ) ) {
-		RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
-
-		if ( ctx.m_cFakeData.m_flSpawnTime == 0.f
-			|| ctx.m_cFakeData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) ) {
-			ctx.m_cFakeData.m_AnimState = *ctx.m_pLocal->m_pAnimState( );
-
-			ctx.m_cFakeData.m_flSpawnTime = ctx.m_pLocal->m_flSpawnTime( );
-		}
-
-		if ( !Interfaces::ClientState->nChokedCommands
-			&& Interfaces::Globals->flCurTime != ctx.m_cFakeData.m_AnimState.flLastUpdateTime ) {
-			*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cFakeData.m_AnimState;
-
-			state->flAbsYaw = localData.m_angViewAngles.y;
-
-			state->Update( localData.m_angViewAngles );
-
-			ctx.m_cFakeData.m_flAbsYaw = state->flAbsYaw;
-			ctx.m_cFakeData.m_AnimState = *ctx.m_pLocal->m_pAnimState( );
-			ctx.m_cFakeData.m_flPoseParameter = ctx.m_pLocal->m_flPoseParameter( );
-
-			memcpy( ctx.m_cFakeData.m_pAnimLayers, ctx.m_pLocal->m_AnimationLayers( ), 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-		}
-
-		RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
-
-		ctx.m_pLocal->m_flPoseParameter( ) = ctx.m_cFakeData.m_flPoseParameter;
-		memcpy( ctx.m_pLocal->m_AnimationLayers( ), ctx.m_cFakeData.m_pAnimLayers, 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-
-		ctx.m_pLocal->SetAbsAngles( { 0.f, ctx.m_cFakeData.m_flAbsYaw, 0.f } );
-
-		SetupBonesFixed( ctx.m_pLocal, ctx.m_cFakeData.m_matMatrix, 0xFFF00,
-			Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME /* | NULLIK*/ | OCCLUSIONINTERP ) );
-	}
-
 	RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
 
 	if ( !ctx.m_bFilledAnims )
@@ -173,12 +134,8 @@ void CAnimationSys::SetupLocalMatrix( ) {
 	*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cAnimstate;
 
 
-	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND /* && a2 < 0.1f*/ ) {
-		if ( ctx.m_pLocal->GetSequenceActivity( ctx.m_pLocal->m_AnimationLayers( )[ 3 ].nSequence ) == 979 ) {
-			ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle = 0.f;
-			ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = 0.f;
-		}
-	}
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle = 0.f;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = 0.f;
 
 	SetupBonesFixed( ctx.m_pLocal, ctx.m_matRealLocalBones, BONE_USED_BY_ANYTHING | BONE_ALWAYS_SETUP,
 		Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME  | /*NULLIK |*/ OCCLUSIONINTERP ) );

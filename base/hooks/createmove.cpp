@@ -29,7 +29,11 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 		return;
 
 	if ( ctx.m_iTicksAllowed ) {
-		if ( ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot /* && ctx.m_iTicksAllowed >= 14*/
+		if ( Features::Antiaim.m_bCanBreakLBY ) {
+			Features::Exploits.m_iShiftAmount = 1;
+			Features::Exploits.m_bRealCmds = true;
+		}
+		else if ( ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot /* && ctx.m_iTicksAllowed >= 14*/
 			&& ctx.m_pWeaponData->nWeaponType > WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 )
 			|| ( !ctx.m_bExploitsEnabled || ctx.m_bFakeDucking ) ) {
 			const bool isDTEnabled{ ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) };
@@ -40,7 +44,6 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 	}
 }
 
-// TODO: FIX SENDPACKET
 static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametime, bool bIsActive, bool& bSendPacket )
 {
 	static auto oCreateMove = DTR::CreateMoveProxy.GetOriginal<decltype( &Hooks::hkCreateMoveProxy )>( );
@@ -149,11 +152,12 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 	Features::EnginePrediction.PreStart( );
 
-	Features::Antiaim.FakeLag( );
 	Features::Misc.Movement( cmd );
 
 	Features::EnginePrediction.RunCommand( cmd );
 	{
+		Features::Antiaim.FakeLag( );
+
 		ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( ctx.m_angOriginalViewangles.x );
 
 		Features::Ragebot.Main( cmd );
@@ -163,31 +167,39 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 		Features::Misc.AutoPeek( cmd );
 
-		Features::Antiaim.Pitch( cmd );
-
 		Features::Misc.MoveMINTFix( cmd, ctx.m_angOriginalViewangles, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 	}
 	Features::EnginePrediction.Finish( );
 
 	LocalData.SavePredVars( ctx.m_pLocal, cmd );
 
-	if ( Interfaces::ClientState->nChokedCommands >= 15 - ctx.m_iTicksAllowed )
-		ctx.m_bSendPacket = true;
-
-	if ( !ctx.m_bFakeDucking && cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
-		ctx.m_bSendPacket = true;
-
 	if ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot ) {
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
 		ctx.m_iLastShotTime = Interfaces::Globals->flRealTime;
 	}
 
-
 	ShouldShift( cmd );
 
-	Features::Antiaim.RunLocalModifications( cmd, ctx.m_bSendPacket );
+	if ( !ctx.m_bFakeDucking && cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
+		ctx.m_bSendPacket = Features::Exploits.m_iShiftAmount;
+
+	if ( Interfaces::ClientState->nChokedCommands >= 15 - ctx.m_iTicksAllowed )
+		ctx.m_bSendPacket = true;
 
 	bSendPacket = ctx.m_bSendPacket;
+
+	if ( !Features::Antiaim.Condition( cmd ) ) {
+		Features::Antiaim.Pitch( cmd );
+		Features::Antiaim.Yaw( cmd, bSendPacket );
+	}
+	else
+		Features::AnimSys.UpdateLocalFull( cmd, bSendPacket );
+
+	Features::Misc.MoveMINTFix(
+		cmd, ctx.m_angOriginalViewangles,
+		ctx.m_pLocal->m_fFlags( ),
+		ctx.m_pLocal->m_MoveType( )
+	);
 
 	if ( bSendPacket ) {
 		if ( !Features::Exploits.m_iShiftAmount
@@ -213,20 +225,10 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 				&& ctx.m_pWeapon
 				&& !ctx.m_pWeapon->IsGrenade( )
 				//&& !cmd.iWeaponSelect
-				&& ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f
 				&& ctx.CalcCorrectionTicks( ) != -1 ) {
 
 				++timer;
-				if ( timer > 14 ) {
-					timer = 0;
-				}
-				else {
-					Features::Exploits.m_bAlreadyPeeked = true;
-					if ( timer < 10 )
-						cmd.viewAngles.y += 180;
-				}
-				//timer = std::min( timer, 15 );
-				/*
+				timer = std::min( timer, 15 );
 				const auto peek{ Features::Misc.InPeek( ) };
 
 				if ( Features::Exploits.m_bAlreadyPeeked
@@ -237,7 +239,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 					//Features::Visuals.Chams.AddHitmatrix( ctx.m_pLocal, ctx.m_matRealLocalBones );
 					Features::Exploits.m_bAlreadyPeeked = true;
 					timer = 0;
-				}*/
+				}
 			}
 			else
 				timer = 0;

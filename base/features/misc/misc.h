@@ -30,7 +30,6 @@ private:
 	void SlowWalk( CUserCmd& cmd );
 	void AutoStrafer( CUserCmd& cmd );
 	void FakeDuck( CUserCmd& cmd );
-	bool MicroMove( CUserCmd& cmd );
 
 
 	// autostop shiiiit

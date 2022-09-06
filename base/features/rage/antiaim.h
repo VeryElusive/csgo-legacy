@@ -9,15 +9,17 @@
 class CAntiAim {
 public:
 	void Pitch( CUserCmd& cmd );
+	void Yaw( CUserCmd& cmd, bool sendPacket );
 	void FakeLag( );
-	void RunLocalModifications( CUserCmd& cmd, bool sendPacket );
+	bool Condition( CUserCmd& cmd );
 
 	int ManualSide{ };
+	bool m_bCanBreakLBY{ };
 
 private:
-	bool Invert{ };
+	float m_flLowerBodyRealignTimer{ };
+
 	bool ChokeCycleJitter{ };
-	bool Condition( CUserCmd& cmd );
 	float BaseYaw( CUserCmd& cmd );
 	void PickYaw( float& yaw );
 	void AtTarget( float& yaw );

@@ -3,12 +3,6 @@
 #include "../rage/exploits.h"
 
 void CAntiAim::Pitch( CUserCmd& cmd ) {
-	if ( Condition( cmd ) )
-		return;
-
-	if ( Interfaces::ClientState->nChokedCommands < 1 && Config::Get<bool>( Vars.AntiaimDesync ) )
-		ctx.m_bSendPacket = false;
-
 	switch ( Config::Get<int>( Vars.AntiaimPitch ) ) {
 	case 1: cmd.viewAngles.x = -89.f; break;// up
 	case 2: cmd.viewAngles.x =  89.f; break;// down
@@ -19,51 +13,118 @@ void CAntiAim::Pitch( CUserCmd& cmd ) {
 
 void CAntiAim::PickYaw( float& yaw ) {
 	static bool Inverted{ };
-	static int RotatedYaw{ 180 };
 
 	if ( !Interfaces::ClientState->nChokedCommands )
 		ChokeCycleJitter = !ChokeCycleJitter;
 
 	const int& YawRange{ Config::Get<int>( Vars.AntiaimYawRange ) };
 
-	switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
-	case 0: yaw += 0.f; break;// forward
-	case 1: yaw += 180.f; break;// backward
-	case 2: {// rotate
-		RotatedYaw -= Inverted ? Config::Get<int>( Vars.AntiaimYawSpeed ) : -Config::Get<int>( Vars.AntiaimYawSpeed );
+	if ( !ManualSide ) {
+		switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
+		case 0: yaw += 0.f; break;// forward
+		case 1: yaw += 180.f; break;// backward
+		case 2: yaw -= 90.f; break;// Left
+		case 3: yaw += 90.f; break;// Right
+		}
+	}
 
-		if ( RotatedYaw < 180 - ( YawRange * 0.5f ) )
-			Inverted = false;
-		else if ( RotatedYaw > 180 + ( YawRange * 0.5f ) )
-			Inverted = true;
-
-		RotatedYaw = std::clamp<int>( RotatedYaw, YawRange * -0.5f, YawRange * 0.5f );
-		
-		yaw += RotatedYaw;
-	}break;
-	case 3: {// jitter 
-		yaw += 180.f + YawRange * ( ChokeCycleJitter ? 0.5f : -0.5f );
+	switch ( Config::Get<int>( Vars.AntiaimYawAdd ) ) {
+	case 0:break;// none
+	case 1: {// jitter 
+		yaw += YawRange * ( ChokeCycleJitter ? 0.5f : -0.5f );
 	}break;
 	default: break;
 	}
 }
-float CAntiAim::BaseYaw( CUserCmd& cmd ) {
-	if ( Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).enabled )
-		Invert = ChokeCycleJitter;
-	else
-		Invert = Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled;
 
-	auto yaw = cmd.viewAngles.y;
+#define CSGO_ANIM_LOWER_REALIGN_DELAY	1.1f
+#define CSGO_ANIM_LOWER_CATCHUP_IDLE	100.0f
+
+FORCEINLINE float NormaliseYaw( float yaw ) {
+	return std::clamp( std::remainderf( yaw, 360.f ), -180.f, 180.f );
+}
+
+void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
+	cmd.viewAngles.y = NormaliseYaw( BaseYaw( cmd ) );
+
+	// https://gitlab.com/KittenPopo/csgo-2018-source/-/blob/main/game/shared/cstrike15/csgo_playeranimstate.cpp#L2353
+
+	m_bCanBreakLBY = false;
+	// pull the lower body direction towards the eye direction, but only when the player is moving
+	const auto curtime{ TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) };// this will fuck up when we shift
+	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
+
+	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) {
+
+		if ( m_flVelocityLengthXY > 0.1f )
+			m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) + ( CSGO_ANIM_LOWER_REALIGN_DELAY * 0.2f );
+		else {
+			// dont set m_flLowerBodyRealignTimer yet
+			if ( curtime > m_flLowerBodyRealignTimer )
+				m_bCanBreakLBY = true;
+		}
+	}
+
+	if ( !m_bCanBreakLBY 
+		&& m_flVelocityLengthXY <= 0.1f 
+		&& Config::Get<bool>( Vars.AntiaimDistortion ) ) {
+		static bool reRoll{ };
+		static float random{ };
+		static float cur{ };
+
+		if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
+			random = Math::RandomFloat( -Config::Get<int>( Vars.AntiaimDistortionRange ), Config::Get<int>( Vars.AntiaimDistortionRange ) );
+			cmd.viewAngles.y += random;
+		}
+		/*else {
+			if ( reRoll ) {
+				random = Math::RandomFloat( -Config::Get<int>( Vars.AntiaimDistortionRange ), Config::Get<int>( Vars.AntiaimDistortionRange ) );
+				reRoll = false;
+			}
+
+			cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) );
+
+			cmd.viewAngles.y += cur;
+		}*/
+	}
+
+	Features::AnimSys.UpdateLocalFull( cmd, sendPacket );
+
+	if ( m_bCanBreakLBY ) {
+		auto breakAngle{ cmd.viewAngles.y };
+
+		if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
+			switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
+			case 0:// opposite
+				breakAngle = std::remainderf( cmd.viewAngles.y + 180.f, 360.f );
+				break;
+			case 1:// back
+				breakAngle = std::remainderf( ctx.m_angOriginalViewangles.y + 180.f, 360.f );
+				break;
+			default: break;
+			}
+
+			if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, breakAngle ) ) <= 35.0f )
+				breakAngle = breakAngle < ctx.m_pLocal->m_pAnimState( )->flAbsYaw ? ctx.m_pLocal->m_pAnimState( )->flAbsYaw - 42.f : ctx.m_pLocal->m_pAnimState( )->flAbsYaw + 42.f;
+
+			cmd.viewAngles.y = breakAngle;
+		}
+
+		if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, breakAngle ) ) > 35.0f )
+			m_flLowerBodyRealignTimer = curtime + CSGO_ANIM_LOWER_REALIGN_DELAY;
+	}
+
+	cmd.viewAngles.Normalize( );
+}
+
+float CAntiAim::BaseYaw( CUserCmd& cmd ) {
+	auto yaw = NormaliseYaw( cmd.viewAngles.y );
 
 	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
-		if ( ManualSide == 1 ) {
+		if ( ManualSide == 1 )
 			yaw += 90.f;
-			return yaw;
-		}
-		else if ( ManualSide == 2 ) {
+		else if ( ManualSide == 2 )
 			yaw -= 90.f;
-			return yaw;
-		}
 	}
 
 	AtTarget( yaw );
@@ -74,6 +135,9 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 }
 
 void CAntiAim::AtTarget( float& yaw ) {
+	if ( ManualSide )
+		return;
+
 	CBasePlayer* bestPlayer{ nullptr };
 	auto bestValue = INT_MAX;
 
@@ -165,6 +229,9 @@ void CAntiAim::FakeLag( ) {
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return;
 
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f )
+		return;
+
 	static int maxChoke = Config::Get<int>( Vars.AntiaimFakeLagLimit );
 
 	const int& max = Config::Get<int>( Vars.AntiaimFakeLagLimit );
@@ -182,108 +249,6 @@ void CAntiAim::FakeLag( ) {
 	if ( Config::Get<bool>( Vars.AntiaimFakeLagBreakLC )
 		&& ( ctx.m_pLocal->m_vecOrigin( ) - localData.PredictedNetvars.m_vecOrigin ).LengthSqr( ) > 4096.f )
 		ctx.m_bSendPacket = true;
-}
-
-void CAntiAim::RunLocalModifications( CUserCmd& cmd, bool sendPacket ) {
-	const float yaw = std::remainderf( BaseYaw( cmd ), 360.f );
-
-	auto i = 1;
-	auto chokedCmds = Interfaces::ClientState->nChokedCommands;
-
-	const auto totalCmds = chokedCmds + 1;
-	if ( totalCmds < 1
-		|| !sendPacket )
-		return;
-
-	if ( Condition( cmd ) ) {
-		Features::Misc.NormalizeMovement( cmd );
-
-		if ( ctx.m_bFilledAnims ) {
-			ctx.m_pLocal->m_flPoseParameter( ) = ctx.m_flPoseParameter;
-			ctx.m_pLocal->SetAbsAngles( { 0, ctx.m_flAbsYaw, 0 } );
-			*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cAnimstate;
-		}
-
-		Features::AnimSys.UpdateLocal( cmd.viewAngles, false );
-
-		if ( Features::Exploits.m_iShiftAmount
-			&& !Features::Exploits.m_bRealCmds )
-			return;
-
-		ctx.m_bFilledAnims = true;// !hs;
-		memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-		ctx.m_flPoseParameter = ctx.m_pLocal->m_flPoseParameter( );
-		ctx.m_cAnimstate = *ctx.m_pLocal->m_pAnimState( );
-		ctx.m_flAbsYaw = ctx.m_cAnimstate.flAbsYaw;
-		return;
-	}
-
-	if ( ctx.m_bFilledAnims ) {
-		ctx.m_pLocal->m_flPoseParameter( ) = ctx.m_flPoseParameter;
-		ctx.m_pLocal->SetAbsAngles( { 0, ctx.m_flAbsYaw, 0 } );
-		*ctx.m_pLocal->m_pAnimState( ) = ctx.m_cAnimstate;
-	}
-
-	const auto inShot = ctx.m_iLastShotNumber > Interfaces::ClientState->iLastOutgoingCommand
-		&& ctx.m_iLastShotNumber <= ( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 );
-
-	for ( ; i <= totalCmds; ++i, --chokedCmds ) {
-		const auto j = ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150;
-
-		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
-		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
-
-		if ( curLocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) )
-			continue;
-
-		if ( curUserCmd.iTickCount >= INT_MAX )
-			continue;
-
-		if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
-			&& curLocalData.m_MoveType != MOVETYPE_LADDER
-			&& !curLocalData.m_bThrowingNade
-			&& !( curUserCmd.iButtons & IN_ATTACK && !ctx.m_pWeapon->IsGrenade( ) ) ) {
-			const auto oldViewAngles{ curUserCmd.viewAngles };
-
-			curUserCmd.viewAngles.y = yaw;
-
-			if ( chokedCmds > 0 && !inShot && Config::Get<bool>( Vars.AntiaimDesync ) )
-				curUserCmd.viewAngles.y = std::remainderf( curUserCmd.viewAngles.y + ( Invert ? -120.f : 120.f ), 360.f );
-
-			Features::Misc.MoveMINTFix(
-				curUserCmd, oldViewAngles,
-				curLocalData.PredictedNetvars.m_iFlags,
-				curLocalData.PredictedNetvars.m_MoveType
-			);
-		}
-
-		Features::Misc.NormalizeMovement( curUserCmd );
-
-		ctx.m_pLocal->m_nTickBase( ) = curLocalData.PredictedNetvars.m_nTickBase;
-		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
-		ctx.m_pLocal->m_vecVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
-		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecAbsVelocity;
-
-		const auto lastCmd{ curUserCmd.iCommandNumber == cmd.iCommandNumber };
-		Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd );
-
-		if ( lastCmd )
-			continue;
-
-		Interfaces::Input->pVerifiedCommands[ j ].userCmd = curUserCmd;
-		Interfaces::Input->pVerifiedCommands[ j ].uHashCRC = curUserCmd.GetChecksum( );
-	}
-
-	ctx.m_bFilledAnims = true;
-
-	if ( Features::Exploits.m_iShiftAmount
-		&& !Features::Exploits.m_bRealCmds )
-		return;
-
-	memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 0x38 * ctx.m_pLocal->m_iAnimationLayersCount( ) );
-	ctx.m_flPoseParameter = ctx.m_pLocal->m_flPoseParameter( );
-	ctx.m_cAnimstate = *ctx.m_pLocal->m_pAnimState( );
-	ctx.m_flAbsYaw = ctx.m_cAnimstate.flAbsYaw;
 }
 
 // pasta reis courtesy of slazy

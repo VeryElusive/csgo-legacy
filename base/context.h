@@ -97,8 +97,6 @@ struct HAVOCCTX {
 
 	matrix3x4_t m_matRealLocalBones[ 256 ];
 
-	FakeAnimData_t m_cFakeData{ };
-
 	QAngle m_angOriginalViewangles{ };
 
 	Vector m_vecEyePos{ };

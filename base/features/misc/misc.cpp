@@ -26,19 +26,17 @@ void CMisc::Movement( CUserCmd& cmd ) {
 	FakeDuck( cmd );
 
 	if ( !AutoStop( cmd ) ) {
-		if ( !MicroMove( cmd ) ) {
-			QuickStop( cmd );
+		QuickStop( cmd );
 
-			if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
-				if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
-					cmd.iButtons |= IN_JUMP;
-				else
-					cmd.iButtons &= ~IN_JUMP;
-			}
-
-			SlowWalk( cmd );
-			AutoStrafer( cmd );
+		if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
+			if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
+				cmd.iButtons |= IN_JUMP;
+			else
+				cmd.iButtons &= ~IN_JUMP;
 		}
+
+		SlowWalk( cmd );
+		AutoStrafer( cmd );
 	}
 
 	cmd.flForwardMove = std::clamp<float>( cmd.flForwardMove, -450.f, 450.f );
@@ -193,53 +191,6 @@ void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_
 	cmd.iButtons |=
 		cmd.flSideMove > 0.f
 		? IN_MOVERIGHT : IN_MOVELEFT;
-}
-
-bool CMisc::MicroMove( CUserCmd& cmd ) {
-	if ( !Config::Get<bool>( Vars.AntiaimEnable )
-		|| !Config::Get<bool>( Vars.AntiaimDesync )
-		|| cmd.iButtons & IN_JUMP
-		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
-		return false;
-
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length2DSqr( ) > 2.f )
-		return false;
-
-	cmd.iButtons &= ~IN_SPEED;
-
-	float duck_amount{ };
-	if ( cmd.iButtons & IN_DUCK )
-		duck_amount = std::min(
-			1.f,
-			ctx.m_pLocal->m_flDuckAmount( )
-			+ ( Interfaces::Globals->flIntervalPerTick * 0.8f ) * ctx.m_pLocal->m_flDuckSpeed( )
-		);
-	else
-		duck_amount =
-		ctx.m_pLocal->m_flDuckAmount( )
-		- std::max( 1.5f, ctx.m_pLocal->m_flDuckSpeed( ) ) * Interfaces::Globals->flIntervalPerTick;
-
-	float move{ };
-	if ( cmd.iButtons & IN_DUCK
-		|| ctx.m_pLocal->m_flDuckAmount( )
-		|| ctx.m_pLocal->m_fFlags( ) & FL_DUCKING )
-		move = 1.1f / ( ( ( duck_amount * 0.34f ) + 1.f ) - duck_amount );
-	else
-		move = 1.1f;
-
-	if ( std::abs( cmd.flForwardMove ) > move
-		|| std::abs( cmd.flSideMove ) > move )
-		return false;
-
-	static bool sw = false;
-	sw = !sw;
-
-	if ( !sw )
-		move *= -1.f;
-
-	cmd.flSideMove = move;
-
-	return true;
 }
 
 void CMisc::AutoStrafer( CUserCmd& cmd ) {

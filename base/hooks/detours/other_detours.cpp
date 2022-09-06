@@ -29,18 +29,18 @@ void FASTCALL Hooks::hkCalcView( CBasePlayer* pPlayer, void* edx, Vector& vecEye
 	if ( !pPlayer || pPlayer != ctx.m_pLocal )
 		return oCalcView( pPlayer, edx, vecEyeOrigin, angEyeAngles, flZNear, flZFar, flFov );
 
-	const bool backupUseNewAnimstateBackup = pPlayer->m_bUseNewAnimstate( );
+	//const bool backupUseNewAnimstateBackup = pPlayer->m_bUseNewAnimstate( );
 	const auto backupAimPunch = pPlayer->m_aimPunchAngle( );
 	const auto backupViewPunch = pPlayer->m_viewPunchAngle( );
 
-	pPlayer->m_bUseNewAnimstate( ) = false;
+	//pPlayer->m_bUseNewAnimstate( ) = false;
 
 	if ( Config::Get<bool>( Vars.RemovalPunch ) )
 		ctx.m_pLocal->m_viewPunchAngle( ) = pPlayer->m_aimPunchAngle( ) = { };
 
 	oCalcView( pPlayer, edx, vecEyeOrigin, angEyeAngles, flZNear, flZFar, flFov );
 
-	pPlayer->m_bUseNewAnimstate( ) = backupUseNewAnimstateBackup;
+	//pPlayer->m_bUseNewAnimstate( ) = backupUseNewAnimstateBackup;
 	ctx.m_pLocal->m_viewPunchAngle( ) = backupViewPunch;
 	pPlayer->m_aimPunchAngle( ) = backupAimPunch;
 }

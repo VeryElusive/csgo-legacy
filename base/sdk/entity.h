@@ -344,7 +344,7 @@ public:
 	}
 
 	Vector WorldSpaceCenter( ) {
-		return MEM::CallVFunc<Vector>( this, 778 );
+		return MEM::CallVFunc<Vector>( this, 78 );
 	}
 };
 
