@@ -147,7 +147,6 @@
     <ClInclude Include="utils\math.h" />
     <ClInclude Include="utils\memory.h" />
     <ClInclude Include="utils\memory\pe32.h" />
-    <ClInclude Include="utils\ray_tracer.h" />
     <ClInclude Include="utils\render.h" />
     <ClInclude Include="utils\threading\mutex.h" />
     <ClInclude Include="utils\threading\packed_heap.h" />
@@ -223,7 +222,6 @@
     <ClCompile Include="sdk\weapon.cpp" />
     <ClCompile Include="utils\math.cpp" />
     <ClCompile Include="utils\memory.cpp" />
-    <ClCompile Include="utils\ray_tracer.cpp" />
     <ClCompile Include="utils\render.cpp" />
     <ClCompile Include="utils\threading\mutex.cpp" />
     <ClCompile Include="utils\threading\packed_heap.cpp" />

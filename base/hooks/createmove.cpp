@@ -192,8 +192,8 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 		Features::Antiaim.Pitch( cmd );
 		Features::Antiaim.Yaw( cmd, bSendPacket );
 	}
-	else
-		Features::AnimSys.UpdateLocalFull( cmd, bSendPacket );
+
+	Features::AnimSys.UpdateLocalFull( cmd, bSendPacket );
 
 	Features::Misc.MoveMINTFix(
 		cmd, ctx.m_angOriginalViewangles,

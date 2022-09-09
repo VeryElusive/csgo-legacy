@@ -107,15 +107,29 @@ std::size_t CRageBot::CalcPointCount( mstudiohitboxset_t* hitboxSet ) {
 		if ( !IsMultiPointEnabled( hb ) )
 			continue;
 
-		if ( hitbox->flRadius <= 0.f )
+		if ( hitbox->flRadius <= 0.f ) {
 			ret += 2;
-		else {
-			if ( hb == HITBOX_HEAD )
-				ret += 4;
-			else
-				ret += 2;
+			continue;
 		}
 
+		switch ( hb ) {
+		case HITBOX_HEAD:
+			ret += 4;
+			break;
+		case HITBOX_PELVIS:
+		case HITBOX_STOMACH:
+			ret += 3;
+			break;
+		case HITBOX_CHEST:
+		case HITBOX_LOWER_CHEST:
+		case HITBOX_UPPER_CHEST:
+			ret++;
+			break;
+		case HITBOX_RIGHT_THIGH:
+		case HITBOX_LEFT_THIGH:
+			ret++;
+			break;
+		}
 	}
 
 	return ret;
@@ -172,8 +186,7 @@ bool CRageBot::CreatePoints( AimTarget_t& aimTarget, std::vector<AimPoint_t>& ai
 	return !aimPoints.empty( );
 }
 
-// TODO: multipoints
-void CRageBot::Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index ) {
+void CRageBot::Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index ) {
 	if ( hitbox->flRadius <= 0.f ) {
 		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x + ( hitbox->vecBBMin.x - center.x ) * scale, center.y, center.z ), matrix ),
 			hitbox->iGroup, center );
@@ -184,69 +197,64 @@ void CRageBot::Multipoint( const Vector& center, matrix3x4_t& matrix, std::vecto
 		return;
 	}
 
+#define r ( hitbox->flRadius * scale )
 
-	const auto min{ Math::VectorTransform( hitbox->vecBBMin, matrix ) };
-	const auto max{ Math::VectorTransform( hitbox->vecBBMax, matrix ) };
+	switch ( index ) {
+	case HITBOX_HEAD: {
+		scale = std::clamp<float>( scale, 0.1f, 0.9f );
 
-	const auto maxMin{ ( max - min ).Normalized( ) };
+		// std::cos( DEG2RAD( 45.f ) ) = 0.70710678f
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x + ( 0.70710678f * r ), hitbox->vecBBMax.y + ( -0.70710678f * r ), hitbox->vecBBMax.z ), matrix ),
+			hitbox->iGroup, center );
 
-	auto delta{ ( center - ctx.m_vecEyePos ) };
-	auto cr{ maxMin.CrossProduct( delta ) };
+		// back
+		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x, hitbox->vecBBMax.y - r, center.z ), matrix ),
+			hitbox->iGroup, center );
 
-	Vector right{ }, up{ };
-	if ( index == HITBOX_HEAD ) {
-		QAngle cr_angle{ }, tmp{ };
+		// left
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z - r ), matrix ),
+			hitbox->iGroup, center );
 
-		Math::VectorAngles( cr, cr_angle );
-		Math::AngleVectors( cr_angle, nullptr, &right, &up );
+		// right
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z + r ), matrix ),
+			hitbox->iGroup, center );
+	}break;
 
-		Math::VectorAngles( delta, tmp );
-		cr_angle.x = tmp.x;
+	case HITBOX_PELVIS:
+	case HITBOX_STOMACH: {
+		// back
+		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x, hitbox->vecBBMax.y - r, center.z ), matrix ),
+			hitbox->iGroup, center );
 
-		right = cr;
+		// right
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z + r ), matrix ),
+			hitbox->iGroup, center );
+
+		// left
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x, hitbox->vecBBMax.y, hitbox->vecBBMax.z - r ), matrix ),
+			hitbox->iGroup, center );
+	}break;
+	case HITBOX_CHEST:
+	case HITBOX_LOWER_CHEST:
+	case HITBOX_UPPER_CHEST: {
+		if ( index != HITBOX_UPPER_CHEST ) {
+			if ( scale > 0.9f )
+				scale = 0.9f;
+		}
+		// back
+		aimPoints.emplace_back( Math::VectorTransform( Vector( center.x, hitbox->vecBBMax.y - r, center.z ), matrix ),
+			hitbox->iGroup, center );
+	}break;
+	case HITBOX_RIGHT_THIGH:
+	case HITBOX_LEFT_THIGH: {
+		// half bottom
+		aimPoints.emplace_back( Math::VectorTransform( Vector( hitbox->vecBBMax.x - r, hitbox->vecBBMax.y, hitbox->vecBBMax.z ), matrix ),
+			hitbox->iGroup, center );
+	}break;
 	}
-	else
-		Math::AngleVectors( { delta.x, delta.y, delta.z }, nullptr, &right, &up );
 
-	RayTracer::Hitbox box( min, max, hitbox->flRadius );
-	RayTracer::Trace trace;
-
-	if ( index == HITBOX_HEAD ) {
-		Vector middle = ( right.Normalized( ) + up.Normalized( ) ) * 0.5f;
-		Vector middle2 = ( right.Normalized( ) - up.Normalized( ) ) * 0.5f;
-
-		RayTracer::Ray ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( middle * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-
-		ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( middle2 * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-
-		ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( up * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-
-		ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( up * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-	}
-	else {
-		RayTracer::Ray ray = RayTracer::Ray( ctx.m_vecEyePos, center - ( up * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-
-		ray = RayTracer::Ray( ctx.m_vecEyePos, center + ( up * 1000.0f ) );
-		RayTracer::TraceFromCenter( ray, box, trace, RayTracer::Flags_RETURNEND );
-		aimPoints.emplace_back( center + ( trace.m_traceEnd - center ) * scale,
-			hitbox->iGroup, center );
-	}
 }
+
 
 void CRageBot::ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, AimPoint_t& point ) {
 	if ( point.m_bScanned )

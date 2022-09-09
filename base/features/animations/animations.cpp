@@ -52,35 +52,24 @@ void CAnimationSys::RunAnimationSystem( ) {
 			}
 		}
 
-		/*if ( !entry.m_pRecords.empty( ) ) {
-			const auto& lastRecord{ entry.m_pRecords.back( ) };
-			const auto jitter{ lastRecord->m_angEyeAngles.y - player->m_angEyeAngles( ).y };
-
-			const auto jitterAvg{ ( std::abs( jitter ) + std::abs( entry.m_flJitterAmount ) ) / 2 };
-
-			entry.m_flJitterAmount = std::copysign( jitterAvg, jitter );
-		}*/
-
 		entry.m_iRealChoked = Interfaces::ClientState->iServerTick - entry.m_iLastUnchoked;
 		entry.m_iLastUnchoked = Interfaces::ClientState->iServerTick;
 
 		// now while i dont want this record, or to even animate it, i still want to store the prev data for me to use in FinalAdjustments next time i animate
-		if ( entry.m_optPreviousData.has_value( ) 
+		if ( entry.m_optPreviousData.has_value( )
 			&& entry.m_optPreviousData->m_flSimulationTime >= player->m_flSimulationTime( ) ) {
 			const auto prevSimTime{ entry.m_optPreviousData->m_flSimulationTime };
 			{
 				const auto rec{ std::make_unique< LagRecord_t >( player ) };
 				rec->FinalAdjustments( player, entry.m_optPreviousData, entry.m_iRealChoked );
 
+				entry.m_bBrokeLC = ( rec->m_cAnimData.m_vecOrigin - entry.m_vecLastOrigin ).LengthSqr( ) > 4096.f;
+
+				AnimatePlayer( rec.get( ), entry );
+
 				entry.m_optPreviousData = rec->m_cAnimData;
 			}
 			entry.m_optPreviousData->m_flSimulationTime = prevSimTime;
-
-			ctx.m_bSetupBones = true;
-			entry.m_pPlayer->SetupBones( entry.m_matMatrix, 256, BONE_USED_BY_ANYTHING, Interfaces::Globals->flCurTime );
-			ctx.m_bSetupBones = false;
-
-			entry.m_vecUpdatedOrigin = player->GetAbsOrigin( );
 
 			continue;
 		}
@@ -131,7 +120,7 @@ void CAnimationSys::UpdatePlayerMatrixes( ) {
 
 	for ( int i = 1; i <= 64; i++ ) {
 		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-		if ( !player || !player->IsPlayer( ) || player == ctx.m_pLocal )
+		if ( !player || !player->IsPlayer( ) || player->Dormant( ) || player == ctx.m_pLocal )
 			continue;
 
 		auto& entry = m_arrEntries.at( i - 1 );
@@ -243,13 +232,8 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 	const auto backupAbsVelocity{ entry.m_pPlayer->m_vecAbsVelocity( ) };
 	const auto backupDuckAmount{ entry.m_pPlayer->m_flDuckAmount( ) };
 
-	const auto backupRealtime{ Interfaces::Globals->flRealTime };
 	const auto backupCurtime{ Interfaces::Globals->flCurTime };
 	const auto backupFrametime{ Interfaces::Globals->flFrameTime };
-	const auto backupAbsFrametime{ Interfaces::Globals->flAbsFrameTime };
-	const auto backupFramecount{ Interfaces::Globals->iFrameCount };
-	const auto backupTickcount{ Interfaces::Globals->iTickCount };
-	const auto backupInterpAmt{ Interfaces::Globals->flInterpolationAmount };
 
 	const auto state{ entry.m_pPlayer->m_pAnimState( ) };
 	if ( !state )
@@ -275,20 +259,15 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 		state->flLastUpdateTime = current->m_cAnimData.m_flSimulationTime - Interfaces::Globals->flIntervalPerTick;
 	}
 
-	float yaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
+	//float yaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
 
-	yaw = std::remainderf( yaw, 360.f );
+	//yaw = std::remainderf( yaw, 360.f );
 
 	for ( const auto& interpolated : entry.m_pInterpolatedData ) {
 		const int ticks{ TIME_TO_TICKS( interpolated.m_flSimulationTime ) };
 
-		Interfaces::Globals->flRealTime = interpolated.m_flSimulationTime;
 		Interfaces::Globals->flCurTime = interpolated.m_flSimulationTime;
 		Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
-		Interfaces::Globals->flAbsFrameTime = Interfaces::Globals->flIntervalPerTick;
-		Interfaces::Globals->iFrameCount = ticks;
-		Interfaces::Globals->iTickCount = ticks;
-		Interfaces::Globals->flInterpolationAmount = 0;
 
 		entry.m_pPlayer->m_flDuckAmount( ) = interpolated.m_flDuckAmount;
 		entry.m_pPlayer->m_fFlags( ) = interpolated.m_iFlags;
@@ -317,17 +296,12 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 	entry.m_pPlayer->m_vecAbsVelocity( ) = backupAbsVelocity;
 	entry.m_pPlayer->m_flDuckAmount( ) = backupDuckAmount;
 
-	Interfaces::Globals->flRealTime = backupRealtime;
 	Interfaces::Globals->flCurTime = backupCurtime;
 	Interfaces::Globals->flFrameTime = backupFrametime;
-	Interfaces::Globals->flAbsFrameTime = backupAbsFrametime;
-	Interfaces::Globals->iFrameCount = backupFramecount;
-	Interfaces::Globals->iTickCount = backupTickcount;
-	Interfaces::Globals->flInterpolationAmount = backupInterpAmt;
 
+	current->m_flAbsYaw = state->flAbsYaw;
 	memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
 	entry.m_pPlayer->SetAbsAngles( { 0.f, state->flAbsYaw, 0.f } );
-	current->m_flPoseParameter = entry.m_pPlayer->m_flPoseParameter( );
 
 	SetupBonesFixed( entry.m_pPlayer, current->m_pMatrix, 0x0FFF00, //BONE_USED_BY_ANYTHING | BONE_ALWAYS_SETUP, from what i can see in skeet dump, this is all they do... onetap is just bone used by anyhting
 		current->m_cAnimData.m_flSimulationTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME | NULLIK | OCCLUSIONINTERP ) );
@@ -349,15 +323,13 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 			: m_cur_time{ Interfaces::Globals->flCurTime },
 			m_frame_time{ Interfaces::Globals->flFrameTime },
 			m_frame_count{ Interfaces::Globals->iFrameCount },
-			m_tick_count{ Interfaces::Globals->iTickCount },
-			absoluteframetime{ Interfaces::Globals->flAbsFrameTime },
 			m_occlusion_frame{ player->m_iOcclusionFrame( ) },
 			m_ent_client_flags{ player->m_iEntClientFlags( ) },
 			m_ik_context{ player->m_IkContext( ) }, m_effects{ player->m_fEffects( ) },
 			m_occlusion_flags{ player->m_iOcclusionFlags( ) } {}
 
-		float					m_cur_time{ }, m_frame_time{ }, absoluteframetime{ };
-		int						m_frame_count{ }, m_tick_count, m_occlusion_frame{ };
+		float					m_cur_time{ }, m_frame_time{ };
+		int						m_frame_count{ }, m_occlusion_frame{ };
 
 		std::uint8_t			m_ent_client_flags{ };
 		ik_context_t* m_ik_context{ };
@@ -371,8 +343,6 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 	const auto ticks = TIME_TO_TICKS( time );
 	Interfaces::Globals->flCurTime = time;
 	Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
-	Interfaces::Globals->flAbsFrameTime = Interfaces::Globals->flIntervalPerTick;
-	Interfaces::Globals->iTickCount = ticks;
 	Interfaces::Globals->iFrameCount = ticks;
 
 	if ( flags & INVALIDATEBONECACHE ) {
@@ -416,8 +386,6 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 
 	Interfaces::Globals->flCurTime = backup.m_cur_time;
 	Interfaces::Globals->flFrameTime = backup.m_frame_time;
-	Interfaces::Globals->flAbsFrameTime = backup.absoluteframetime;
-	Interfaces::Globals->iTickCount = backup.m_tick_count;
 	Interfaces::Globals->iFrameCount = backup.m_frame_count;
 
 	return ret;

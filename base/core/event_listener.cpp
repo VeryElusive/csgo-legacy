@@ -116,11 +116,11 @@ void RoundStart( IGameEvent* pEvent ) {
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherNade ) )
 			buy += "buy hegrenade; ";
 
-		if ( Config::Get<bool>( Vars.MiscBuyBotOtherFlashbang ) )
-			buy += "buy flashbang; ";
-
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherMolotov ) )
 			buy += "buy molotov; ";
+
+		if ( Config::Get<bool>( Vars.MiscBuyBotOtherFlashbang ) )
+			buy += "buy flashbang; ";
 
 		if ( !buy.empty( ) )
 			Interfaces::Engine->ClientCmdUnrestricted( buy.c_str( ) );

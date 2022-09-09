@@ -79,10 +79,11 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 			if ( curLayers[ 11 ].flWeight > 0.f && curLayers[ 11 ].flWeight < 1.f ) {
 				const auto m_flSpeedAsPortionOfRunTopSpeed{ 0.55f + ( 1.f - curLayers[ 11 ].flWeight ) * 0.35f };
 
-				const auto maxAverage{ avgSpeed * maxCurrentSpeed };
-				if ( maxAverage > 0.f && maxAverage <= 1.f ) {
-					curVel.x *= ( m_flSpeedAsPortionOfRunTopSpeed / maxAverage );
-					curVel.y *= ( m_flSpeedAsPortionOfRunTopSpeed / maxAverage );
+				if ( m_flSpeedAsPortionOfRunTopSpeed < 1.f && m_flSpeedAsPortionOfRunTopSpeed > 0.f ) {
+					const auto m_flVelocityLengthXY{ m_flSpeedAsPortionOfRunTopSpeed * maxCurrentSpeed };
+
+					curVel.x *= ( m_flVelocityLengthXY / avgSpeed );
+					curVel.y *= ( m_flVelocityLengthXY / avgSpeed );
 				}
 			}
 		}

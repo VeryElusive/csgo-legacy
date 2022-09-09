@@ -421,12 +421,10 @@ void Menu::DrawRage( ) {
 
 					AntiaimGroup->Checkbox( _( "Yaw randomisation" ), Config::Get<bool>( Vars.AntiaimDistortion ) );
 					if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
-						AntiaimGroup->Slider( _( "Randomisation range" ), Config::Get<int>( Vars.AntiaimDistortionRange ), 0.f, 180.f );
-
+						AntiaimGroup->Slider( _( "Range" ), Config::Get<int>( Vars.AntiaimDistortionRange ), 1, 360 );
 						AntiaimGroup->Checkbox( _( "Spike" ), Config::Get<bool>( Vars.AntiaimDistortionSpike ) );
 						if ( !Config::Get<bool>( Vars.AntiaimDistortionSpike ) )
-							AntiaimGroup->Slider( _( "Speed" ), Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, std::max( 2, Config::Get<int>( Vars.AntiaimDistortionRange ) / 2 ) );
-						
+							AntiaimGroup->Slider( _( "Speed" ), Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 10.f );
 					}
 				}
 

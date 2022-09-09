@@ -366,7 +366,7 @@ public:
 
 	FORCEINLINE int MaxHealth( ) {
 		// @ida: client.dll @ [FF 90 ? ? ? ? 85 C0 0F 8F ? ? ? ? 80 + 0x2] / sizeof(std::uintptr_t)
-		return MEM::CallVFunc<int>( this, 123 );
+		return MEM::CallVFunc<int>( this, 122 );
 	}
 
 	FORCEINLINE bool IsPlayer( ) {
@@ -378,12 +378,12 @@ public:
 
 	FORCEINLINE const char* GetClassname( ) {
 		// @ida: client.dll @ [8B 01 FF 90 ? ? ? ? 90 + 0x4] / sizeof(std::uintptr_t)
-		return MEM::CallVFunc<const char*>( this, 143 );
+		return MEM::CallVFunc<const char*>( this, 139 );
 	}
 
 	FORCEINLINE unsigned int PhysicsSolidMaskForEntity( ) {
 		// @xref: "func_breakable", "func_breakable_surf"
-		return MEM::CallVFunc<unsigned int>( this, 152 );
+		return MEM::CallVFunc<unsigned int>( this, 148 );
 	}
 
 	FORCEINLINE DataMap_t* GetPredDescMap( ) {

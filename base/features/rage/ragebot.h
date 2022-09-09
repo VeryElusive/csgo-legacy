@@ -4,7 +4,6 @@
 #include "../misc/logger.h"
 #include "../misc/shot_info.h"
 #include "../../sdk/entity.h"
-#include "../../utils/ray_tracer.h"
 #include "../../context.h"
 #include "autowall.h"
 
@@ -72,7 +71,7 @@ private:
 	void ScanTargets( );
 	bool CreatePoints( AimTarget_t& aim_target, std::vector<AimPoint_t>& aim_points );
 	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
-	void Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float& scale, int index );
+	void Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index );
 	void ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, AimPoint_t& point );
 	std::optional< AimPoint_t> PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
 	std::optional<AimTarget_t> PickTarget( );

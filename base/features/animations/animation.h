@@ -47,7 +47,6 @@ struct LagRecord_t {
 	inline LagRecord_t( CBasePlayer* player ) :
 		m_cAnimData{ player },
 		m_iNewCmds( TIME_TO_TICKS( player->m_flSimulationTime( ) - player->m_flOldSimulationTime( ) ) ),
-		m_flPoseParameter( player->m_flPoseParameter( ) ),
 		m_angEyeAngles( player->m_angEyeAngles( ) ),
 		m_flAbsYaw( player->m_pAnimState( )->flAbsYaw ),
 		m_iReceiveTick(Interfaces::ClientState->iServerTick ), m_bDormant( player->IsDormant( ) )
@@ -70,8 +69,6 @@ struct LagRecord_t {
 	float m_flAbsYaw{ };
 
 	QAngle m_angEyeAngles{ };
-
-	std::array<float, 24> m_flPoseParameter;
 
 	matrix3x4_t m_pMatrix[ 256 ]{ };
 	int m_iBonesCount{ 256 };

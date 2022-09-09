@@ -149,7 +149,6 @@
     <ClInclude Include="utils\threading\packed_heap.h" />
     <ClInclude Include="utils\threading\semaphores.h" />
     <ClInclude Include="utils\threading\shared_mutex.h" />
-    <ClInclude Include="utils\ray_tracer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sdk\convar.cpp" />
@@ -224,7 +223,6 @@
     <ClCompile Include="utils\threading\semaphores.cpp" />
     <ClCompile Include="utils\threading\shared_mutex.cpp" />
     <ClCompile Include="features\misc\autostop.cpp" />
-    <ClCompile Include="utils\ray_tracer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="features\animations\anim_utils.inl" />

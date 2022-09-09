@@ -73,22 +73,23 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 		static float cur{ };
 
 		if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
-			random = Math::RandomFloat( -Config::Get<int>( Vars.AntiaimDistortionRange ), Config::Get<int>( Vars.AntiaimDistortionRange ) );
+			random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
 			cmd.viewAngles.y += random;
 		}
-		/*else {
+		else {
 			if ( reRoll ) {
-				random = Math::RandomFloat( -Config::Get<int>( Vars.AntiaimDistortionRange ), Config::Get<int>( Vars.AntiaimDistortionRange ) );
+				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
 				reRoll = false;
 			}
 
-			cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) );
+			cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
 
 			cmd.viewAngles.y += cur;
-		}*/
-	}
 
-	Features::AnimSys.UpdateLocalFull( cmd, sendPacket );
+			if ( std::abs( cur - random ) < 5.f )
+				reRoll = true;
+		}
+	}
 
 	if ( m_bCanBreakLBY ) {
 		auto breakAngle{ cmd.viewAngles.y };
