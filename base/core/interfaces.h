@@ -43,6 +43,7 @@
 #include "../sdk/interfaces/ivrenderview.h"
 #include "../sdk/interfaces/iweaponsystem.h"
 #include "../sdk/interfaces/ikeyvaluessystem.h"
+#include "../sdk/interfaces/igameresources.h"
 
 #include "displacement.h"
 
@@ -114,4 +115,5 @@ namespace Interfaces
 	inline IClientState*			ClientState;
 	inline IWeaponSystem*			WeaponSystem;
 	inline IGlowObjectManager*		GlowManager;
+	inline IGameResources*			GameResources;
 }

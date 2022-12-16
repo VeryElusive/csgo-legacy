@@ -3,6 +3,23 @@
 #include "../../utils/math.h"
 #include "../../core/config.h"
 
+struct ExtrapolationData_t {
+	__forceinline constexpr ExtrapolationData_t( ) = default;
+
+	__forceinline ExtrapolationData_t(
+		CBasePlayer* const player
+	) : m_pPlayer{ player }, m_iFlags{ player->m_fFlags( ) },
+		m_bWasInAir{ !( player->m_fFlags( ) & FL_ONGROUND ) }, m_vecOrigin{ player->m_vecOrigin( ) },
+		m_vecVelocity{ player->m_vecVelocity( ) }, m_vecMins{ player->m_vecMins( ) }, m_vecMaxs{ player->m_vecMaxs( ) } {}
+
+	CBasePlayer* m_pPlayer{ };
+
+	int m_iFlags{ };
+	bool m_bWasInAir{ };
+
+	Vector m_vecOrigin{ }, m_vecVelocity{ }, m_vecMins{ }, m_vecMaxs{ };
+};
+
 class CMisc {
 public:
 	void Thirdperson( );
@@ -12,6 +29,12 @@ public:
 	void AutoPeek( CUserCmd& cmd );
 	bool AutoStop( CUserCmd& cmd );
 	bool InPeek( );
+	void PlayerMove( ExtrapolationData_t& data );
+
+	// FAKE PING
+	void UpdateIncomingSequences( INetChannel* pNetChannel );
+	void ClearIncomingSequences( );
+	void AddLatencyToNetChannel( INetChannel* pNetChannel, float flLatency );
 
 	float TPFrac{ };
 	Vector OldOrigin{ };
@@ -30,13 +53,17 @@ private:
 	void SlowWalk( CUserCmd& cmd );
 	void AutoStrafer( CUserCmd& cmd );
 	void FakeDuck( CUserCmd& cmd );
-
-
-	// autostop shiiiit
+	bool MicroMove( CUserCmd& cmd );
 	void LimitSpeed( CUserCmd& cmd, float speed );
-	void FullWalkMoveRebuild( CUserCmd& user_cmd, Vector& fwd, Vector& right, Vector& velocity, float maxSpeed );
-	void WalkMoveRebuild( CUserCmd& user_cmd, Vector& fwd, Vector& right, Vector& velocity, float maxSpeed );
-	void AccelerateRebuild( CUserCmd& user_cmd, const Vector& wishdir, const float wishspeed, Vector& velocity, float acceleration, float maxSpeed );
+
+
+	// FAKE PING
+	// Values
+	std::deque<SequenceObject_t> m_vecSequences = { };
+	/* our real incoming sequences count */
+	int m_nRealIncomingSequence = 0;
+	/* count of incoming sequences what we can spike */
+	int m_nLastIncomingSequence = 0;
 };
 
 namespace Features { inline CMisc Misc; };

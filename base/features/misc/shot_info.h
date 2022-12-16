@@ -4,29 +4,29 @@
 #include "../animations/animation.h"
 #include "logger.h"
 
-// pasteed from nemeseis
 struct shot_t {
     __forceinline constexpr shot_t( ) = default;
 
     __forceinline shot_t(
         const Vector& src,
-        std::shared_ptr<LagRecord_t> lag_record,
+        std::shared_ptr< LagRecord_t > lag_record,
         int cmd_number,
         CBasePlayer* target,
         int shot_hitgroup,
         Vector shotpos
-    ) : m_src{ src }, m_lag_record{ lag_record }, m_shot_hitgroup{ shot_hitgroup }, m_cmd_number{ cmd_number }, m_target{ target }, m_shot_pos{ shotpos } {}
+    ) : m_src{ src }, m_lag_record{ lag_record }, m_shot_hitgroup{ shot_hitgroup }, m_cmd_number{ cmd_number }, m_target{ target }, m_shot_pos{ shotpos }, m_command_ack{ Interfaces::ClientState->iCommandAck }
+    {}
 
     Vector                            m_src{ };
 
-    std::shared_ptr<LagRecord_t> m_lag_record;
+    std::shared_ptr< LagRecord_t > m_lag_record;
 
     CBasePlayer* m_target;
 
     bool                            m_processed{ };
     int  m_dmg{ },
         m_shot_hitgroup{ },
-        m_cmd_number{ -1 }, m_process_tick{ };
+        m_cmd_number{ -1 }, m_process_tick{ }, m_command_ack{ -1 };
 
     Vector    m_shot_pos{ };
     struct {
@@ -43,7 +43,7 @@ public:
 
     __forceinline void add(
         const Vector& src,
-        std::shared_ptr<LagRecord_t> lag_record,
+        std::shared_ptr< LagRecord_t > lag_record,
         int cmd_number,
         CBasePlayer* target,
         int hitgroup,

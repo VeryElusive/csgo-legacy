@@ -344,7 +344,7 @@ public:
 	}
 
 	Vector WorldSpaceCenter( ) {
-		return MEM::CallVFunc<Vector>( this, 78 );
+		return MEM::CallVFunc<Vector>( this, 54 );
 	}
 };
 
@@ -366,7 +366,7 @@ public:
 
 	FORCEINLINE int MaxHealth( ) {
 		// @ida: client.dll @ [FF 90 ? ? ? ? 85 C0 0F 8F ? ? ? ? 80 + 0x2] / sizeof(std::uintptr_t)
-		return MEM::CallVFunc<int>( this, 122 );
+		return MEM::CallVFunc<int>( this, 123 );
 	}
 
 	FORCEINLINE bool IsPlayer( ) {
@@ -378,12 +378,12 @@ public:
 
 	FORCEINLINE const char* GetClassname( ) {
 		// @ida: client.dll @ [8B 01 FF 90 ? ? ? ? 90 + 0x4] / sizeof(std::uintptr_t)
-		return MEM::CallVFunc<const char*>( this, 139 );
+		return MEM::CallVFunc<const char*>( this, 143 );
 	}
 
 	FORCEINLINE unsigned int PhysicsSolidMaskForEntity( ) {
 		// @xref: "func_breakable", "func_breakable_surf"
-		return MEM::CallVFunc<unsigned int>( this, 148 );
+		return MEM::CallVFunc<unsigned int>( this, 152 );
 	}
 
 	FORCEINLINE DataMap_t* GetPredDescMap( ) {
@@ -416,7 +416,11 @@ public:
 	OFFSET( CBaseHandle*, m_hMyWeapons( ), Offsets::m_hMyWeapons );
 };
 
-struct ik_context_t {};
+class CIKContext
+{
+	// Not sure of the correct size, also don't care
+	uint8_t pad[ 0x1050 ];
+};
 
 struct VarMapping_t {
 	struct entry_t {
@@ -431,7 +435,7 @@ struct VarMapping_t {
 	float                    m_lastInterpolationTime{ };
 };
 
-
+class CBoneMergeCache;
 
 class CBasePlayer : public CBaseCombatCharacter
 {
@@ -448,6 +452,7 @@ public:
 	OFFSET( bool, m_bHasHelmet( ), Offsets::m_bHasHelmet );
 	OFFSET( bool, m_bHasHeavyArmor( ), Offsets::m_bHasHeavyArmor );
 	OFFSET( int, m_nTickBase( ), Offsets::m_nTickBase );
+	OFFSET( int, m_nFinalPredictedTick( ), Offsets::m_nTickBase + 0x4 );
 	OFFSET( float, m_flVelocityModifier( ), Offsets::m_flVelocityModifier );
 	OFFSET( bool, m_bWaitForNoAttack( ), Offsets::m_bWaitForNoAttack );
 	OFFSET( int, m_iPlayerState( ), Offsets::m_iPlayerState );
@@ -476,6 +481,9 @@ public:
 	OFFSET( int, m_iMoveState( ), Offsets::m_iMoveState );
 	OFFSET( bool, m_bIsWalking( ), Offsets::m_bIsWalking );
 	OFFSET( int, m_nModelIndex( ), Offsets::m_nModelIndex );
+	OFFSET( float*, m_flEncodedController( ), Offsets::m_flEncodedController );
+	OFFSET( uint8_t, m_hRender( ), Offsets::m_nRenderMode + 0x17 );// 0x172
+	OFFSET( uint8_t, m_VisibilityBits( ), Offsets::m_nRenderMode + 0x19 ); // 0x174
 	OFFSET( bool, m_bUseNewAnimstate( ), 0x3874 ); // 0x998b
 	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2970 );
 	OFFSET( CCommandContext, m_CmdContext( ), 0x258u );
@@ -484,12 +492,19 @@ public:
 	OFFSET( int, m_iOcclusionFrame( ), 0xa30u );
 	OFFSET( std::uint32_t, m_iOcclusionFlags( ), 0xa28u );
 	OFFSET( std::uint8_t, m_iEntClientFlags( ), 0x68u );
-	OFFSET( ik_context_t*, m_IkContext( ), 0x2660 ); // havent tested but - 0x10
+	OFFSET( CIKContext*, m_IkContext( ), 0x2660 ); // havent tested but - 0x10
 	OFFSET( int, m_iLastSetupBonesFrame( ), 0xa68u );
 	OFFSET( float, m_flLastSetupBonesTime( ), 0x2914u );// - 0x14
 	OFFSET( CBoneAccessor, m_BoneAccessor( ), 0x2694 );// - 0x10
 	OFFSET( CStudioHdr*, m_pStudioHdr( ), 0x293cu );// - 0x14
+	OFFSET( CBoneMergeCache*, m_pBoneMergeCache( ), 0x2910u );
 	OFFSET( VarMapping_t, m_pVarMapping( ), 0x24u );
+	OFFSET( QAngle, m_angNetworkAngles( ), 0x12cu );
+	OFFSET( void*, m_pOriginalData( ), 0x92C );
+	OFFSET( QAngle, m_angRotation( ), 0xD0u );
+	OFFSET( bool, m_bMaintainSequenceTransitions( ), 0x9F4 );
+	OFFSET( int, m_iAccumulatedBoneMask( ), 0x2475 );
+	OFFSET( int, m_iPrevBoneMask( ), 0x2470 );
 
 	OFFSET( CCSGOPlayerAnimState*, m_pAnimState( ), 0x3874 ); // @ida: client.dll @ [8B 8E ? ? ? ? 85 C9 74 3E + 0x2]
 	OFFSET( CUtlVector< matrix3x4_t >, m_CachedBoneData( ), 0x2900 ); // DT_BasePlayer::m_CachedBoneData = reinterpret_cast<std::uintptr_t>(core::find_signature(charenc("client.dll"), charenc("8B BF ? ? ? ? 8D 14 49")) + 2); for using base ent
@@ -516,18 +531,29 @@ public:
 		reinterpret_cast< void( __thiscall* )( void*, const QAngle& ) >( Offsets::Sigs.SetAbsAngles )( this, angles );
 	}
 
+	void SetAbsVelocity( Vector vel ) {
+		reinterpret_cast< void( __thiscall* )( void*, const Vector& ) >( Offsets::Sigs.SetAbsVelocity )( this, vel );
+	}
+
 	void InvalidatePhysicsRecursive( int change ) {
 		reinterpret_cast< void( __thiscall* )( void*, int ) >( Offsets::Sigs.InvalidatePhysicsRecursive )( this, change );
 	}
 
 	void UpdateClientsideAnimations( ) {
 		return MEM::CallVFunc<void>( this, 218 );
+	}	
+	
+	void UpdateDispatchLayer( CAnimationLayer* layer, CStudioHdr* hdr, int seq ) {
+		return MEM::CallVFunc<void>( this, 247, layer, hdr, seq );
+	}	
+	
+	void CalculateIKLocks( float simtime ) {
+		return MEM::CallVFunc<void>( this, 193, simtime );
 	}
 
 	std::array<float, MAXSTUDIOPOSEPARAM>& m_flPoseParameter( ) {
 		return *reinterpret_cast< std::array<float, MAXSTUDIOPOSEPARAM>* >( reinterpret_cast< std::uintptr_t >( this ) + Offsets::m_flPoseParameter );
 	}
-
 
 	bool IsTeammate( CBasePlayer* Player = nullptr );
 	bool IsDead( );
@@ -542,8 +568,8 @@ public:
 class CCSWeaponData
 {
 public:
-	
-	private:
+
+private:
 	std::byte pad0[ 0x4 ];											// 0x0000
 
 public:
@@ -625,10 +651,10 @@ public:
 	int			iRecoveryTransitionStartBullet;	// 0x01B0 
 	int			iRecoveryTransitionEndBullet;	// 0x01B4
 	bool		bUnzoomAfterShot;			// 0x01B8
-	std::byte pad7 [0x3 ];												// 0x01B8
+	std::byte pad7[ 0x3 ];												// 0x01B8
 	bool		      bHideViewModelZoomed;				// 0x01B9// TODO: USE THIS!
 	bool			  bZoomLevels;						// 0x01BA
-	std::byte pad8 [0x2];												// 0x01BC
+	std::byte pad8[ 0x2 ];												// 0x01BC
 	int				  iZoomFOV[ 2 ];						// 0x01C4
 	float			  flZoomTime[ 3 ];						// 0x01D0
 	std::byte pad9[ 0x8 ];												// 0x01D8
@@ -651,9 +677,9 @@ public:
 	std::byte pad15[ 0x2 ];												// 0x022C			
 
 
-	bool IsGun() const
+	bool IsGun( ) const
 	{
-		switch (this->nWeaponType)
+		switch ( this->nWeaponType )
 		{
 		case WEAPONTYPE_PISTOL:
 		case WEAPONTYPE_SUBMACHINEGUN:
@@ -678,9 +704,12 @@ class CBaseCombatWeapon : public CBaseEntity
 {
 public:
 	OFFSET( short, m_iItemDefinitionIndex( ), Offsets::m_iItemDefinitionIndex );
+	OFFSET( int, m_iBurstShotsRemaining( ), Offsets::m_iBurstShotsRemaining );
+	OFFSET( float, m_fNextBurstShot( ), Offsets::m_fNextBurstShot );
 	OFFSET( int, m_iClip1( ), Offsets::m_iClip1 );
 	//OFFSET( bool, m_bReloading( ), 0x32A5 );
 	OFFSET( float, m_flNextPrimaryAttack( ), Offsets::m_flNextPrimaryAttack );
+	OFFSET( float, m_flNextSecondaryAttack( ), Offsets::m_flNextSecondaryAttack );
 	OFFSET( int, m_nSequence( ), Offsets::m_nSequence );
 	OFFSET( float, m_flPostponeFireReadyTime( ), Offsets::m_flPostponeFireReadyTime );
 
@@ -716,6 +745,8 @@ public:
 	OFFSET( float, m_fThrowTime( ), Offsets::m_fThrowTime );
 	OFFSET( float, m_flThrowStrength( ), Offsets::m_flThrowStrength );
 	OFFSET( bool, m_bPinPulled( ), Offsets::m_bPinPulled );
+	OFFSET( CBaseHandle, m_hWeaponWorldModel( ), Offsets::m_hWeaponWorldModel );
+
 	bool IsGrenade( );
 	bool IsKnife( );
 

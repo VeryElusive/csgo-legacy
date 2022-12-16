@@ -217,6 +217,9 @@ void CPlayerESP::DrawFlags( VisualPlayerEntry& entry ) {
 	CheckIfPlayer( VisFlagBLC, entry.type ) {
 		if ( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_bBrokeLC )
 			flags.push_back( std::make_pair( _( "LC" ), true ) );
+
+		//if ( !Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_pRecords.empty( ) )
+		//	flags.push_back( std::make_pair( std::to_string( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_pRecords.front( )->m_iNewCmds ), true ) );
 	}
 
 	CheckIfPlayer( VisFlagDefusing, entry.type ) {
@@ -224,24 +227,10 @@ void CPlayerESP::DrawFlags( VisualPlayerEntry& entry ) {
 			flags.push_back( std::make_pair( _( "DEFUSING" ), true ) );
 	}
 
-	/* TODO:
 	CheckIfPlayer( VisFlagC4, entry.type ) {
-		auto weapons{ entry.ent->m_hMyWeapons( ) };
-		for ( size_t i{ }; i < 48; ++i ) {
-			const auto weaponHandle{ weapons[ i ] };
-			if ( !weaponHandle )
-				break;
-
-			auto weapon{ static_cast< CWeaponCSBase* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( weaponHandle ) ) };
-			if ( !weapon )
-				continue;
-
-			const auto index{ weapon->m_iItemDefinitionIndex( ) };
-
-			if ( index == WEAPON_C4 )
-				flags.push_back( std::make_pair( _( "C4" ), false ) );
-		}
-	}*/
+		if ( entry.ent->Index( ) == ctx.m_iBombCarrier )
+			flags.push_back( std::make_pair( _( "C4" ), false ) );
+	}
 
 	CheckIfPlayer( VisFlagArmor, entry.type ) {
 		if ( entry.ent->m_ArmorValue( ) > 0 )

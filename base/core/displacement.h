@@ -2,17 +2,19 @@
 #include "prop_manager.h"
 
 struct signatures {
+	uintptr_t LocalPlayer;
+
 	uintptr_t uPredictionRandomSeed;
 	uintptr_t pPredictionPlayer;
 
-	/*uintptr_t InitKeyValues;
+	uintptr_t InitKeyValues;
 	uintptr_t DestructKeyValues;
 	uintptr_t oFromString;
 	uintptr_t oLoadFromBuffer;
 	uintptr_t oLoadFromFile;
 	uintptr_t oFindKey;
 	uintptr_t oSetString;
-	uintptr_t oGetString;*/
+	uintptr_t oGetString;
 
 	uintptr_t oCreateAnimationState;
 	uintptr_t oUpdateAnimationState;
@@ -30,23 +32,28 @@ struct signatures {
 	uintptr_t TakeDamageOffset;
 	uintptr_t LookupBone;
 
+	uintptr_t SetAbsVelocity;
+
 	uintptr_t LoadNamedSkys;
 	uintptr_t CL_ReadPackets;
 	uintptr_t ClanTag;
-	uintptr_t CL_FireEvents;
+
+	uintptr_t ClearNotices;
 
 	uintptr_t StartDrawing;
 	uintptr_t FinishDrawing;
 
 	uintptr_t ReturnToExtrapolate;
+	uintptr_t ReturnToCl_ReadPackets;
 
 	uintptr_t SetupVelocityReturn;
 
-	uintptr_t SetupBonesTiming;
+	uintptr_t uInsertIntoTree;
+
+	uintptr_t uAllocKeyValuesEngine;
+	uintptr_t uAllocKeyValuesClient;
 
 	uintptr_t uCAM_ThinkReturn;
-
-	uintptr_t ReturnToEyePosAndVectors;
 
 	uintptr_t InvalidateBoneCache;
 
@@ -56,9 +63,48 @@ struct signatures {
 
 	uintptr_t WriteUsercmd;
 
+	uintptr_t AddBoxOverlayReturn;
+
+	uintptr_t CL_SendMove;
+
 	uintptr_t GetSequenceActivity;
 
+	//uintptr_t SetupBones_AttachmentHelper;
+
+	uintptr_t ClampBonesInBBox;
+	uintptr_t C_BaseAnimating__BuildTransformations;
+
+	uintptr_t CL_FireEvents;
+	uintptr_t NET_ProcessSocket;
+
+	uintptr_t TraceFilterSkipTwoEntities;
 	uintptr_t numticks;
+
+	uintptr_t ReturnToPerformPrediction;
+	uintptr_t ReturnToInterpolateServerEntities;
+
+	uintptr_t current_tickcount;
+	uintptr_t host_currentframetick;
+
+
+	uintptr_t IK_Context_Construct;
+	uintptr_t IK_Context_Init;
+	uintptr_t IK_Context_UpdateTargets;
+	uintptr_t IK_Context_SolveDependencies;
+	uintptr_t IK_Context_AddDependencies;
+	uintptr_t IK_Context_CopyTo;
+
+
+	uintptr_t BoneMergeCache_Delete;
+	uintptr_t BoneMergeCache_Construct;
+	uintptr_t BoneMergeCache_Init;
+	uintptr_t BoneMergeCache_MergeMatchingPoseParams;
+	uintptr_t BoneMergeCache_CopyFromFollow;
+	uintptr_t BoneMergeCache_CopyToFollow;
+
+	uintptr_t BoneSetup_AccumulatePose;
+	uintptr_t BoneSetup_CalcAutoplaySequences;
+	uintptr_t BoneSetup_CalcBoneAdj;
 };
 
 #include "../sdk/convar.h"
@@ -95,6 +141,9 @@ struct cvars {
 	CConVar* weapon_debug_spread_show;
 	CConVar* cl_csm_shadows;
 	CConVar* sv_friction;
+	CConVar* cl_ignorepackets;
+	CConVar* sv_enablebunnyhopping;
+	CConVar* sv_jump_impulse;
 };
 
 namespace Offsets {
@@ -105,6 +154,8 @@ namespace Offsets {
 
 	inline int m_iClip1;
 	inline int m_flNextPrimaryAttack;
+	inline int m_flNextSecondaryAttack;
+	inline int m_hWeaponWorldModel;
 	inline int m_iItemDefinitionIndex;
 	inline int m_hActiveWeapon;
 	inline int m_hMyWeapons;
@@ -133,6 +184,8 @@ namespace Offsets {
 	inline int m_bIsScoped;
 	inline int m_ArmorValue;
 	inline int m_zoomLevel;
+	inline int m_iBurstShotsRemaining;
+	inline int m_fNextBurstShot;
 	inline int m_fAccuracyPenalty;
 	inline int m_flRecoilIndex;
 	inline int m_flPostponeFireReadyTime;
@@ -141,6 +194,7 @@ namespace Offsets {
 	inline int m_nHitboxSet;
 	inline int m_bClientSideAnimation;
 	inline int m_flCycle;
+	inline int m_flEncodedController;
 	inline int m_bHasHelmet;
 	inline int m_bHasHeavyArmor;
 	inline int m_vecViewOffset;
@@ -170,6 +224,8 @@ namespace Offsets {
 	inline int m_flCustomAutoExposureMin;
 	inline int m_flCustomAutoExposureMax;
 	inline int m_flCustomBloomScale;
+	inline int m_iPing;
+	inline int m_iPlayerC4;
 	inline int m_fThrowTime;
 	inline int m_flThrowStrength;
 	inline int m_bPinPulled;

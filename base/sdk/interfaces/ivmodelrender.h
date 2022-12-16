@@ -65,8 +65,8 @@ public:
 		return MEM::CallVFunc<bool>(this, 2);
 	}
 
-	int DrawModelExecute( void* ctx, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* const pCustomBoneToWorld ) {
-		typedef int( __thiscall* OriginalFn )( void*, void* ctx, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* const pCustomBoneToWorld );
+	int DrawModelExecute( void* ctx, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, void* pCustomBoneToWorld ) {
+		typedef int( __thiscall* OriginalFn )( void*, void* ctx, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, void* pCustomBoneToWorld );
 		return MEM::GetVFunc<OriginalFn>( this, 21 )( this, ctx, state, pInfo, pCustomBoneToWorld );
 	}
 };

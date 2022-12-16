@@ -4,7 +4,7 @@
 #include "../../context.h"
 
 void CChams::InitMaterials( ) {
-	/*RegularMat = CreateMaterial(
+	RegularMat = CreateMaterial(
 		_( "mb_regular.vmt" ),
 		_( "VertexLitGeneric" ),
 		_(
@@ -96,7 +96,7 @@ void CChams::InitMaterials( ) {
 		return;
 
 	if ( !GalaxyMat || GalaxyMat->IsErrorMaterial( ) )
-		return;*/
+		return;
 
 	init = true;
 }
@@ -108,7 +108,6 @@ IMaterial* CChams::CreateMaterial(
 	//pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
 
 	//return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
-
 	return nullptr;
 }
 
@@ -131,8 +130,10 @@ void CChams::OverrideMaterial(
 	material->SetMaterialVarFlag( MATERIAL_VAR_IGNOREZ, ignore_z );
 	material->SetMaterialVarFlag( MATERIAL_VAR_WIREFRAME, wireframe );
 
-	if ( const auto $envmaptint = material->FindVar( _( "$envmaptint" ), nullptr, false ) )
-		$envmaptint->SetVector( r / 255, g / 255, b / 255 );
+	if ( type > 1 ) {
+		if ( const auto $envmaptint = material->FindVar( _( "$envmaptint" ), nullptr, false ) )
+			$envmaptint->SetVector( r / 255, g / 255, b / 255 );
+	}
 
 	if ( type == 2 ) {
 		if ( const auto envmap = material->FindVar( _( "$envmapfresnelminmaxexp" ), nullptr ) )
@@ -198,7 +199,7 @@ void CChams::Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, ma
 						continue;
 
 					std::memcpy(
-						matrix, record->m_pMatrix,
+						matrix, record->m_cAnimData.m_pMatrix,
 						record->m_iBonesCount * sizeof( matrix3x4_t )
 					);
 
@@ -220,6 +221,26 @@ void CChams::Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, ma
 				oDrawModel( Interfaces::StudioRender, 0, pResults, info, matrix, flFlexWeights, flFlexDelayedWeights, vecModelOrigin, nFlags );
 				Interfaces::StudioRender->ForcedMaterialOverride( nullptr );
 			}
+		}
+
+		if ( type == LOCAL && Config::Get<bool>( Vars.ChamDesync ) ) {
+			Color Col{ Config::Get<Color>( Vars.ChamDesyncCol ) };
+
+			int Mat{ Config::Get<int>( Vars.ChamDesyncMat ) };
+
+			OverrideMaterial(
+				Mat, false,
+				Col.Get<COLOR_R>( ),
+				Col.Get<COLOR_G>( ),
+				Col.Get<COLOR_B>( ),
+				Col.Get<COLOR_A>( ),
+				GlowStrength,
+				false
+			);
+
+			oDrawModel( Interfaces::StudioRender, 0, pResults, info, ctx.m_cFakeData.m_matMatrix, flFlexWeights, flFlexDelayedWeights, vecModelOrigin, nFlags );
+
+			Interfaces::StudioRender->ForcedMaterialOverride( nullptr );
 		}
 
 		CheckIfPlayer( ChamHid, type ) {
@@ -294,30 +315,28 @@ void CChams::Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, ma
 
 void CChams::OnPostScreenEffects( ) {
 	if ( !ctx.m_pLocal ) {
-		m_Hitmatrix.clear( );
+		if ( !m_Hitmatrix.empty( ) )
+			m_Hitmatrix.clear( );
 		return;
 	}
 
 	if ( m_Hitmatrix.empty( ) )
 		return;
 
-	m_Hitmatrix.erase(
-		std::remove_if(
-			m_Hitmatrix.begin( ), m_Hitmatrix.end( ),
-			[ & ]( const C_HitMatrixEntry hit ) -> bool {
-				return hit.time - Interfaces::Globals->flRealTime <= 0;
-			}
-		),
-		m_Hitmatrix.end( )
-				);
+	const auto ctx{ Interfaces::MaterialSystem->GetRenderContext( ) };
+	if ( !ctx )
+		return;
 
-	for ( auto& hit : m_Hitmatrix ) {
-		if ( !hit.state.pModelToWorld || !hit.state.pRenderable || !hit.state.pStudioHdr || !hit.state.pStudioHWData ||
-			!hit.info.pRenderable || !hit.info.pModelToWorld || !hit.info.pModel || !Interfaces::ClientEntityList->GetClientEntity( hit.info.nEntityIndex ) )
+	m_bFakeModel = true;
+
+	for ( auto i = m_Hitmatrix.begin( ); i != m_Hitmatrix.end( ); ) {
+		const auto delta{ i->time - Interfaces::Globals->flRealTime };
+		if ( delta <= 0 ) {
+			i = m_Hitmatrix.erase( i );
 			continue;
+		}
 
 		auto alpha{ 1.f };
-		const auto delta{ hit.time - Interfaces::Globals->flRealTime };
 
 		if ( delta < 0.5f )
 			alpha = delta * 2;
@@ -337,12 +356,12 @@ void CChams::OnPostScreenEffects( ) {
 			false
 		);
 
-		m_bFakeModel = true;
-		Interfaces::ModelRender->DrawModelExecute( Interfaces::MaterialSystem->GetRenderContext( ), hit.state, hit.info, hit.pBoneToWorld );
-		m_bFakeModel = false;
-
+		Interfaces::ModelRender->DrawModelExecute( ctx, i->state, i->info, i->pBoneToWorld->Base( ) );
 		Interfaces::StudioRender->ForcedMaterialOverride( nullptr );
+
+		i = std::next( i );
 	}
+	m_bFakeModel = false;
 }
 
 void CChams::AddHitmatrix( CBasePlayer* player, matrix3x4_t* bones ) {

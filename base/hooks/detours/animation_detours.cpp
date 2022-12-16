@@ -9,8 +9,8 @@ void FASTCALL Hooks::hkStandardBlendingRules( CBasePlayer* const ent, const std:
 	if ( !ent || !ctx.m_pLocal || !ent->IsPlayer( ) )
 		return oStandardBlendingRules( ent, edx, mdl_data, a1, a2, a3, mask );
 
-	if ( ctx.m_bForceBoneMask )
-		mask = 0x100;
+	if ( ctx.m_bServerSetupbones && ctx.m_bSetupBones )
+		mask = BONE_USED_BY_HITBOX;
 
 	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
 
@@ -29,25 +29,55 @@ void FASTCALL Hooks::hkStandardBlendingRules( CBasePlayer* const ent, const std:
 	boneFlags = backupBoneFlags;
 }
 
+void FASTCALL Hooks::hkBuildTransformations( CBasePlayer* ecx, int edx, CStudioHdr* hdr, Vector* pos, Quaternion* q, int cameraTransform, int boneMask, int boneComputed ) {
+	static auto oBuildTransformations{ DTR::BuildTransformations.GetOriginal<decltype( &hkBuildTransformations )>( ) };
+
+	if ( ctx.m_bServerSetupbones && ctx.m_bSetupBones ) {
+		//if ( ctx.m_bServerSetupbones && ctx.m_bSetupBones )
+		//	boneMask = BONE_USED_BY_HITBOX;
+
+		typedef void( __thiscall* BuildTransformations_t )( void*, CStudioHdr*, Vector*, Quaternion*, int, int, int );
+		( ( BuildTransformations_t )Offsets::Sigs.C_BaseAnimating__BuildTransformations )( ecx, hdr, pos, q, cameraTransform, boneMask, boneComputed );
+	}
+	else
+		oBuildTransformations( ecx, edx, hdr, pos, q, cameraTransform, boneMask, boneComputed );
+}
+
 void FASTCALL Hooks::hkDoExtraBonesProcessing( void* ecx, uint32_t ye, CStudioHdr* hdr, Vector* pos, Quaternion* q, const matrix3x4_t& matrix, uint8_t* bone_computed, void* context ) {
 	return;
 }
 
 bool FASTCALL Hooks::hkShouldSkipAnimFrame( void* ecx, uint32_t ebx ) {
-	static auto oShouldSkipAnimFrame{ DTR::ShouldSkipAnimFrame.GetOriginal<decltype( &hkShouldSkipAnimFrame )>( ) };
-	if ( ctx.m_bSetupBones )
-		return false;
-
-	return oShouldSkipAnimFrame( ecx, ebx );
+	return false;
 }
+
+void FASTCALL Hooks::hkOnNewCollisionBounds( CBasePlayer* ecx, uint32_t edx, Vector* oldMins, Vector* newMins, Vector* oldMaxs, Vector* new_Maxs ) {
+	//static auto oShouldSkipAnimFrame{ DTR::OnNewCollisionBounds.GetOriginal<decltype( &hkOnNewCollisionBounds )>( ) };
+	//oShouldSkipAnimFrame( ecx, edx, oldMins, newMins, oldMaxs, new_Maxs );
+	//if ( !ctx.m_bCollisionForced )
+	//	return;
+
+	// rebuild of this function
+	//*( float* )( uintptr_t( ecx ) + Offsets::m_bIsScoped - 0x54 ) = *( float* )( uintptr_t( ecx ) + Offsets::m_fFlags - 0x50 ) + oldMaxs->z;
+	//*( float* )( uintptr_t( ecx ) + Offsets::m_bIsScoped - 0x50 ) = Interfaces::Globals->flCurTime;
+}
+
+#ifdef SERVER_DBGING
+void FASTCALL Hooks::hkServerSetupBones( CBaseAnimating* ecx, int edx, matrix3x4a_t* pBoneToWorld, int boneMask ) {
+	static auto oServerSetupBones{ DTR::ServerSetupBones.GetOriginal<decltype( &hkServerSetupBones )>( ) };
+
+	const QAngle absrotation{ *reinterpret_cast< QAngle* >( ( reinterpret_cast< std::uintptr_t >( ecx ) + 0x1e8 ) ) };
+
+	oServerSetupBones( ecx, edx, pBoneToWorld, boneMask );
+}
+#endif
 
 bool FASTCALL Hooks::hkSetupbones( const std::uintptr_t ecx, const std::uintptr_t edx, matrix3x4_t* const bones, 
 	int max_bones, int mask, float time ) {
 	static auto oSetupbones{ DTR::Setupbones.GetOriginal<decltype( &hkSetupbones )>( ) };
 	const auto player = reinterpret_cast< CBasePlayer* >( ecx - sizeof( std::uintptr_t ) );
 	if ( player->IsDead( )
-		|| !player->IsPlayer( )
-		|| ( mask == BONE_USED_BY_ATTACHMENT && player != ctx.m_pLocal ) )// ill let de_game do it for me!
+		|| !player->IsPlayer( ) )
 		return oSetupbones( ecx, edx, bones, max_bones, mask, time );
 
 	if ( !ctx.m_bSetupBones ) {
@@ -76,26 +106,14 @@ bool FASTCALL Hooks::hkSetupbones( const std::uintptr_t ecx, const std::uintptr_
 void FASTCALL Hooks::hkUpdateClientsideAnimation( CBasePlayer* ecx, void* edx ) {
 	static auto oUpdateClientsideAnimation{ DTR::UpdateClientsideAnimation.GetOriginal<decltype( &hkUpdateClientsideAnimation )>( ) };
 	if ( ecx->IsDead( )
-		|| !ecx->IsPlayer( )
-		|| ecx != ctx.m_pLocal )
+		|| !ecx->IsPlayer( )/*
+		|| ecx != ctx.m_pLocal*/ )
 		return oUpdateClientsideAnimation( ecx, edx );
 
 	if ( !ctx.m_bUpdatingAnimations )
 		return;
 
 	oUpdateClientsideAnimation( ecx, edx );
-}
-
-void FASTCALL Hooks::hkCheckForSequenceChange( void* ecx, int edx, void* hdr, int cur_sequence, bool force_new_sequence, bool interpolate ) {
-	// no sequence interpolation over here mate
-	// forces the animation queue to clear
-	static auto oCheckForSequenceChange = DTR::CheckForSequenceChange.GetOriginal<decltype( &hkCheckForSequenceChange )>( );
-	auto* player = reinterpret_cast< CBasePlayer* >( uintptr_t( ecx ) - 4 );
-
-	if ( !ecx || player || !player->IsPlayer( ) )
-		return oCheckForSequenceChange( ecx, edx, hdr, cur_sequence, force_new_sequence, interpolate );
-
-	return oCheckForSequenceChange( ecx, edx, hdr, cur_sequence, force_new_sequence, false );
 }
 
 void FASTCALL Hooks::hkAccumulateLayers( CBasePlayer* const ecx, const std::uintptr_t edx, int a0, int a1, float a2, int a3 ) {

@@ -41,9 +41,11 @@ void CVisuals::WorldHitMarker( const std::shared_ptr<hitmarker_t>& hit ) {
         }
 
         if ( Config::Get<bool>(Vars.MiscHitmarker ) ) {
-            const auto col = Config::Get<Color>( Vars.MiscHitmarkerCol ).Set<COLOR_A>( Config::Get<Color>( Vars.MiscHitmarkerCol ).Get<COLOR_A>( ) * hit->alpha );
-            Render::Line( Vector2D( hit->screen.x - 3, hit->screen.y ), Vector2D( hit->screen.x + 4, hit->screen.y ), col );
-            Render::Line( Vector2D( hit->screen.x, hit->screen.y - 3 ), Vector2D( hit->screen.x, hit->screen.y + 4 ), col );
+            const int addAmt{ ( static_cast< int >( ctx.m_ve2ScreenSize.x ) % 2 ) ? 3 : 2 };
+
+            const auto col{ Config::Get<Color>( Vars.MiscHitmarkerCol ).Set<COLOR_A>( Config::Get<Color>( Vars.MiscHitmarkerCol ).Get<COLOR_A>( ) * hit->alpha ) };
+            Render::Line( Vector2D( hit->screen.x - 2, hit->screen.y ), Vector2D( hit->screen.x + addAmt, hit->screen.y ), col );
+            Render::Line( Vector2D( hit->screen.x, hit->screen.y - 2 ), Vector2D( hit->screen.x, hit->screen.y + addAmt ), col );
         }
     }
 }

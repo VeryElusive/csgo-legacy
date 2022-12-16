@@ -11,9 +11,8 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 	data.dmg = static_cast< float >( weaponData->iDamage );
 
 	CGameTrace trace{ };
+	//CTraceFilterSkipTwoEntities traceFilter{ shooter };// TODO: LEGACY!
 	CTraceFilter traceFilter{ shooter };
-	//CTraceFilterSkipTwoEntities traceFilter{ shooter };
-	//CBasePlayer* lastHitPlayer{ };
 
 	const auto dir{ ( dst - src ).Normalized( ) };
 
@@ -24,7 +23,7 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 		// create end point of bullet
 		Vector vecEnd{ src + ( dir * maxDistance ) };
 
-		//traceFilter.pSkip2 = lastHitPlayer;
+		//traceFilter.pSkip2 = trace.pHitEntity;
 
 		// AMD cpus cant do this on a thread bruh
 		Interfaces::EngineTrace->TraceRay(
@@ -32,7 +31,7 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 			reinterpret_cast< ITraceFilter* >( &traceFilter ), &trace
 		);
 
-		if ( target )//traceFilter.ShouldHitEntity( target, MASK_SHOT_PLAYER )
+		if ( target /* && traceFilter.ShouldHitEntity( target, MASK_SHOT_PLAYER )*/ )
 			ClipTraceToPlayer( vecEnd + ( dir * 40.f ), src, &trace, target );
 
 		// we didn't hit anything
@@ -43,13 +42,18 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 		curDistance += trace.flFraction * maxDistance;
 		data.dmg *= std::powf( weaponData->flRangeModifier, ( curDistance / 500.f ) );
 
+		const auto enterSurfaceData{ Interfaces::PhysicsProps->GetSurfaceData( trace.surface.nSurfaceProps ) };
+		if ( !enterSurfaceData
+			|| enterSurfaceData->game.flPenetrationModifier < 0.1f )
+			break;
+
 		if ( curDistance > 3000.f && weaponData->flPenetration > 0.f )
 			break;
 
 		const auto hitPlayer = static_cast< CBasePlayer* >( trace.pHitEntity );
 		if ( hitPlayer
 			&& hitPlayer == target ) {
-			if ( ( trace.iHitGroup >= HITGROUP_HEAD && trace.iHitGroup <= HITGROUP_RIGHTLEG ) || trace.iHitGroup == HITGROUP_GEAR ) {
+			if ( trace.iHitGroup <= HITGROUP_NECK ) {
 				data.target = hitPlayer;
 				data.hitbox = trace.iHitbox;
 				data.hitgroup = trace.iHitGroup;
@@ -57,23 +61,18 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 				if ( isTaser )
 					data.hitgroup = 0;
 
-				ScaleDamage( hitPlayer, data.dmg, weaponData->flArmorRatio, data.hitgroup, 4.f );//weaponData->flHeadShotMultiplier
+				ScaleDamage( hitPlayer, data.dmg, weaponData->flArmorRatio, data.hitgroup );
 
 				return data;
 			}
-			//lastHitPlayer = hitPlayer->IsPlayer( ) ? hitPlayer : nullptr;
 		}
-		//else
-		//	lastHitPlayer = nullptr;
+
 
 		// ghetto window fix
 		if ( !penetrate && !( trace.iContents & CONTENTS_WINDOW ) )
 			break;
 
-		const auto enterSurfaceData{ Interfaces::PhysicsProps->GetSurfaceData( trace.surface.nSurfaceProps ) };
 		if ( isTaser 
-			|| !enterSurfaceData 
-			|| enterSurfaceData->game.flPenetrationModifier < 0.1f
 			|| HandleBulletPenetration( shooter, weaponData, trace, src, dir, data.penetrationCount, data.dmg, pen_modifier ) )
 			break;
 	}
@@ -81,12 +80,12 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 	return { };
 }
 
-void CAutowall::ScaleDamage( CBasePlayer* player, float& damage, float ArmourRatio, int hitgroup, float headshotMultiplier ) {
+void CAutowall::ScaleDamage( CBasePlayer* player, float& damage, float ArmourRatio, int hitgroup ) {
 	const auto hasHeavyArmor = player->m_bHasHeavyArmor( );
 
 	switch ( hitgroup ) {
 	case 1:
-		damage *= headshotMultiplier;
+		damage *= 4;
 
 		if ( hasHeavyArmor )
 			damage *= 0.5f;
@@ -151,6 +150,46 @@ void CAutowall::ClipTraceToPlayer( Vector dst, Vector src, CGameTrace* oldtrace,
 	*oldtrace = new_trace;
 }
 
+/*
+if ( ( nCurrentContents & MASK_SHOT_HULL ) == 0 || ( nCurrentContents & CONTENTS_HITBOX ) != 0 && nCurrentContents != nStartContents ) {
+			Interfaces::EngineTrace->TraceRay( { end, vecTrEnd }, MASK_SHOT_HULL | CONTENTS_HITBOX, nullptr, &trExit );
+
+			if ( trExit.bStartSolid && trExit.surface.uFlags < 0 ) {
+				// do another trace, but skip the player to get the actual exit surface
+				auto filter = CTraceFilter( trExit.pHitEntity, TRACE_EVERYTHING );//COLLISION_GROUP_NONE
+
+				Interfaces::EngineTrace->TraceRay( { end, start }, MASK_SHOT_HULL, &filter, &trExit );
+
+				if ( ( 1.f > trExit.flFraction || trExit.bAllSolid )
+					&& !trExit.bStartSolid )
+					return true;
+			}
+			else if ( 1.f <= trExit.flFraction && !trExit.bAllSolid || trExit.bStartSolid ) {
+				if ( trEnter.pHitEntity
+					&& !( trEnter.pHitEntity == ctx.m_pLocal )
+					&& trEnter.pHitEntity->IsBreakable( ) ) {
+					trExit.surface.szName = trEnter.surface.szName;
+					trExit.vecEnd = start + dir;
+
+					//*( _WORD* )( exit_trace + 64 ) = *( _WORD* )( enter_trace + 64 );
+					return true;
+				}
+			}
+			else {
+				if ( trExit.surface.uFlags >= 0 )
+					goto LABEL_25;
+
+				if ( trExit.pHitEntity->IsBreakable( )
+					&& trEnter.pHitEntity->IsBreakable( ) )
+					return true;
+
+				if ( trExit.surface.uFlags >> 7 ) {
+				LABEL_25:
+					if ( trExit.plane.vecNormal.DotProduct( dir ) <= 1.f )
+						return true;
+				}
+			}
+		}*/
 bool CAutowall::TraceToExit( const Vector& src, const Vector& dir, const CGameTrace& enter_trace, CGameTrace& exit_trace ) {
 	float dist{ };
 

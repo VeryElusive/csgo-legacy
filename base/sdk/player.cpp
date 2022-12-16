@@ -42,21 +42,20 @@ Vector CBasePlayer::GetEyePosition( float pitch ) {
 	if ( !v12 )
 		return { };
 
-	const auto backupPoseParam{ ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) };
-
-	ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
-		pitch
-		- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 360.f
-	), -90.f, 90.f ) + 90.f ) / 180.f;
-
-	// idk if this is necessary but ill do it anyways
-	this->SetAbsAngles( { 0.f, v12->flAbsYaw, 0.f } );
-
-	Features::AnimSys.SetupBonesFixed( this, ctx.m_matRealLocalBones, BONE_USED_BY_HITBOX, Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME | NULLIK | OCCLUSIONINTERP ) );
-
 	auto eyePos{ this->m_vecOrigin( ) + this->m_vecViewOffset( ) };
 
 	if ( v12->pEntity && ( v12->bHitGroundAnimation || v12->flDuckAmount != 0.f || this->m_hGroundEntity( ) == -1 ) ) {
+		const auto backupPoseParam{ ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) };
+
+		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
+			pitch
+			- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 360.f
+		), -90.f, 90.f ) + 90.f ) / 180.f;
+
+		this->SetAbsAngles( { 0.f, v12->flAbsYaw, 0.f } );
+
+		Features::AnimSys.SetupBonesFixed( this, ctx.m_matRealLocalBones, BONE_USED_BY_HITBOX, Interfaces::Globals->flCurTime, USEALLSETUPBONESFLAGS );
+
 		static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
 		const auto boneIndex{ lookupBone( v12->pEntity, _( "head_0" ) ) };
 
@@ -75,9 +74,9 @@ Vector CBasePlayer::GetEyePosition( float pitch ) {
 				eyePos.z += ( ( ( v7 * v7 ) * 3.f ) - ( ( v7 + v7 ) * ( v7 * v7 ) ) ) * ( headPos.z - eyePos.z );
 			}
 		}
-	}
 
-	ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
+		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
+	}
 
 	return eyePos;
 }
@@ -88,6 +87,8 @@ bool CBasePlayer::IsHostage( ) {
 }
 
 bool CBasePlayer::CanShoot( ) {
+	ctx.m_bRevolverCanCock = false;
+
 	if ( this->m_fFlags( ) & 0x40 )
 		return false;
 
@@ -101,32 +102,48 @@ bool CBasePlayer::CanShoot( ) {
 	if ( this->m_bWaitForNoAttack( ) )
 		return false;
 
-	if ( this->m_iPlayerState( ) )
+	if ( this->m_iPlayerState( ) > 0 )
 		return false;
 
 	if ( this->m_bIsDefusing( ) )
+		return false;	
+
+	// TODO: legacy! reloading
+
+	if ( TIME_TO_TICKS( ctx.m_iLastPacketTime ) <= TIME_TO_TICKS( ctx.m_iLastShotTime ) )
 		return false;
 
 	auto tickbase = this->m_nTickBase( );
-	const int ticksAllowed{ ctx.m_iTicksAllowed };
 	const bool properWeap{ ctx.m_pWeaponData->nWeaponType > WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 };
 	if ( properWeap )
-		tickbase -= ticksAllowed;
+		tickbase -= ctx.m_iTicksAllowed;
 
 	const float curtime = TICKS_TO_TIME( tickbase );
 	if ( curtime < this->m_flNextAttack( ) )
 		return false;
 
+	if ( ( weapon->m_iItemDefinitionIndex( ) == WEAPON_GLOCK || weapon->m_iItemDefinitionIndex( ) == WEAPON_FAMAS ) && weapon->m_iBurstShotsRemaining( ) > 0 ) {
+		if ( curtime >= weapon->m_fNextBurstShot( ) )
+			return true;
+	}
+
 	if ( weapon->m_iItemDefinitionIndex( ) == WEAPON_C4 )
 		return true;
 
-	if ( ( properWeap || weapon->m_iItemDefinitionIndex( ) == WEAPON_TASER )
-		&& ( weapon->m_iClip1( ) <= 0 )
-		|| weapon->m_flNextPrimaryAttack( ) > curtime )
+	const auto weaponData{ weapon->GetCSWeaponData( ) };
+	if ( !weaponData )
+		return false;
+
+	if ( weaponData->nWeaponType >= WEAPONTYPE_PISTOL && weaponData->nWeaponType <= WEAPONTYPE_MACHINEGUN && weapon->m_iClip1( ) < 1 )
+		return false;
+
+	if ( curtime < weapon->m_flNextPrimaryAttack( ) )
 		return false;
 
 	if ( weapon->m_iItemDefinitionIndex( ) != WEAPON_REVOLVER )
 		return true;
+
+	ctx.m_bRevolverCanCock = true;
 
 	if ( weapon->m_nSequence( ) != 5 )
 		return false;

@@ -33,18 +33,18 @@ void Menu::render( ) {
 	Render::FilledRoundedBox( Pos - Vector2D( 1, 1 ), Size + 2, 5, 5, Color( 10, 10, 10 ) );
 	Render::FilledRoundedBox( Pos, Size, 90, 5, OutlineLight );
 	Render::FilledRoundedBox( Pos + 1, Size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10 ) );
-	Render::FilledRoundedBox( Pos + 2, Size - Vector2D( 3, 3 ), 5, 5, BackgroundCol );
+	Render::FilledRoundedBox( Pos + 2, Size - Vector2D( 4, 4 ), 5, 5, BackgroundCol );
 
 	Render::Line( Pos + Vector2D( 1, 51 ), Pos + Vector2D( Size.x - 2, 51 ), Color( 10, 10, 10 ) );
 	Render::Line( Pos + Vector2D( 0, 50 ), Pos + Vector2D( Size.x, 50 ), OutlineLight );
 	Render::Line( Pos + Vector2D( 1, 49 ), Pos + Vector2D( Size.x - 2, 49 ), Color( 10, 10, 10 ) );
 
 	for ( int i{ }; i < 12; ++i ) {
-		Render::Line( Pos + Vector2D( Size.x - 56 - i, 2 ), Pos + Vector2D( Size.x - 9 - i, 49 ), Menu::AccentCol );
-		Render::Line( Pos + Vector2D( Size.x - 32 - i, 2 ), Pos + Vector2D( Size.x - 2, 32 + i ), Menu::Accent2Col );
+		Render::Line( Pos + Vector2D( Size.x - 55 - i, 2 ), Pos + Vector2D( Size.x - 9 - i, 48 ), Menu::AccentCol );
+		Render::Line( Pos + Vector2D( Size.x - 32 - i, 2 ), Pos + Vector2D( Size.x - 3, 31 + i ), Menu::Accent2Col );
 
-		Render::Line( Pos + Vector2D( 31 + i, 2 ), Pos + Vector2D( 1, 32 + i ), Menu::Accent2Col );
-		Render::Line( Pos + Vector2D( 55 + i, 2 ), Pos + Vector2D( 8 + i, 49 ), Menu::AccentCol );
+		Render::Line( Pos + Vector2D( 32 + i, 2 ), Pos + Vector2D( 2, 32 + i ), Menu::Accent2Col );
+		Render::Line( Pos + Vector2D( 56 + i, 2 ), Pos + Vector2D( 10 + i, 48 ), Menu::AccentCol );
 	}
 
 	Render::Line( Pos + Vector2D( 1, 79 ), Pos + Vector2D( Size.x - 2, 79 ), Color( 10, 10, 10 ) );

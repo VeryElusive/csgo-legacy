@@ -2,7 +2,6 @@
 #include "../../core/interfaces.h"
 
 #include <assert.h>
-
 /*
 CKeyValues::CKeyValues( const char* szKeyName, void* pUnknown1, HKeySymbol hCaseInsensitiveKeyName )
 {

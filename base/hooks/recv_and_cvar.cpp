@@ -1,4 +1,5 @@
 #include "../core/hooks.h"
+#include "../features/animations/animation.h"
 #include "../context.h"
 #include <intrin.h>
 
@@ -11,12 +12,17 @@ bool FASTCALL Hooks::hkSvCheatsGetBool( CConVar* thisptr, int edx ) {
 }
 
 void CDECL Hooks::m_bClientSideAnimationHook( CRecvProxyData* data, void* entity, void* output ) {
-	if ( entity != ctx.m_pLocal
-		&& !( ( CBasePlayer* )entity )->IsHostage( ) )
-		*( int* )output = ( ctx.m_bUpdatingAnimations ? 1 : 0 );
-
-	if ( !bClientSideAnimation )
+	if ( !( ( CBasePlayer* )entity )->IsHostage( ) )
 		return;
 
-	bClientSideAnimation( data, entity, output );
+	m_bClientSideAnimation( data, entity, output );
+}
+
+void CDECL Hooks::m_flSimulationTimeHook( CRecvProxyData* data, void* entity, void* output ) {
+	// fix simtime being inaccurate due to rounding
+	// when its smaller than network base (caused by defensive dt).
+	if ( data->Value.Int == 0 )
+		return;
+
+	m_flSimulationTime( data, entity, output );
 }

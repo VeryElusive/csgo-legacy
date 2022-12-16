@@ -150,8 +150,8 @@ using MDLHandle_t = std::uint16_t;
 
 struct Model_t
 {
-	std::byte	pad0[0x4];		//0x0000
-	char		szName[260];	//0x0004
+	std::byte	pad0[ 0x4 ];		//0x0000
+	char		szName[ 260 ];	//0x0004
 	int			nLoadFlags;		//0x0108
 	int			nServerCount;	//0x010C
 	int			iType;			//0x0110
@@ -203,26 +203,26 @@ public:
 	virtual void                            GetModelMaterialColorAndLighting( const Model_t* model, Vector const& origin, QAngle const& angles, void* pTrace, Vector& lighting, Vector& matColor ) = 0;
 	virtual void                            GetIlluminationPoint( const Model_t* model, IClientRenderable* pRenderable, Vector const& origin, QAngle const& angles, Vector* pLightingCenter ) = 0;
 	virtual int                             GetModelContents( int modelIndex ) const = 0;
-	virtual studiohdr_t*			GetStudioModel(const Model_t* pModel) = 0;
-	virtual int						GetModelSpriteWidth(const Model_t* pModel) const = 0;
-	virtual int						GetModelSpriteHeight(const Model_t* pModel) const = 0;
-	virtual void					SetLevelScreenFadeRange(float flMinSize, float flMaxSize) = 0;
-	virtual void					GetLevelScreenFadeRange(float* pMinArea, float* pMaxArea) const = 0;
-	virtual void					SetViewScreenFadeRange(float flMinSize, float flMaxSize) = 0;
-	virtual unsigned char			ComputeLevelScreenFade(const Vector& vecAbsOrigin, float flRadius, float flFadeScale) const = 0;
-	virtual unsigned char			ComputeViewScreenFade(const Vector& vecAbsOrigin, float flRadius, float flFadeScale) const = 0;
-	virtual int						GetAutoplayList(const studiohdr_t* pStudioHdr, unsigned short** pAutoplayList) const = 0;
-	virtual CPhysCollide*			GetCollideForVirtualTerrain(int nIndex) = 0;
-	virtual bool					IsUsingFBTexture(const Model_t* pModel, int nSkin, int nBody, IClientRenderable* pClientRenderable) const = 0;
-	virtual const Model_t*			FindOrLoadModel(const char* szName) const = 0;
-	virtual MDLHandle_t				GetCacheHandle(const Model_t* pModel) const = 0;
-	virtual int						GetBrushModelPlaneCount(const Model_t* pModel) const = 0;
-	virtual void					GetBrushModelPlane(const Model_t* pModel, int nIndex, cplane_t& plane, Vector* pOrigin) const = 0;
-	virtual int						GetSurfacepropsForVirtualTerrain(int nIndex) = 0;
-	virtual bool					UsesEnvCubemap(const Model_t* pModel) const = 0;
-	virtual bool					UsesStaticLighting(const Model_t* pModel) const = 0;
-	virtual int						RegisterDynamicModel(const char* name, bool bClientSide) = 0;
-	virtual int						RegisterCombinedDynamicModel(const char* pszName, MDLHandle_t Handle) = 0;
-	virtual void					UpdateCombinedDynamicModel(int nModelIndex, MDLHandle_t Handle) = 0;
-	virtual int						BeginCombinedModel(const char* pszName, bool bReuseExisting) = 0;
+	virtual studiohdr_t* GetStudioModel( const Model_t* pModel ) = 0;
+	virtual int						GetModelSpriteWidth( const Model_t* pModel ) const = 0;
+	virtual int						GetModelSpriteHeight( const Model_t* pModel ) const = 0;
+	virtual void					SetLevelScreenFadeRange( float flMinSize, float flMaxSize ) = 0;
+	virtual void					GetLevelScreenFadeRange( float* pMinArea, float* pMaxArea ) const = 0;
+	virtual void					SetViewScreenFadeRange( float flMinSize, float flMaxSize ) = 0;
+	virtual unsigned char			ComputeLevelScreenFade( const Vector& vecAbsOrigin, float flRadius, float flFadeScale ) const = 0;
+	virtual unsigned char			ComputeViewScreenFade( const Vector& vecAbsOrigin, float flRadius, float flFadeScale ) const = 0;
+	virtual int						GetAutoplayList( const studiohdr_t* pStudioHdr, unsigned short** pAutoplayList ) const = 0;
+	virtual CPhysCollide* GetCollideForVirtualTerrain( int nIndex ) = 0;
+	virtual bool					IsUsingFBTexture( const Model_t* pModel, int nSkin, int nBody, IClientRenderable* pClientRenderable ) const = 0;
+	virtual const Model_t* FindOrLoadModel( const char* szName ) const = 0;
+	virtual MDLHandle_t				GetCacheHandle( const Model_t* pModel ) const = 0;
+	virtual int						GetBrushModelPlaneCount( const Model_t* pModel ) const = 0;
+	virtual void					GetBrushModelPlane( const Model_t* pModel, int nIndex, cplane_t& plane, Vector* pOrigin ) const = 0;
+	virtual int						GetSurfacepropsForVirtualTerrain( int nIndex ) = 0;
+	virtual bool					UsesEnvCubemap( const Model_t* pModel ) const = 0;
+	virtual bool					UsesStaticLighting( const Model_t* pModel ) const = 0;
+	virtual int						RegisterDynamicModel( const char* name, bool bClientSide ) = 0;
+	virtual int						RegisterCombinedDynamicModel( const char* pszName, MDLHandle_t Handle ) = 0;
+	virtual void					UpdateCombinedDynamicModel( int nModelIndex, MDLHandle_t Handle ) = 0;
+	virtual int						BeginCombinedModel( const char* pszName, bool bReuseExisting ) = 0;
 };

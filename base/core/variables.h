@@ -56,6 +56,10 @@ struct Variables_t {
 	C_ADD_VARIABLE( Color, MiscHitMatrixCol, Color( 255, 255, 255 ) );
 	C_ADD_VARIABLE( int, MiscHitMatrixMat, 0 );
 
+	C_ADD_VARIABLE( bool, ChamDesync, false );
+	C_ADD_VARIABLE( Color, ChamDesyncCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( int, ChamDesyncMat, 0 );
+
 	// other
 	C_ADD_VARIABLE( bool, RemovalScope, false );
 	C_ADD_VARIABLE( bool, RemovalFlash, false );
@@ -148,6 +152,7 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, MiscPlayerModelT, 0 );
 	C_ADD_VARIABLE( int, MiscPlayerModelCT, 0 );
 	C_ADD_VARIABLE( bool, MiscPreserveKillfeed, false );
+	C_ADD_VARIABLE( bool, MiscFakePing, false );
 	C_ADD_VARIABLE( int, MiscWeaponVolume, 100 );
 	C_ADD_VARIABLE( bool, MiscHitmarker, false );
 	C_ADD_VARIABLE( Color, MiscHitmarkerCol, Color( 0, 255, 0 ) );
@@ -170,6 +175,8 @@ struct Variables_t {
 	/* rage */
 	// ragebot
 	C_ADD_VARIABLE( bool, RagebotEnable, false );
+	C_ADD_VARIABLE( bool, RagebotResolver, true );
+	C_ADD_VARIABLE( bool, RagebotLagcompensation, true );
 	ADD_RAGE_VAR( int, RagebotFOV, 0 );
 	ADD_RAGE_VAR( bool, RagebotAutoFire, false );
 	ADD_RAGE_VAR( bool, RagebotSilentAim, false );
@@ -236,11 +243,13 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, AntiaimYawRange, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawSpeed, 0 );
 	C_ADD_VARIABLE( int, AntiaimFreestand, 0 );
+	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
 	C_ADD_VARIABLE( bool, AntiaimDistortion, false );
 	C_ADD_VARIABLE( int, AntiaimDistortionRange, 0 );
 	C_ADD_VARIABLE( int, AntiaimDistortionSpeed, 0 );
 	C_ADD_VARIABLE( bool, AntiaimDistortionSpike, false );
-	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
+	C_ADD_VARIABLE( keybind_t, AntiaimInvert, { } );
+	C_ADD_VARIABLE( keybind_t, AntiaimInvertSpam, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimRight, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimLeft, { } );
 	C_ADD_VARIABLE( Color, AntiaimManualCol, Color( 255, 255, 255 ) );

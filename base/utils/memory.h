@@ -3,6 +3,7 @@
 #include <vector>
 // used: winapi, fmt includes
 #include "../havoc.h"
+#include "../sdk/datatypes/datamap.h"
 
 #pragma region memory_modules_definitions
 #define ENGINE_DLL				_("engine.dll")
@@ -117,6 +118,11 @@ namespace MEM
 	{
 		return uRelativeAddress + 0x4 + *reinterpret_cast< std::int32_t* >( uRelativeAddress );
 	}
+	// i dont know what the difference between the one above lol
+	inline DWORD CallableFromRelative( DWORD nAddress )
+	{
+		return nAddress + *( DWORD* )( nAddress + 1 ) + 5;
+	}
 	/// @returns : virtual function pointer of specified class at given index
 	template <typename T = void*>
 	constexpr T GetVFunc(void* thisptr, std::size_t nIndex)
@@ -137,6 +143,7 @@ namespace MEM
 	 */
 	std::vector<std::optional<std::uint8_t>> PatternToBytes(const std::string_view szPattern);
 	std::string BytesToPattern(const std::uint8_t* arrBytes, const std::size_t uSize);
+	TypeDescription_t* GetTypeDescription( DataMap_t* map, const char* name );
 
 	/*
 	 * @section: check

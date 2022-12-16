@@ -92,7 +92,7 @@ void CGrenadePrediction::Paint( ) {
 				const auto d = ( delta.Length( ) - 25.f ) / 140.f;
 				auto damage = 105.f * std::exp( -d * d );
 
-				Features::Autowall.ScaleDamage( player, damage, 1.f, HITGROUP_CHEST, 0 );
+				Features::Autowall.ScaleDamage( player, damage, 1.f, HITGROUP_CHEST );
 
 				// clamp max damage
 				damage = std::floorf( std::min( damage, ( player->m_ArmorValue( ) > 0 ) ? 57.f : 98.f ) );

@@ -26,22 +26,99 @@ void CMisc::Movement( CUserCmd& cmd ) {
 	FakeDuck( cmd );
 
 	if ( !AutoStop( cmd ) ) {
-		QuickStop( cmd );
+		if ( !MicroMove( cmd ) ) {
+			QuickStop( cmd );
 
-		if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
-			if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
-				cmd.iButtons |= IN_JUMP;
-			else
-				cmd.iButtons &= ~IN_JUMP;
+			if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
+				if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
+					cmd.iButtons |= IN_JUMP;
+				else
+					cmd.iButtons &= ~IN_JUMP;
+			}
+
+			SlowWalk( cmd );
+			AutoStrafer( cmd );
 		}
-
-		SlowWalk( cmd );
-		AutoStrafer( cmd );
 	}
 
 	cmd.flForwardMove = std::clamp<float>( cmd.flForwardMove, -450.f, 450.f );
 	cmd.flSideMove = std::clamp<float>( cmd.flSideMove, -450.f, 450.f );
 	cmd.flUpMove = std::clamp<float>( cmd.flUpMove, -320.f, 320.f );
+}
+
+bool CMisc::AutoStop( CUserCmd& cmd ) {
+	if ( !Features::Ragebot.m_bShouldStop )
+		return false;
+
+	if ( !Features::Ragebot.RagebotAutoStop )
+		return false;
+
+	if ( !Config::Get<bool>( Vars.RagebotEnable ) )
+		return false;
+
+	if ( cmd.iButtons & IN_JUMP
+		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
+		return false;
+
+	if ( Features::Ragebot.RagebotBetweenShots && !ctx.m_bCanShoot )
+		return false;
+
+	if ( !ctx.m_pWeaponData )
+		return false;
+
+	const auto maxWeaponSpeed{ ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) };
+	const auto optSpeed{ maxWeaponSpeed / 3.f };
+
+	const auto& velocity{ ctx.m_pLocal->m_vecVelocity( ) };
+	const auto speed{ velocity.Length2D( ) };
+
+	if ( speed <= optSpeed )
+		LimitSpeed( cmd, optSpeed );
+	else {
+		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
+
+		QAngle dir;
+		Math::VectorAngles( velocity * -1, dir );
+
+		dir.y = cmd.viewAngles.y - dir.y;
+
+		Vector move;
+		Math::AngleVectors( dir, &move );
+
+		cmd.flForwardMove = move.x;
+		cmd.flSideMove = move.y;
+
+		/*// determine amount of acceleration
+		const auto accelspeed{ Offsets::Cvars.sv_accelerate->GetFloat( ) * Interfaces::Globals->flIntervalPerTick * ctx.m_pLocal->m_surfaceFriction( ) };
+
+		// dont need to compensate for addspeed
+
+		if ( std::abs( velocity.x + cmd.flForwardMove * accelspeed ) > optSpeed )
+			cmd.flForwardMove	= std::copysign( ( std::abs( velocity.x ) - optSpeed ) / accelspeed + 1.f, move.x );
+
+		if ( std::abs( velocity.x + cmd.flSideMove * accelspeed ) > optSpeed )
+			cmd.flSideMove		= std::copysign( ( std::abs( velocity.y ) - optSpeed ) / accelspeed + 1.f, move.y );*/
+	}
+
+	return true;
+}
+
+void CMisc::LimitSpeed( CUserCmd& cmd, float maxSpeed ) {
+	const auto cmdSpeed{ std::sqrt( ( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) + ( cmd.flUpMove * cmd.flUpMove ) ) };
+
+	Vector fwd{ }, right{ };
+
+	Math::AngleVectors( cmd.viewAngles, &fwd, &right );
+
+	if ( cmdSpeed > maxSpeed ) {
+		const auto accelspeed{ Offsets::Cvars.sv_accelerate->GetFloat( ) * Interfaces::Globals->flIntervalPerTick * ctx.m_pLocal->m_surfaceFriction( ) };
+
+		cmd.flSideMove *= maxSpeed / cmdSpeed;
+		cmd.flForwardMove *= maxSpeed / cmdSpeed;
+		cmd.flUpMove *= maxSpeed / cmdSpeed;
+	}
+
+	//FullWalkMoveRebuild( cmd, fwd, right, ctx.m_pLocal->m_vecVelocity( ), maxSpeed );
 }
 
 void CMisc::QuickStop( CUserCmd& cmd ) {
@@ -191,6 +268,53 @@ void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_
 	cmd.iButtons |=
 		cmd.flSideMove > 0.f
 		? IN_MOVERIGHT : IN_MOVELEFT;
+}
+
+bool CMisc::MicroMove( CUserCmd& cmd ) {
+	if ( !Config::Get<bool>( Vars.AntiaimEnable )
+		|| !Config::Get<bool>( Vars.AntiaimDesync )
+		|| cmd.iButtons & IN_JUMP
+		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
+		return false;
+
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length2DSqr( ) > 2.f )
+		return false;
+
+	cmd.iButtons &= ~IN_SPEED;
+
+	float duck_amount{ };
+	if ( cmd.iButtons & IN_DUCK )
+		duck_amount = std::min(
+			1.f,
+			ctx.m_pLocal->m_flDuckAmount( )
+			+ ( Interfaces::Globals->flIntervalPerTick * 0.8f ) * ctx.m_pLocal->m_flDuckSpeed( )
+		);
+	else
+		duck_amount =
+		ctx.m_pLocal->m_flDuckAmount( )
+		- std::max( 1.5f, ctx.m_pLocal->m_flDuckSpeed( ) ) * Interfaces::Globals->flIntervalPerTick;
+
+	float move{ };
+	if ( cmd.iButtons & IN_DUCK
+		|| ctx.m_pLocal->m_flDuckAmount( )
+		|| ctx.m_pLocal->m_fFlags( ) & FL_DUCKING )
+		move = 1.1f / ( ( ( duck_amount * 0.34f ) + 1.f ) - duck_amount );
+	else
+		move = 1.1f;
+
+	if ( std::abs( cmd.flForwardMove ) > move
+		|| std::abs( cmd.flSideMove ) > move )
+		return false;
+
+	static bool sw = false;
+	sw = !sw;
+
+	if ( !sw )
+		move *= -1.f;
+
+	cmd.flSideMove = move;
+
+	return true;
 }
 
 void CMisc::AutoStrafer( CUserCmd& cmd ) {
@@ -393,33 +517,106 @@ void CMisc::Thirdperson( ) {
 	Interfaces::Input->vecCameraOffset.z = camAngles.z;
 }
 
+void CMisc::PlayerMove( ExtrapolationData_t& data ) {
+	if ( !( data.m_iFlags & FL_ONGROUND ) ) {
+		if ( !Offsets::Cvars.sv_enablebunnyhopping->GetBool( ) ) {
+			const auto speed{ data.m_vecVelocity.Length( ) };
+
+			const auto maxSpeed{ data.m_pPlayer->m_flMaxSpeed( ) * 1.1f };
+				if ( maxSpeed > 0.f
+					&& speed > maxSpeed )
+					data.m_vecVelocity *= ( maxSpeed / speed );
+		}
+
+		if ( data.m_bWasInAir )
+			data.m_vecVelocity.z = Offsets::Cvars.sv_jump_impulse->GetFloat( );
+	}
+	else
+		data.m_vecVelocity.z -=
+		Offsets::Cvars.sv_gravity->GetFloat( ) * Interfaces::Globals->flIntervalPerTick;
+
+	CGameTrace trace{ };
+	CTraceFilter traceFilter{ nullptr, TRACE_WORLD_ONLY };
+
+	Interfaces::EngineTrace->TraceRay(
+		{
+			data.m_vecOrigin,
+			data.m_vecOrigin + data.m_vecVelocity * Interfaces::Globals->flIntervalPerTick,
+			data.m_vecMins, data.m_vecMaxs
+		},
+		CONTENTS_SOLID, &traceFilter, &trace
+	);
+
+	if ( trace.flFraction != 1.f ) {
+		for ( int i{ }; i < 2; ++i ) {
+			data.m_vecVelocity -= trace.plane.vecNormal * data.m_vecVelocity.DotProduct( trace.plane.vecNormal );
+
+			const auto adjust = data.m_vecVelocity.DotProduct( trace.plane.vecNormal );
+			if ( adjust < 0.f )
+				data.m_vecVelocity -= trace.plane.vecNormal * adjust;
+
+			Interfaces::EngineTrace->TraceRay(
+				{
+					trace.vecEnd,
+					trace.vecEnd + ( data.m_vecVelocity * ( Interfaces::Globals->flIntervalPerTick * ( 1.f - trace.flFraction ) ) ),
+					data.m_vecMins, data.m_vecMaxs
+				},
+				CONTENTS_SOLID, &traceFilter, &trace
+			);
+
+			if ( trace.flFraction == 1.f )
+				break;
+		}
+	}
+
+	data.m_vecOrigin = trace.vecEnd;
+
+	Interfaces::EngineTrace->TraceRay(
+		{
+			trace.vecEnd,
+		{ trace.vecEnd.x, trace.vecEnd.y, trace.vecEnd.z - 2.f },
+		data.m_vecMins, data.m_vecMaxs
+		},
+		CONTENTS_SOLID, &traceFilter, &trace
+	);
+
+	data.m_iFlags &= ~FL_ONGROUND;
+
+	if ( trace.flFraction != 1.f
+		&& trace.plane.vecNormal.z > 0.7f )
+		data.m_iFlags |= FL_ONGROUND;
+}
+
 bool CMisc::InPeek( ) {
 	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 0.2f ) {
 		Features::Exploits.m_bAlreadyPeeked = false;
 		return false;
 	}
 
-	matrix3x4_t backup_matrix[ 256 ];
-	memcpy( backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	matrix3x4_t backupMatrix[ 256 ];
+	memcpy( backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
-	const auto delta = ctx.m_pLocal->m_vecVelocity( ) * ( TICKS_TO_TIME( 3 /* + ctx.m_flOutLatency */ ) );
+	const auto backupOrigin{ ctx.m_pLocal->m_vecOrigin( ) };
+	const auto backupAbsOrigin{ ctx.m_pLocal->GetAbsOrigin( ) };
 
-	// credits: diamondhack!
+	ExtrapolationData_t extrapolated{ ctx.m_pLocal };
+	for ( int i{ }; i < 3; ++i )
+		PlayerMove( extrapolated );
+
+	const auto delta{ extrapolated.m_vecOrigin - backupOrigin };
+
 	for ( std::size_t i{ }; i < ctx.m_pLocal->m_CachedBoneData( ).Count( ); ++i ) {
-		auto& bone = ctx.m_pLocal->m_CachedBoneData( ).Base( )[ i ];
+		auto& bone{ ctx.m_pLocal->m_CachedBoneData( ).Base( )[ i ] };
 
 		bone[ 0 ][ 3 ] += delta.x;
 		bone[ 1 ][ 3 ] += delta.y;
 		bone[ 2 ][ 3 ] += delta.z;
 	}
 
-	const auto backup_origin = ctx.m_pLocal->m_vecOrigin( );
-	const auto backupAbsOrigin = ctx.m_pLocal->GetAbsOrigin( );
-
 	ctx.m_pLocal->m_vecOrigin( ) += delta;
 	ctx.m_pLocal->SetAbsOrigin( ctx.m_pLocal->m_vecOrigin( ) );
 
-	const auto hitboxSet = ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) );
+	const auto hitboxSet{ ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) ) };
 	if ( !hitboxSet )
 		return false;
 
@@ -442,44 +639,76 @@ bool CMisc::InPeek( ) {
 	}
 
 	if ( !bestPlayer ) {
-		ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
+		ctx.m_pLocal->m_vecOrigin( ) = backupOrigin;
 		ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
-		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 		return false;
 	}
 
-	auto enemyShootPos = bestPlayer->m_vecOrigin( );
-	enemyShootPos.z += 64.f;
+	auto enemyShootPos{ bestPlayer->m_vecOrigin( ) };
+	enemyShootPos.z += bestPlayer->m_flDuckAmount( ) ? 46.f : 64.f;
 
-	int bestDmg{ };
+	bool damageable{ };
 
 	for ( const auto& hb : { HITBOX_CHEST, HITBOX_RIGHT_THIGH, HITBOX_LEFT_THIGH, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT } ) {
-		const auto hitbox = hitboxSet->GetHitbox( hb );
+		const auto hitbox{ hitboxSet->GetHitbox( hb ) };
 		if ( !hitbox )
 			return false;
 
-		Vector center = ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f;
-		center = Math::VectorTransform( center, ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
+		const auto center{ Math::VectorTransform( ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f, 
+			ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] ) };
 
-		const auto data{ Features::Autowall.FireEmulated( bestPlayer, ctx.m_pLocal,
+		const auto data{ Features::Autowall.FireEmulated( bestPlayer, ctx.m_pLocal, 
 			enemyShootPos, center ) };
 
-		if ( data.dmg > bestDmg ) {
-			bestDmg = data.dmg;
+		if ( data.dmg > 0 ) {
+			damageable = true;
 			break;
 		}
 	}
 
-	if ( bestDmg > 1 ) {
-		ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
-		ctx.m_pLocal->SetAbsOrigin( backup_origin );
-		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
-		return true;
-	}
-
-	ctx.m_pLocal->m_vecOrigin( ) = backup_origin;
+	ctx.m_pLocal->m_vecOrigin( ) = backupOrigin;
 	ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
-	memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backup_matrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	if ( damageable )
+		return true;
+
 	Features::Exploits.m_bAlreadyPeeked = false;
 	return false;
+}
+
+void CMisc::UpdateIncomingSequences( INetChannel* pNetChannel ) {
+	if ( pNetChannel == nullptr )
+		return;
+
+	// set to real sequence to update, otherwise needs time to get it work again
+	if ( !m_nLastIncomingSequence )
+		m_nLastIncomingSequence = pNetChannel->iInSequenceNr;
+
+	// check how much sequences we can spike
+	if ( pNetChannel->iInSequenceNr > m_nLastIncomingSequence ) {
+		m_nLastIncomingSequence = pNetChannel->iInSequenceNr;
+		m_vecSequences.emplace_front( SequenceObject_t( pNetChannel->iInReliableState, pNetChannel->iOutReliableState, pNetChannel->iInSequenceNr, Interfaces::Globals->flRealTime ) );
+	}
+
+	// is cached too much sequences
+	if ( m_vecSequences.size( ) > 2048U )
+		m_vecSequences.pop_back( );
+}
+
+void CMisc::ClearIncomingSequences( ) {
+	if ( !m_vecSequences.empty( ) ) {
+		m_nLastIncomingSequence = 0;
+		m_vecSequences.clear( );
+	}
+}
+
+void CMisc::AddLatencyToNetChannel( INetChannel* pNetChannel, float flLatency ) {
+	for ( const auto& sequence : m_vecSequences ) {
+		if ( Interfaces::Globals->flRealTime - sequence.flCurrentTime >= flLatency ) {
+			pNetChannel->iInReliableState = sequence.iInReliableState;
+			pNetChannel->iInSequenceNr = sequence.iSequenceNr;
+			break;
+		}
+	}
 }

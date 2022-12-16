@@ -42,3 +42,4 @@ public:
 		return MEM::CallVFunc<void>( this, 36 );
 	}
 };
+

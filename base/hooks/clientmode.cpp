@@ -42,7 +42,7 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 				else if ( ctx.m_pWeapon->m_zoomLevel( ) == 2 ) {
 					if ( Config::Get<bool>( Vars.RemovalZoom ) ) {
 						if ( ctx.m_pWeapon ) {
-							if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER_RIFLE )
+							if ( ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER )
 								fov = Math::Interpolate( fov, static_cast< float >( 1.f - std::clamp<float>( Config::Get<int>( Vars.SecondZoomAmt ), 1, 99 ) / 100.f ) * ( 90.f + Config::Get<int>( Vars.MiscFOV ) ), addAmt );
 						}
 					}
@@ -66,7 +66,6 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 		Interfaces::Input->CAM_ToFirstPerson( );
 		Features::Misc.TPFrac = 0;
 	}
-
 
 	if ( ctx.m_bFakeDucking && !ctx.m_pLocal->IsDead( ) )
 		pSetup->vecOrigin = ctx.m_pLocal->GetAbsOrigin( ) + Vector( 0, 0, Interfaces::GameMovement->GetPlayerViewOffset( false ).z );

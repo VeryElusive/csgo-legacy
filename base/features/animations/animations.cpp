@@ -2,7 +2,7 @@
 
 // https://www.youtube.com/watch?v=a3Z7zEc7AXQ
 void CAnimationSys::RunAnimationSystem( ) {
-	const int latencyTicks = std::max( 0, TIME_TO_TICKS( ctx.m_flOutLatency ) );
+	const int latencyTicks = std::max( 0, TIME_TO_TICKS( ctx.m_flRealOutLatency ) );
 	const float serverCurtime = TICKS_TO_TIME( Interfaces::ClientState->iServerTick + latencyTicks );
 	const int flDeadtime = serverCurtime - Offsets::Cvars.sv_maxunlag->GetFloat( );
 
@@ -23,63 +23,57 @@ void CAnimationSys::RunAnimationSystem( ) {
 			continue;
 		}
 
-		/*if ( player->IsDormant( ) ) {
-			if ( entry.m_pRecords.empty( ) ) {
-				entry.m_pRecords.emplace_back( std::make_shared< LagRecord_t >( player ) );
-				continue;
-			}
-
-			if ( !entry.m_pRecords.back( )->m_bDormant ) {
-				entry.m_pRecords.clear( );
-				entry.m_pRecords.emplace_back( std::make_shared< LagRecord_t >( player ) );
-				continue;
-			}
-
+		if ( player->m_iAnimationLayersCount( ) <= 0 )
 			continue;
-		}*/
 
-		const auto state = player->m_pAnimState( );
+		const auto state{ player->m_pAnimState( ) };
 		if ( !state ) {
 			entry.reset( );
 
 			continue;
 		}
 
-		if ( entry.m_optPreviousData.has_value( ) ) {
-			if ( entry.m_optPreviousData->m_pLayers[ 11 ].flCycle == player->m_AnimationLayers( )[ 11 ].flCycle ) {
-				player->m_flSimulationTime( ) = player->m_flOldSimulationTime( );
-				continue;
-			}
-		}
-
-		entry.m_iRealChoked = Interfaces::ClientState->iServerTick - entry.m_iLastUnchoked;
-		entry.m_iLastUnchoked = Interfaces::ClientState->iServerTick;
-
-		// now while i dont want this record, or to even animate it, i still want to store the prev data for me to use in FinalAdjustments next time i animate
 		if ( entry.m_optPreviousData.has_value( )
-			&& entry.m_optPreviousData->m_flSimulationTime >= player->m_flSimulationTime( ) ) {
-			const auto prevSimTime{ entry.m_optPreviousData->m_flSimulationTime };
-			{
-				const auto rec{ std::make_unique< LagRecord_t >( player ) };
-				rec->FinalAdjustments( player, entry.m_optPreviousData, entry.m_iRealChoked );
-
-				entry.m_bBrokeLC = ( rec->m_cAnimData.m_vecOrigin - entry.m_vecLastOrigin ).LengthSqr( ) > 4096.f;
-
-				AnimatePlayer( rec.get( ), entry );
-
-				entry.m_optPreviousData = rec->m_cAnimData;
-			}
-			entry.m_optPreviousData->m_flSimulationTime = prevSimTime;
-
+			&& entry.m_optPreviousData->m_pLayers[ 11 ].flCycle == player->m_AnimationLayers( )[ 11 ].flCycle ) {
+			player->m_flSimulationTime( ) = player->m_flOldSimulationTime( );
 			continue;
 		}
-
 
 		if ( player->m_flSpawnTime( ) != entry.m_flSpawnTime ) {
 			state->Reset( );
 			entry.m_pRecords.clear( );
 			entry.m_optPreviousData.reset( );
 			entry.m_flSpawnTime = player->m_flSpawnTime( );
+		}
+
+		/*if ( !entry.m_pRecords.empty( ) ) {
+			const auto& lastRecord{ entry.m_pRecords.back( ) };
+			const auto jitter{ lastRecord->m_angEyeAngles.y - player->m_angEyeAngles( ).y };
+
+			const auto jitterAvg{ ( std::abs( jitter ) + std::abs( entry.m_flJitterAmount ) ) / 2 };
+
+			entry.m_flJitterAmount = std::copysign( jitterAvg, jitter );
+		}*/
+
+		bool wasRecordAddedToTrack{ true };
+
+		if ( Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
+			if ( entry.m_flTrackSimulationTime >= player->m_flSimulationTime( ) ) {
+				if ( entry.m_pRecords.empty( )
+					|| !entry.m_pRecords.back( )->m_bBrokeLC ) {
+					const auto rec{ std::make_unique< LagRecord_t >( player ) };
+					rec->FinalAdjustments( player, entry.m_optPreviousData );
+
+					AnimatePlayer( rec.get( ), entry );
+
+					entry.m_optPreviousData = rec->m_cAnimData;
+					entry.m_iLastChoked = rec->m_iNewCmds;
+
+					continue;
+				}
+
+				wasRecordAddedToTrack = false;
+			}
 		}
 
 		if ( player->IsTeammate( ) ) {
@@ -91,25 +85,35 @@ void CAnimationSys::RunAnimationSystem( ) {
 				std::remove_if(
 					entry.m_pRecords.begin( ), entry.m_pRecords.end( ),
 					[ & ]( const std::shared_ptr< LagRecord_t >& lag_record ) -> bool {
-						return lag_record->m_cAnimData.m_flSimulationTime < flDeadtime 
-							|| std::abs( Interfaces::ClientState->iServerTick - lag_record->m_iReceiveTick ) > static_cast<int>( 0.5f / Interfaces::Globals->flIntervalPerTick );
+						return lag_record->m_cAnimData.m_flSimulationTime < flDeadtime;
 					}
 				),
 				entry.m_pRecords.end( )
 						);
 		}
 
-		// NOW we add record
-		const auto current{ entry.m_pRecords.emplace_back( std::make_shared< LagRecord_t >( player ) ).get( ) };
-		current->FinalAdjustments( player, entry.m_optPreviousData, entry.m_iRealChoked );
+		entry.m_bBrokeLC = ( player->m_vecOrigin( ) - entry.m_vecLastOrigin ).LengthSqr( ) > 4096.f;
+		if ( entry.m_bBrokeLC && !entry.m_pRecords.empty( ) )
+			entry.m_pRecords.clear( );
 
-		entry.m_bBrokeLC = current->m_bBrokeLC = ( current->m_cAnimData.m_vecOrigin - entry.m_vecLastOrigin ).LengthSqr( ) > 4096.f;
+		// NOW we add record
+		const auto current{ entry.m_pRecords.emplace_back( 
+			std::make_shared< LagRecord_t >( player ) ).get( ) };
+
+		current->FinalAdjustments( player, entry.m_optPreviousData );
 
 		AnimatePlayer( current, entry );
 
-		entry.m_vecLastOrigin = current->m_cAnimData.m_vecOrigin;
+		if ( wasRecordAddedToTrack ) {
+			entry.m_flTrackSimulationTime = current->m_cAnimData.m_flSimulationTime;
+			entry.m_vecLastOrigin = current->m_cAnimData.m_vecOrigin;
+			current->m_bBrokeLC = entry.m_bBrokeLC;
+		}
+		else
+			current->m_bBrokeLC = true;// just using this for broke lc flag in player esp
 
 		entry.m_optPreviousData = current->m_cAnimData;
+		entry.m_iLastChoked = current->m_iNewCmds;
 	}
 }
 
@@ -127,130 +131,87 @@ void CAnimationSys::UpdatePlayerMatrixes( ) {
 		if ( entry.m_pPlayer != player )
 			continue;
 
-		const auto delta = player->GetAbsOrigin( ) - entry.m_vecUpdatedOrigin;
-		for ( std::size_t i{ }; i < player->m_CachedBoneData( ).Count( ); ++i ) {
-			auto& bone = player->m_CachedBoneData( ).Base( )[ i ];
-			auto& mat = entry.m_matMatrix[ i ];
+		const auto delta{ player->GetAbsOrigin( ) - entry.m_vecUpdatedOrigin };
+		if ( !delta.Length( ) )
+			continue;
+
+		/*for ( std::size_t i{ }; i < player->m_CachedBoneData( ).Count( ); ++i ) {
+			auto& bone{ player->m_CachedBoneData( ).Base( )[ i ] };
+			auto& mat{ entry.m_matMatrix[ i ] };
 			bone[ 0 ][ 3 ] = mat[ 0 ][ 3 ] + delta.x;
 			bone[ 1 ][ 3 ] = mat[ 1 ][ 3 ] + delta.y;
 			bone[ 2 ][ 3 ] = mat[ 2 ][ 3 ] + delta.z;
-		}
+		}*/
 
-		//player->SetupBones_AttachmentHelper( );
-
-		/*ctx.m_bSetupBones = true;
-		player->SetupBones( entry.m_matMatrix, 256, BONE_USED_BY_ANYTHING, Interfaces::Globals->flCurTime );
-		ctx.m_bSetupBones = false;*/
+		//ctx.m_bSetupBones = ctx.m_bClampbones = true;
+		//player->SetupBones( nullptr, 256, BONE_USED_BY_ANYTHING, Interfaces::Globals->flCurTime );
+		//ctx.m_bSetupBones = ctx.m_bClampbones = false;
 	}
 }
 
 void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
+	struct anim_backup_t {
+		__forceinline constexpr anim_backup_t( ) = default;
+
+		__forceinline anim_backup_t( CBasePlayer* const player )
+			: m_anim_state{ *player->m_pAnimState( ) }, m_abs_yaw{ m_anim_state.flAbsYaw },
+			m_pose_params{ player->m_flPoseParameter( ) }
+		{ memcpy( m_anim_layers, player->m_AnimationLayers( ), 0x38 * player->m_iAnimationLayersCount( ) ); }
+			
+		__forceinline void restore( CBasePlayer* const player ) const {
+			*player->m_pAnimState( ) = m_anim_state;
+
+			player->SetAbsAngles( { 0.f, m_abs_yaw, 0.f } );
+
+			memcpy( player->m_AnimationLayers( ), m_anim_layers, 0x38 * player->m_iAnimationLayersCount( ) );
+			player->m_flPoseParameter( ) = m_pose_params;
+		}
+
+		CCSGOPlayerAnimState		m_anim_state{ };
+
+		float					m_abs_yaw{ }, m_lby{ };
+
+		CAnimationLayer m_anim_layers[ 13 ];
+		std::array<float, 24>	m_pose_params{ };
+	} anim_backup{ entry.m_pPlayer };
+
 	entry.m_pPlayer->SetAbsOrigin( current->m_cAnimData.m_vecOrigin );
 
-	SetupInterp( current, entry );
-	{
-		UpdateSide( entry, current );
-	}
-	entry.m_pInterpolatedData.clear( );
+	UpdateSide( entry, current, 0 );
 
 	current->m_bAnimated = true;
 
-	ctx.m_bSetupBones = true;
-	entry.m_pPlayer->SetupBones( entry.m_matMatrix, 256, BONE_USED_BY_ANYTHING, Interfaces::Globals->flCurTime );
-	ctx.m_bSetupBones = false;
-
 	entry.m_vecUpdatedOrigin = entry.m_pPlayer->GetAbsOrigin( );
 
-	memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * 13u );
+	std::memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
 }
 
-FORCEINLINE void CAnimationSys::SetupInterp( LagRecord_t* to, PlayerEntry& entry ) {
-	const auto& from{ entry.m_optPreviousData };
-	const auto& animData{ to->m_cAnimData };
-
-	if ( !from.has_value( ) || entry.m_iRealChoked <= 1 || entry.m_iRealChoked >= 20 ) {
-		entry.m_pInterpolatedData.emplace_back( animData.m_flSimulationTime, animData.m_flDuckAmount,
-			animData.m_iFlags, animData.m_vecVelocity );
-
-		return;
-	}
-
-	entry.m_pInterpolatedData.reserve( entry.m_iRealChoked );
-
-	// this still stays as newcmds as the left over commands still advance real choked
-	const auto animTime{ animData.m_flSimulationTime - TICKS_TO_TIME( to->m_iNewCmds ) };
-
-	const auto duckAmountDelta{ animData.m_flDuckAmount - from->m_flDuckAmount };
-	const auto velocityDelta{ animData.m_vecVelocity - from->m_vecVelocity };
-
-	const auto interpolateVelocity{
-		animData.m_pLayers[ 6 ].flPlaybackRate == 0.f || from->m_pLayers[ 6 ].flPlaybackRate == 0.f
-		|| animData.m_vecVelocity.Length2D( ) >= 1.1f || from->m_vecVelocity.Length2D( ) >= 1.1f };
-
-	bool landed{ };
-
-	// we use real choked as that is what the server uses
-	for ( auto i = 1; i <= entry.m_iRealChoked; ++i ) {
-		if ( i == entry.m_iRealChoked ) {
-			entry.m_pInterpolatedData.emplace_back(
-				animData.m_flSimulationTime, animData.m_flDuckAmount,
-				animData.m_iFlags, animData.m_vecVelocity );
-
-			break;
-		}
-
-		const auto lerp{ i / static_cast< float >( entry.m_iRealChoked ) };
-
-		auto& interpolated{ entry.m_pInterpolatedData.emplace_back( ) };
-
-		interpolated.m_flSimulationTime = animTime + TICKS_TO_TIME( i );
-		interpolated.m_flDuckAmount = from->m_flDuckAmount + duckAmountDelta * lerp;
-
-		interpolated.m_iFlags = animData.m_iFlags;
-
-		if ( to->m_bLanded.has_value( ) ) {
-			interpolated.m_iFlags &= ~FL_ONGROUND;
-			if ( !landed ) {
-				if ( interpolated.m_flSimulationTime >= to->m_flOnGroundTime ) {
-					interpolated.m_iFlags |= FL_ONGROUND;
-					landed = true;
-				}
-			}
-		}
-
-		if ( interpolateVelocity )
-			interpolated.m_vecVelocity = from->m_vecVelocity + velocityDelta * lerp;
-		else
-			interpolated.m_vecVelocity = { ( i & 1 ) ? 1.1f : -1.1f, 0.f, 0.f };
-	}
-}
-
-void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
-	const auto backupEflags{ entry.m_pPlayer->m_iEFlags( ) };
-	const auto backupFlags{ entry.m_pPlayer->m_fFlags( ) };
-	const auto backupVelocity{ entry.m_pPlayer->m_vecVelocity( ) };
-	const auto backupAbsVelocity{ entry.m_pPlayer->m_vecAbsVelocity( ) };
-	const auto backupDuckAmount{ entry.m_pPlayer->m_flDuckAmount( ) };
-
-	const auto backupCurtime{ Interfaces::Globals->flCurTime };
-	const auto backupFrametime{ Interfaces::Globals->flFrameTime };
-
+void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side ) {
 	const auto state{ entry.m_pPlayer->m_pAnimState( ) };
 	if ( !state )
 		return;
 
+	const auto backupCurtime{ Interfaces::Globals->flCurTime };
+	const auto backupFrametime{ Interfaces::Globals->flFrameTime };
+	const auto backupHLTV{ Interfaces::ClientState->bIsHLTV };
+
+	Interfaces::Globals->flCurTime = current->m_cAnimData.m_flSimulationTime;
+	Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
+
 	if ( entry.m_optPreviousData.has_value( ) ) {
-		memcpy( entry.m_pPlayer->m_AnimationLayers( ), entry.m_optPreviousData->m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
+		const auto& layer6{ entry.m_optPreviousData->m_pLayers[ 6 ] };
+		const auto& layer12{ entry.m_optPreviousData->m_pLayers[ 12 ] };
+		const auto& layer7{ entry.m_optPreviousData->m_pLayers[ 7 ] };
 
-		const auto& layer7 = entry.m_optPreviousData->m_pLayers[ 7 ];
-		const auto& layer6 = entry.m_optPreviousData->m_pLayers[ 6 ];
-		const auto& layer12 = entry.m_optPreviousData->m_pLayers[ 12 ];
-
-		// these all sync 100% of the time
 		state->flFeetCycle == layer6.flCycle;
 		state->flMoveWeight == layer6.flWeight;
+		if ( layer6.flPlaybackRate > 0.f 
+			&& state->flDurationMoving <= 0.f )
+			state->flMoveWeight = 0.f;
+
 		state->iStrafeSequence == layer7.nSequence;
-		state->flAccelerationWeight == layer12.flWeight;
+		state->flStrafeWeight == layer7.flWeight;
+		state->flStrafeCycle == layer7.flCycle;
 	}
 	else {
 		if ( current->m_cAnimData.m_iFlags & FL_ONGROUND )
@@ -259,52 +220,35 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 		state->flLastUpdateTime = current->m_cAnimData.m_flSimulationTime - Interfaces::Globals->flIntervalPerTick;
 	}
 
-	//float yaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
+	entry.m_pPlayer->SetAbsVelocity( current->m_cAnimData.m_vecVelocity );
 
-	//yaw = std::remainderf( yaw, 360.f );
+	if ( current->m_bLanded.has_value( ) )
+		state->flDurationInAir = std::max( current->m_cAnimData.m_flSimulationTime - TICKS_TO_TIME( 1 ) - current->m_flOnGroundTime, 0.f );
 
-	for ( const auto& interpolated : entry.m_pInterpolatedData ) {
-		const int ticks{ TIME_TO_TICKS( interpolated.m_flSimulationTime ) };
+	if ( side == 1 )
+		state->flAbsYaw = entry.m_pPlayer->m_angEyeAngles( ).y + 120.f;
+	else if ( side == 2 )
+		state->flAbsYaw = entry.m_pPlayer->m_angEyeAngles( ).y - 120.f;
 
-		Interfaces::Globals->flCurTime = interpolated.m_flSimulationTime;
-		Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
+	state->flAbsYaw = std::remainderf( state->flAbsYaw, 360.f );
 
-		entry.m_pPlayer->m_flDuckAmount( ) = interpolated.m_flDuckAmount;
-		entry.m_pPlayer->m_fFlags( ) = interpolated.m_iFlags;
-		entry.m_pPlayer->m_vecVelocity( ) = entry.m_pPlayer->m_vecAbsVelocity( ) = interpolated.m_vecVelocity;
+	entry.m_pPlayer->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = Interfaces::ClientState->bIsHLTV = true;
+	entry.m_pPlayer->UpdateClientsideAnimations( );
+	entry.m_pPlayer->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = false;
 
-		entry.m_pPlayer->m_iEFlags( ) &= ~EFL_DIRTY_ABSVELOCITY;
-
-		state->flLastUpdateTime = Interfaces::Globals->flCurTime - Interfaces::Globals->flIntervalPerTick;
-		state->iLastUpdateFrame = Interfaces::Globals->iFrameCount - 1;
-
-		// fix jump_fall if we don't interpolate
-		//if ( current->m_bLanded.has_value( ) )
-		//	state->flDurationInAir = current->m_flOnGroundTime - current->m_cAnimData.m_flSimulationTime;
-
-		for ( int i = 1; i <= entry.m_pPlayer->m_iAnimationLayersCount( ); i++ )
-			entry.m_pPlayer->m_AnimationLayers( )[ i ].pOwner = entry.m_pPlayer;
-
-		entry.m_pPlayer->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = true;
-		entry.m_pPlayer->UpdateClientsideAnimations( );
-		entry.m_pPlayer->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = false;
-	}
-
-	entry.m_pPlayer->m_iEFlags( ) = backupEflags;
-	entry.m_pPlayer->m_fFlags( ) = backupFlags;
-	entry.m_pPlayer->m_vecVelocity( ) = backupVelocity;
-	entry.m_pPlayer->m_vecAbsVelocity( ) = backupAbsVelocity;
-	entry.m_pPlayer->m_flDuckAmount( ) = backupDuckAmount;
-
+	Interfaces::ClientState->bIsHLTV = backupHLTV;
 	Interfaces::Globals->flCurTime = backupCurtime;
 	Interfaces::Globals->flFrameTime = backupFrametime;
 
-	current->m_flAbsYaw = state->flAbsYaw;
-	memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
+	current->m_cAnimData.m_flPoseParameter = entry.m_pPlayer->m_flPoseParameter( );
+	current->m_cAnimData.m_flAbsYaw = state->flAbsYaw;
+	std::memcpy( current->m_cAnimData.m_pLayers, entry.m_pPlayer->m_AnimationLayers( ), 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
+
+	std::memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
 	entry.m_pPlayer->SetAbsAngles( { 0.f, state->flAbsYaw, 0.f } );
 
-	SetupBonesFixed( entry.m_pPlayer, current->m_pMatrix, 0x0FFF00, //BONE_USED_BY_ANYTHING | BONE_ALWAYS_SETUP, from what i can see in skeet dump, this is all they do... onetap is just bone used by anyhting
-		current->m_cAnimData.m_flSimulationTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME | NULLIK | OCCLUSIONINTERP ) );
+	SetupBonesFixed( entry.m_pPlayer, current->m_cAnimData.m_pMatrix, BONE_USED_BY_SERVER,
+		current->m_cAnimData.m_flSimulationTime, USEALLSETUPBONESFLAGS, &current->m_cAnimData.m_cIk );
 
 	const auto mdlData{ entry.m_pPlayer->m_pStudioHdr( ) };
 	if ( !mdlData
@@ -317,44 +261,39 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 		current->m_iBonesCount = 256;
 }
 
-bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags ) {
-	struct backup_t {
-		__forceinline backup_t( CBasePlayer* const player )
-			: m_cur_time{ Interfaces::Globals->flCurTime },
-			m_frame_time{ Interfaces::Globals->flFrameTime },
-			m_frame_count{ Interfaces::Globals->iFrameCount },
-			m_occlusion_frame{ player->m_iOcclusionFrame( ) },
-			m_ent_client_flags{ player->m_iEntClientFlags( ) },
-			m_ik_context{ player->m_IkContext( ) }, m_effects{ player->m_fEffects( ) },
-			m_occlusion_flags{ player->m_iOcclusionFlags( ) } {}
+bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags, CIKContext* ik ) {
+	const auto backupCurtime{ Interfaces::Globals->flCurTime };
+	const auto backupFrametime{ Interfaces::Globals->flFrameTime };
+	const auto backupFramecount{ Interfaces::Globals->iFrameCount };
+	const auto backupOcclusionFrame{ player->m_iOcclusionFrame( ) };
+	const auto backupOcclusionFlags{ player->m_iOcclusionFlags( ) };
+	const auto backupEntClientFlags{ player->m_iEntClientFlags( ) };
+	const auto backupMaintainSequenceTransitions{ player->m_bMaintainSequenceTransitions( ) };
+	const auto backupPrevBoneMask{ player->m_iPrevBoneMask( ) };
+	const auto backupAccumulatedBoneMask{ player->m_iAccumulatedBoneMask( ) };
+	const auto backupEffects{ player->m_fEffects( ) };
+	const auto backupIK{ player->m_IkContext( ) };
 
-		float					m_cur_time{ }, m_frame_time{ };
-		int						m_frame_count{ }, m_occlusion_frame{ };
-
-		std::uint8_t			m_ent_client_flags{ };
-		ik_context_t* m_ik_context{ };
-
-		int				m_effects{ };
-		std::uint32_t m_occlusion_flags{ };
-	} backup{ player };
-
-	ctx.m_bForceBoneMask = flags & NULLIK;
-
-	const auto ticks = TIME_TO_TICKS( time );
 	Interfaces::Globals->flCurTime = time;
 	Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
-	Interfaces::Globals->iFrameCount = ticks;
 
 	if ( flags & INVALIDATEBONECACHE ) {
 		player->g_iModelBoneCounter( ) = 0ul;
 		player->m_flLastSetupBonesTime( ) = std::numeric_limits< float >::lowest( );
 
-		auto& boneAccessor = player->m_BoneAccessor( );
+		auto& boneAccessor{ player->m_BoneAccessor( ) };
 		boneAccessor.nWritableBones = boneAccessor.nReadableBones = 0;
 	}
 
-	if ( flags & SETUPBONESFRAME )
+	if ( flags & SETUPBONESFRAME ) {
+		// i don't think i need to back this up
+		player->m_iAccumulatedBoneMask( ) = 0;
+		player->m_iPrevBoneMask( ) = 0;
 		player->m_iLastSetupBonesFrame( ) = 0;
+	}
+
+	if ( flags & CLAMPBONESINBBOX )
+		ctx.m_bServerSetupbones = true;
 
 	if ( flags & NULLIK ) {
 		player->m_IkContext( ) = nullptr;
@@ -363,6 +302,7 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 
 	if ( flags & OCCLUSIONINTERP ) {
 		player->m_fEffects( ) |= 8u;
+		player->m_bMaintainSequenceTransitions( ) = false;
 
 		// C_CSPlayer::ReevauluateAnimLOD and C_CSPlayer::AccumulateLayers
 		player->m_iOcclusionFlags( ) &= ~0xau;
@@ -371,22 +311,33 @@ bool CAnimationSys::SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bone
 
 	ctx.m_bSetupBones = true;
 	const auto ret = player->SetupBones( bones, 256, mask, time );
-	ctx.m_bSetupBones = false;
+	ctx.m_bSetupBones = ctx.m_bServerSetupbones = false;
+
+	if ( ik && player->m_IkContext( ) )
+		*ik = *player->m_IkContext( );
 
 	if ( flags & NULLIK ) {
-		player->m_IkContext( ) = backup.m_ik_context;
-		player->m_iEntClientFlags( ) = backup.m_ent_client_flags;
+		player->m_IkContext( ) = backupIK;
+		player->m_iEntClientFlags( ) = backupEntClientFlags;
+	}
+
+	if ( flags & SETUPBONESFRAME ) {
+		player->m_iAccumulatedBoneMask( ) = backupAccumulatedBoneMask;
+		player->m_iPrevBoneMask( ) = backupPrevBoneMask;
 	}
 
 	if ( flags & OCCLUSIONINTERP ) {
-		player->m_fEffects( ) = backup.m_effects;
-		player->m_iEntClientFlags( ) = backup.m_occlusion_flags;
-		player->m_iOcclusionFrame( ) = backup.m_occlusion_frame;
+		player->m_fEffects( ) = backupEffects;
+		player->m_iOcclusionFlags( ) = backupOcclusionFlags;
+		player->m_iOcclusionFrame( ) = backupOcclusionFrame;
+		player->m_bMaintainSequenceTransitions( ) = backupMaintainSequenceTransitions;
 	}
 
-	Interfaces::Globals->flCurTime = backup.m_cur_time;
-	Interfaces::Globals->flFrameTime = backup.m_frame_time;
-	Interfaces::Globals->iFrameCount = backup.m_frame_count;
+	Interfaces::Globals->flCurTime = backupCurtime;
+	Interfaces::Globals->flFrameTime = backupFrametime;
+	Interfaces::Globals->iFrameCount = backupFramecount;
 
-	return ret;
+	ctx.m_bServerSetupbones = false;
+
+	return true;
 }

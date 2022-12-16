@@ -107,6 +107,7 @@
     <ClInclude Include="sdk\interfaces\ienginevgui.h" />
     <ClInclude Include="sdk\interfaces\igameconsole.h" />
     <ClInclude Include="sdk\interfaces\igameeventmanager.h" />
+    <ClInclude Include="sdk\interfaces\igameresources.h" />
     <ClInclude Include="sdk\interfaces\igametypes.h" />
     <ClInclude Include="sdk\interfaces\igameui.h" />
     <ClInclude Include="sdk\interfaces\iglobalvars.h" />
@@ -148,11 +149,6 @@
     <ClInclude Include="utils\memory.h" />
     <ClInclude Include="utils\memory\pe32.h" />
     <ClInclude Include="utils\render.h" />
-    <ClInclude Include="utils\threading\mutex.h" />
-    <ClInclude Include="utils\threading\packed_heap.h" />
-    <ClInclude Include="utils\threading\semaphores.h" />
-    <ClInclude Include="utils\threading\shared_mutex.h" />
-    <ClInclude Include="utils\threading\threading.h" />
     <ClInclude Include="utils\xorstr.h" />
   </ItemGroup>
   <ItemGroup>
@@ -173,7 +169,6 @@
     <ClCompile Include="core\menu\menu.cpp" />
     <ClCompile Include="features\animations\animations.cpp" />
     <ClCompile Include="features\animations\local_animations.cpp" />
-    <ClCompile Include="features\misc\autostop.cpp" />
     <ClCompile Include="features\misc\engine_prediction.cpp" />
     <ClCompile Include="features\misc\logger.cpp" />
     <ClCompile Include="features\misc\misc.cpp" />
@@ -194,6 +189,7 @@
     <ClCompile Include="hooks\createmove.cpp" />
     <ClCompile Include="hooks\detours\animation_detours.cpp" />
     <ClCompile Include="hooks\detours\other_detours.cpp" />
+    <ClCompile Include="hooks\detours\prediction_detours.cpp" />
     <ClCompile Include="hooks\WndProc.cpp" />
     <ClCompile Include="hooks\engine.cpp" />
     <ClCompile Include="hooks\enginesound.cpp" />
@@ -223,11 +219,6 @@
     <ClCompile Include="utils\math.cpp" />
     <ClCompile Include="utils\memory.cpp" />
     <ClCompile Include="utils\render.cpp" />
-    <ClCompile Include="utils\threading\mutex.cpp" />
-    <ClCompile Include="utils\threading\packed_heap.cpp" />
-    <ClCompile Include="utils\threading\semaphores.cpp" />
-    <ClCompile Include="utils\threading\shared_mutex.cpp" />
-    <ClCompile Include="utils\threading\threading.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="features\animations\anim_utils.inl" />
@@ -319,6 +310,8 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>None</DebugInformationFormat>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

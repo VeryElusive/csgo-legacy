@@ -299,6 +299,8 @@ void Menu::DrawRage( ) {
 			RagebotGroup->Begin( _( "General" ), CompensatedLength );
 			{
 				RagebotGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.RagebotEnable ) );
+				RagebotGroup->Checkbox( _( "Resolver" ), Config::Get<bool>( Vars.RagebotResolver ) );
+				RagebotGroup->Checkbox( _( "Lag-compensation" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
 				RagebotGroup->Combo( _( "Weapon group" ), weapGroup, { _( "Pistol" ), _( "Heavy pistol" ), _( "SMG" ), _( "Rifle" ), _( "Shotgun" ), _( "Awp" ), ( "Scout" ), ( "Auto" ), _( "Machine gun" ) } );
 				RAGEINTSLIDER( RagebotGroup, _( "FOV" ), RagebotFOV, weapGroup, 1, 180 );
 				RAGECHECKBOX( RagebotGroup, _( "Auto fire" ), RagebotAutoFire, weapGroup );
@@ -376,7 +378,7 @@ void Menu::DrawRage( ) {
 
 				RAGECHECKBOX( RagebotGroup, _( "Ignore limbs when moving" ), RagebotIgnoreLimbs, weapGroup );
 				RagebotGroup->Checkbox( _( "Force baim after" ), Config::Get<bool>( Vars.RagebotForceBaimAfterX ) );
-				RagebotGroup->Slider( _( "X shots" ), Config::Get<int>( Vars.RagebotForceBaimAfterXINT ), 1, 20 );
+				RagebotGroup->Slider( ( std::to_string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT )) + std::string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT ) == 1 ? " missed shot" : " missed shots" ) ).c_str( ), Config::Get<int>( Vars.RagebotForceBaimAfterXINT ), 1, 20 );
 
 
 				ItemsPistol = { { "Always", &Config::Get<bool>( Vars.RagebotPreferBaimPistol ) }, { "Doubletap", &Config::Get<bool>( Vars.RagebotPreferBaimDoubletapPistol ) }, { "Lethal", &Config::Get<bool>( Vars.RagebotPreferBaimLethalPistol ) } };
@@ -404,14 +406,14 @@ void Menu::DrawRage( ) {
 				AntiaimGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.AntiaimEnable ) );
 				AntiaimGroup->Combo( _( "Pitch" ), Config::Get<int>( Vars.AntiaimPitch ), { _( "Default" ), _( "Up" ), _( "Down" ), _( "Zero" ) } );
 				AntiaimGroup->Combo( _( "Yaw" ), Config::Get<int>( Vars.AntiaimYaw ), { _( "Default" ), _( "Backward" ), _( "Left" ), _( "Right" ) } );
+				AntiaimGroup->Combo( _( "Yaw add" ), Config::Get<int>( Vars.AntiaimYawAdd ), { _( "None" ), _( "Jitter" ), _( "Rotate" ) } );
 
-				AntiaimGroup->Combo( _( "Yaw add" ), Config::Get<int>( Vars.AntiaimYawAdd ), { _( "None" ), _( "Jitter" ) } );
-
-				if ( Config::Get<int>( Vars.AntiaimYawAdd ) == 1 || Config::Get<int>( Vars.AntiaimYawAdd ) == 2 )
+				if ( Config::Get<int>( Vars.AntiaimYawAdd ) ) {
 					AntiaimGroup->Slider( _( "Yaw range" ), Config::Get<int>( Vars.AntiaimYawRange ), 2, 180 );
 
-				if ( Config::Get<int>( Vars.AntiaimYaw ) == 2 )
-					AntiaimGroup->Slider( _( "Yaw speed" ), Config::Get<int>( Vars.AntiaimYawSpeed ), 1, Config::Get<int>( Vars.AntiaimYawRange ) / 2 );
+					if ( Config::Get<int>( Vars.AntiaimYawAdd ) == 2 )
+						AntiaimGroup->Slider( _( "Yaw speed" ), Config::Get<int>( Vars.AntiaimYawSpeed ), 1, Config::Get<int>( Vars.AntiaimYawRange ) / 2 );
+				}
 
 				AntiaimGroup->Combo( _( "At targets" ), Config::Get<int>( Vars.AntiaimAtTargets ), { _( "Off" ), _( "FOV" ), _( "Distance" ) } );
 
@@ -429,6 +431,12 @@ void Menu::DrawRage( ) {
 				}
 
 				AntiaimGroup->Checkbox( _( "Anti backstab" ), Config::Get<bool>( Vars.AntiaimAntiBackStab ) );
+
+				AntiaimGroup->Label( _( "Flip desync" ) );
+				AntiaimGroup->Keybind( _( "Flip desync key" ), Config::Get<keybind_t>( Vars.AntiaimInvert ) );
+
+				AntiaimGroup->Label( _( "Constant invert" ) );
+				AntiaimGroup->Keybind( _( "Constant Invert key" ), Config::Get<keybind_t>( Vars.AntiaimInvertSpam ) );
 
 				//AntiaimGroup->Combo( _( "Auto direction" ), Config::Get<int>( Vars.AntiaimFreestand ), { _( "Off" ), _( "Desync side" ), _( "Yaw" ) } );
 
@@ -510,8 +518,9 @@ void Menu::DrawMisc( ) {
 				"Commander Ricksaw",
 				"Agent Ava" } );*/
 
+			MiscGroup->Checkbox( _( "Fake ping" ), Config::Get<bool>( Vars.MiscFakePing ) );
+
 			MiscGroup->Checkbox( _( "Preserve killfeed" ), Config::Get<bool>( Vars.MiscPreserveKillfeed ) );
-			MiscGroup->Checkbox( _( "Watermark" ), Config::Get<bool>( Vars.MiscWatermark ) );
 			MiscGroup->Checkbox( _( "Force crosshair" ), Config::Get<bool>( Vars.MiscForceCrosshair ) );
 			MiscGroup->Slider( _( "Weapon volume" ), Config::Get<int>( Vars.MiscWeaponVolume ), 0, 100 );
 			MiscGroup->Checkbox( _( "Hit marker" ), Config::Get<bool>( Vars.MiscHitmarker ) );
@@ -532,7 +541,7 @@ void Menu::DrawMisc( ) {
 
 			if ( MiscGroup->Button( _( "Reset menu size" ) ) ) {
 				Features::Logger.Log( _( "Menu size reset" ), true );
-				Menu::Size = { 800, 550 };
+				Menu::Size = { 650, 650 };
 			}
 		}
 		MiscGroup->End( );
@@ -706,6 +715,12 @@ void Menu::DrawVisual( ) {
 					ChamGroup->Combo( _( "Onshot chams material" ), Config::Get<int>( Vars.MiscHitMatrixMat ), items );
 				}
 
+				if ( ActiveSubTab == 0 ) {
+					ChamGroup->Checkbox( _( "Desync chams" ), Config::Get<bool>( Vars.ChamDesync ) );
+					ChamGroup->ColorPicker( _( "Desync chams Col" ), Config::Get<Color>( Vars.ChamDesyncCol ) );
+					ChamGroup->Combo( _( "Desync chams material" ), Config::Get<int>( Vars.ChamDesyncMat ), items );
+				}
+
 				PlayerIntSlider( ChamGroup, _( "Glow strength" ), ChamGlowStrength, ActiveSubTab, 0, 100 );
 			}
 			ChamGroup->End( );
@@ -802,7 +817,7 @@ void Menu::DrawVisual( ) {
 					_( "sky_venice" ),
 					_( "vertigo" ),
 					_( "vietnam" ),
-					_( "sky_descent" )
+					_( "sky_lunacy" )
 					} );
 
 			}

@@ -69,7 +69,7 @@ bool Interfaces::Setup()
 	if (DirectDevice == nullptr)
 		return false;	
 
-	MoveHelper = ( IMoveHelper* )**( std::uintptr_t** )( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ?? ?? ?? ?? 8B 45 ?? 51 8B D4 89 02 8B 01" ) ) + 2 );
+	MoveHelper = ( IMoveHelper* )**( std::uintptr_t** )( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" ) ) + 2 );
 	if ( MoveHelper == nullptr)
 		return false;
 

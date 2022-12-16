@@ -75,6 +75,11 @@ namespace Math
 	FORCEINLINE void VectorVectors( const Vector& forward, Vector& right, Vector& up );
 	FORCEINLINE void VectorIRotate( const Vector& in1, const matrix3x4_t& in2, Vector& out );
 
+	FORCEINLINE float ApproachAngle( float target, float value, float speed );
+
+	FORCEINLINE float anglemod( float a ) { return ( 360.f / 65536 ) * ( ( int )( a * ( 65536.f / 360.0f ) ) & 65535 ); }
+
+
 
 	FORCEINLINE void SinCos( float radians, float& sine, float& cosine ) { sine = sin( radians ); cosine = cos( radians ); }
 	FORCEINLINE float Interpolate( const float from, const float to, const float percent ) { if ( from == to ) return from; return to * percent + from * ( 1.f - percent ); }

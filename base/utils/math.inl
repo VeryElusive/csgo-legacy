@@ -207,8 +207,8 @@ FORCEINLINE bool Math::WorldToScreen( const Vector& origin, Vector& screen )
 	{
 		float x = ctx.m_ve2ScreenSize.x / 2;
 		float y = ctx.m_ve2ScreenSize.y / 2;
-		x += 0.5 * screen.x * ctx.m_ve2ScreenSize.x + 0.5;
-		y -= 0.5 * screen.y * ctx.m_ve2ScreenSize.y + 0.5;
+		x += 0.5 * screen.x * ctx.m_ve2ScreenSize.x + 0.5f;
+		y -= 0.5 * screen.y * ctx.m_ve2ScreenSize.y + 0.5f;
 		screen.x = x;
 		screen.y = y;
 		return true;
@@ -377,4 +377,30 @@ FORCEINLINE bool Math::IntersectionBoundingBox( const Vector& src, const Vector&
 
 	// ray hits box
 	return true;
+}
+
+FORCEINLINE float Math::ApproachAngle( float target, float value, float speed )
+{
+	target = anglemod( target );
+	value = anglemod( value );
+
+	float delta = target - value;
+
+	// Speed is assumed to be positive
+	if ( speed < 0 )
+		speed = -speed;
+
+	if ( delta < -180 )
+		delta += 360;
+	else if ( delta > 180 )
+		delta -= 360;
+
+	if ( delta > speed )
+		value += speed;
+	else if ( delta < -speed )
+		value -= speed;
+	else
+		value = target;
+
+	return value;
 }

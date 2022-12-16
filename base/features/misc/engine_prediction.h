@@ -18,12 +18,15 @@ public:
 	void RestoreNetvars( int slot );
 	void StoreNetvars( int slot );
 
+	bool AddToDataMap( );
+
 	float Spread{ };
 	float Inaccuracy{ };
 	std::array< CompressionVars_t, 150> m_cCompressionVars{ };
 private:
 	float CurTime{ };
 	float FrameTime{ };
+	//void* m_pOldWeapon{ };
 
 	//float VelocityModifier{ };
 	float RecoilIndex{ };

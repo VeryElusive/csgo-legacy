@@ -1,5 +1,4 @@
 #include "../core/hooks.h"
-#include "../utils/threading/threading.h"
 #include "../core/config.h"
 #include "../context.h"
 #include "../features/visuals/visuals.h"
@@ -35,7 +34,7 @@ void draw_server_hitboxes( int index ) {
 	__asm {
 		pushad
 		movss xmm1, duration
-		push 0 // 0 - colored, 1 - blue
+		push 1 // 0 - colored, 1 - blue
 		mov ecx, entity
 		call fn
 		popad
@@ -58,7 +57,7 @@ const char* skynames[ 16 ] = {
 	"sky_venice",
 	"vertigo",
 	"vietnam",
-	"sky_descent"
+	"sky_lunacy"
 };
 
 void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClientFrameStage stage ) {
@@ -75,22 +74,6 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		if ( ctx.m_pLocal ) {
 			if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand )
 				Interfaces::Globals->flInterpolationAmount = 0;
-
-			/*for ( int i{ 1 }; i <= 64; i++ ) {
-				const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-				if ( !player || player == ctx.m_pLocal )
-					continue;
-
-				//draw_server_hitboxes( i );
-			}*/	
-
-			// TODO: actually fix defensive frame interpolation
-			/*if ( Features::Exploits.m_bWasDefensiveTick ) {
-				auto& var_mapping = ctx.m_pLocal->m_pVarMapping( );
-
-				for ( int i{ }; i < var_mapping.m_nInterpolatedEntries; ++i )
-					var_mapping.m_Entries[ i ].m_bNeedsToInterpolate = false;
-			}*/
 
 			if ( Config::Get<bool>( Vars.RemovalFlash ) )
 				ctx.m_pLocal->m_flFlashDuration( ) = 0.f;
@@ -173,7 +156,11 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
 					continue;
 
-				const auto varMapping{ *reinterpret_cast< std::uintptr_t* >( ( reinterpret_cast< std::uintptr_t >( player ) + 36u ) ) };
+				auto& varMap{ player->m_pVarMapping( ) };
+				for ( int i{ }; i < varMap.m_nInterpolatedEntries; ++i )
+					varMap.m_Entries[ i ].m_bNeedsToInterpolate = false;
+
+				/*const auto varMapping{ *reinterpret_cast< std::uintptr_t* >( ( reinterpret_cast< std::uintptr_t >( player ) + 36u ) ) };
 				if ( !varMapping )
 					continue;
 
@@ -190,7 +177,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				*( DWORD* )( *( DWORD* )( varMapping + 56u ) + 36u ) = 0;
 
 				*( DWORD* )( *( DWORD* )( varMapping + 8u ) + 36u ) = dead ? Interfaces::Globals->flIntervalPerTick * 2 : 0;
-				*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;
+				*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;*/
 			}
 		}
 
@@ -215,7 +202,17 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	case FRAME_RENDER_START: {
 		Interfaces::Globals->flInterpolationAmount = backupInterpAmt;
 		Features::AnimSys.SetupLocalMatrix( );
-		Features::AnimSys.UpdatePlayerMatrixes( );
+		//Features::AnimSys.UpdatePlayerMatrixes( );
+
+		/*for ( int i{ 1 }; i <= 64; i++ ) {
+			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
+			if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
+				continue;
+
+			//player->SetAbsOrigin( player->m_vecOrigin( ) );
+
+			draw_server_hitboxes( i );
+		}*/
 	}break;
 	case FRAME_RENDER_END: {
 		**reinterpret_cast< int** >( Offsets::Sigs.SmokeCount + 0x1 ) = backupsmokeCount;
@@ -245,15 +242,43 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			}
 
 
-			reinterpret_cast< void ( * )( void ) >( Offsets::Sigs.CL_FireEvents )( );
+			//Interfaces::Engine->FireEvents( );// TODO: LEGACY!
 			Features::Shots.OnNetUpdate( );
 
-			Features::EnginePrediction.RestoreNetvars( ctx.m_pLocal->m_nTickBase( ) );
+			static bool did{ };
+			if ( !did )
+				did = Features::EnginePrediction.AddToDataMap( );
+
+			//Features::AnimSys.UpdateCommands( );
 		}
 
 		Features::AnimSys.RunAnimationSystem( );
+		
+		{
+			static DWORD* KillFeedTime = nullptr;
+			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
+				if ( !KillFeedTime )
+					KillFeedTime = MEM::FindHudElement<DWORD>( ( "CCSGO_HudDeathNotice" ) );
 
-		//ctx.m_bClearKillfeed
+				if ( KillFeedTime ) {
+					auto LocalDeathNotice = ( float* )( ( uintptr_t )KillFeedTime + 0x50 );
+
+					if ( LocalDeathNotice )
+						*LocalDeathNotice = Config::Get<bool>( Vars.MiscPreserveKillfeed ) ? FLT_MAX : 1.5f;
+
+					if ( ctx.m_bClearKillfeed ) {
+						using Fn = void( __thiscall* )( uintptr_t );
+						static auto clearNotices = ( Fn )Offsets::Sigs.ClearNotices;
+
+						clearNotices( ( uintptr_t )KillFeedTime - 0x14 );
+
+						ctx.m_bClearKillfeed = false;
+					}
+				}
+			}
+			else
+				KillFeedTime = 0;
+		}
 	}break;
 	default: break;
 
@@ -261,7 +286,27 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 	if ( ctx.m_pLocal ) {
 		if ( !Interfaces::GameRules )
-			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ?? ?? ?? ?? 85 C0 74 0A 8B 01 FF 50 78 83 C0 54" ) ) + 0x2 ) ) );
+			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ? ? ? ? 85 C0 74 0A 8B 01 FF 50 78 83 C0 54" ) ) + 0x2 ) ) );
+
+		if ( !Interfaces::GameResources ) {
+			for ( auto* pClass{ Interfaces::Client->GetAllClasses( ) }; pClass; pClass = pClass->pNext ) {
+				if ( !strcmp( pClass->szNetworkName, _( "CPlayerResource" ) ) ) {
+					RecvTable_t* pClassTable = pClass->pRecvTable;
+
+					for ( int nIndex = 0; nIndex < pClassTable->nProps; nIndex++ ) {
+						RecvProp_t* pProp = &pClassTable->pProps[ nIndex ];
+
+						if ( !pProp || strcmp( pProp->szVarName, _( "m_iTeam" ) ) != 0 )
+							continue;
+
+						Interfaces::GameResources = **reinterpret_cast< IGameResources*** >( DWORD( pProp->pDataTable->pProps->oProxyFn ) + 0x10 );
+
+						break;
+					}
+					break;
+				}
+			}
+		}
 
 		if ( ctx.m_pLocal->m_hViewModel( ) ) {
 			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
@@ -277,8 +322,10 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			}
 		}
 	}
-	else
+	else {
 		Interfaces::GameRules = nullptr;
+		Interfaces::GameResources = nullptr;
+	}
 }
 
 
@@ -298,10 +345,10 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 
 
 	if ( !Features::Exploits.m_bWasDefensiveTick ) {
-		if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd
+		if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand
 			|| Features::Exploits.m_iShiftAmount ) {
 			if ( from == -1 ) {
-				if ( Interfaces::ClientState->iLastOutgoingCommand == Features::Exploits.m_iRechargeCmd ) {
+				if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand ) {
 					moveMsg->m_iNewCmds = 1;
 					moveMsg->m_iBackupCmds = 0;
 
@@ -330,7 +377,7 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 
 	if ( from == -1
 		&& ctx.m_iTicksAllowed > 0 ) {
-		const auto extraTicks{ std::max( **( int** )Offsets::Sigs.numticks - 1, 0 ) };
+		const auto extraTicks{ **( int** )Offsets::Sigs.numticks - 1 };// host_currentframetick not needed
 
 		const auto newCmds{ std::min( moveMsg->m_iNewCmds + extraTicks + ctx.m_iTicksAllowed, 16 ) };
 

@@ -29,18 +29,18 @@ void FASTCALL Hooks::hkCalcView( CBasePlayer* pPlayer, void* edx, Vector& vecEye
 	if ( !pPlayer || pPlayer != ctx.m_pLocal )
 		return oCalcView( pPlayer, edx, vecEyeOrigin, angEyeAngles, flZNear, flZFar, flFov );
 
-	//const bool backupUseNewAnimstateBackup = pPlayer->m_bUseNewAnimstate( );
+	const bool backupUseNewAnimstateBackup = pPlayer->m_bUseNewAnimstate( );
 	const auto backupAimPunch = pPlayer->m_aimPunchAngle( );
 	const auto backupViewPunch = pPlayer->m_viewPunchAngle( );
 
-	//pPlayer->m_bUseNewAnimstate( ) = false;
+	pPlayer->m_bUseNewAnimstate( ) = false;
 
 	if ( Config::Get<bool>( Vars.RemovalPunch ) )
 		ctx.m_pLocal->m_viewPunchAngle( ) = pPlayer->m_aimPunchAngle( ) = { };
 
 	oCalcView( pPlayer, edx, vecEyeOrigin, angEyeAngles, flZNear, flZFar, flFov );
 
-	//pPlayer->m_bUseNewAnimstate( ) = backupUseNewAnimstateBackup;
+	pPlayer->m_bUseNewAnimstate( ) = backupUseNewAnimstateBackup;
 	ctx.m_pLocal->m_viewPunchAngle( ) = backupViewPunch;
 	pPlayer->m_aimPunchAngle( ) = backupAimPunch;
 }
@@ -49,12 +49,13 @@ float FASTCALL Hooks::hkCalcViewmodelBob( CWeaponCSBase* pWeapon, void* edx ) {
 	return 0.f;
 }
 
-void FASTCALL Hooks::hkCHudScope_Paint( void* ecx ) {
-	static auto oCHudScope_Paint = DTR::CHudScope_Paint.GetOriginal<decltype( &hkCHudScope_Paint )>( );
-	if ( Config::Get<bool>( Vars.RemovalScope ) )
-		return;
+void CDECL Hooks::hkCHudScopePaint( ) {
+	static auto oCHudScopePaint = DTR::CHudScopePaint.GetOriginal<decltype( &hkCHudScopePaint )>( );
 
-	return oCHudScope_Paint( ecx );
+	if ( !Config::Get<bool>( Vars.RemovalScope ) )
+		oCHudScopePaint( );
+
+	return;
 }
 
 bool FASTCALL Hooks::hkShouldInterpolate( CBasePlayer* ecx, const std::uintptr_t edx ) {
@@ -160,4 +161,17 @@ float FASTCALL Hooks::hkGetAlphaModulation( IMaterial* ecx, uint32_t ebx ) {
 	}
 
 	return oGetAlphaModulation( ecx, ebx );
+}
+
+void FASTCALL Hooks::hkUpdatePostProcessingEffects( void* ecx, int edx ) {
+	static auto oUpdatePostProcessingEffects = DTR::UpdatePostProcessingEffects.GetOriginal<decltype( &hkUpdatePostProcessingEffects )>( );
+	if ( !ctx.m_pLocal )
+		return oUpdatePostProcessingEffects( ecx, edx );
+
+	const auto backupScoped{ ctx.m_pLocal->m_bIsScoped( ) };
+	ctx.m_pLocal->m_bIsScoped( ) = false;
+
+	oUpdatePostProcessingEffects( ecx, edx );
+
+	ctx.m_pLocal->m_bIsScoped( ) = backupScoped;
 }

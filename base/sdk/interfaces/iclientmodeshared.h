@@ -132,6 +132,8 @@ public:
 	int				iLastServerTick;		// 0x4CB8
 	int				iCommandAck;			// 0x4CBC
 	int				iSoundSequence;			// 0x4CC0
-	std::byte		pad8[ 0x128 ];			// 0x4CC4
-	CEventInfo*		pEvents;				// 0x4DEC
+	int				padbruh;				// 0x4CC4
+	bool			bIsHLTV;				// 0x4CC8
+	std::byte		pad8[ 0x123 ];			// 0x4CC4
+	CEventInfo* pEvents;				// 0x4DEC
 }; // Size: 0x4E70

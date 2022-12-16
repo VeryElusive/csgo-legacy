@@ -138,7 +138,7 @@ void CAnimationSys::SetupLocalMatrix( ) {
 	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = 0.f;
 
 	SetupBonesFixed( ctx.m_pLocal, ctx.m_matRealLocalBones, BONE_USED_BY_ANYTHING | BONE_ALWAYS_SETUP,
-		Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME  | /*NULLIK |*/ OCCLUSIONINTERP ) );
+		Interfaces::Globals->flCurTime, ( INVALIDATEBONECACHE | SETUPBONESFRAME | /*NULLIK |*/ OCCLUSIONINTERP ) );
 
 	RestoreAnims( backupLayers, backupPose, backupAbsAngle, backupAnimstate );
 }

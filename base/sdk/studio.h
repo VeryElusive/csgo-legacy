@@ -3,7 +3,11 @@
 #include "datatypes/matrix.h"
 
 using RadianEuler = float[3];
-using Quaternion = float[4];
+
+class Quaternion {
+public:
+	float x, y, z, w;
+};
 
 #pragma region studio_definitions
 #define MAXSTUDIOBONECTRLS			4
@@ -47,6 +51,9 @@ using Quaternion = float[4];
 #define BONE_HAS_SAVEFRAME_POS		0x00200000
 #define BONE_HAS_SAVEFRAME_ROT64	0x00400000
 #define BONE_HAS_SAVEFRAME_ROT32	0x00800000
+
+
+#define BONE_USED_BY_SERVER BONE_USED_BY_HITBOX | BONE_USED_BY_ATTACHMENT | BONE_USED_BY_VERTEX_MASK
 #pragma endregion
 
 struct vcollide_t;

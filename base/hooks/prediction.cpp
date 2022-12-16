@@ -1,16 +1,8 @@
 #include "../core/hooks.h"
 #include "../context.h"
-#include "../features/misc/engine_prediction.h"
+#include "../features/misc/logger.h"
+#include "../features/rage/exploits.h"
 #include <intrin.h>
-
-bool FASTCALL Hooks::hkInPrediction( void* ecx, void* edx ) {
-	static auto oInPrediction{ DTR::InPrediction.GetOriginal<decltype( &hkInPrediction )>( ) };
-
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.SetupBonesTiming )
-		return false;
-
-	return oInPrediction( ecx, edx );
-}
 
 void FASTCALL Hooks::hkProcessMovement( void* ecx, DWORD edx, CBasePlayer* basePlayer, CMoveData* moveData ) {
 	static auto oProcessMovement{ DTR::ProcessMovement.GetOriginal<decltype( &hkProcessMovement )>( ) };
@@ -19,6 +11,30 @@ void FASTCALL Hooks::hkProcessMovement( void* ecx, DWORD edx, CBasePlayer* baseP
 	moveData->bGameCodeMovedPlayer = false;
 
 	oProcessMovement( ecx, edx, basePlayer, moveData );
+}
+
+void** STDCALL Hooks::hkFinishTrackPredictionErrors( CBasePlayer* pPlayer ) {
+	static auto oFinishTrackPredictionErrors{ DTR::FinishTrackPredictionErrors.GetOriginal<decltype( &hkFinishTrackPredictionErrors )>( ) };
+
+	/*if ( ctx.m_iFixedTickBase ) {
+		ctx.m_pLocal->m_nTickBase( ) = ctx.m_iFixedTickBase;
+		Interfaces::Globals->flCurTime = TICKS_TO_TIME( ctx.m_iFixedTickBase );
+	}*/
+
+	return oFinishTrackPredictionErrors( pPlayer );
+}
+
+CUserCmd* FASTCALL Hooks::hkGetUserCmd( uint8_t* ecx, uint8_t* edx, int slot, int seqnr ) {
+	static auto oGetUserCmd{ DTR::GetUserCmd.GetOriginal<decltype( &hkGetUserCmd )>( ) };
+
+	if ( !ctx.m_pLocal )
+		return oGetUserCmd( ecx, edx, slot, seqnr );
+
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToPerformPrediction
+		&& ctx.m_cLocalData.at( seqnr % 150 ).m_bOverrideTickbase )
+		ctx.m_pLocal->m_nTickBase( ) = ctx.m_cLocalData.at( seqnr % 150 ).m_iAdjustedTickbase;
+
+	return oGetUserCmd( ecx, edx, slot, seqnr );
 }
 
 void FASTCALL Hooks::hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper ) {

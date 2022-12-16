@@ -53,6 +53,8 @@ void RoundStart( IGameEvent* pEvent ) {
 	ctx.m_bClearKillfeed = true;
 	ctx.m_iBombCarrier = -1;
 	ctx.m_bFilledAnims = false;
+	ctx.m_iLastShotNumber = 0;
+	ctx.m_iLastShotTime = 0;
 
 	for ( int i{ }; i < 64; i++ ) {
 		Features::Visuals.DormantESP.m_cSoundPlayers[ i ].valid = false;
@@ -61,8 +63,7 @@ void RoundStart( IGameEvent* pEvent ) {
 		Features::AnimSys.m_arrEntries.at( i ).m_iMissedShots = 0;
 	}
 
-	if ( Config::Get<bool>( Vars.MiscBuyBot ) )
-	{
+	if ( Config::Get<bool>( Vars.MiscBuyBot ) ) {
 		std::string buy;
 
 		switch ( Config::Get<int>( Vars.MiscBuyBotPrimary ) ) {
@@ -115,6 +116,7 @@ void RoundStart( IGameEvent* pEvent ) {
 
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherNade ) )
 			buy += "buy hegrenade; ";
+
 
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherMolotov ) )
 			buy += "buy molotov; ";
@@ -206,12 +208,10 @@ void PlayerHurt( IGameEvent* pEvent ) {
 		break;
 	}
 
-	Vector point;
+	const auto shot = Features::Shots.LastUnprocessed( );
 
-	if ( const auto shot = Features::Shots.LastUnprocessed( ) ) {
-		Features::Visuals.AddHit( { shot->m_shot_pos, damage, Interfaces::Globals->flCurTime } );
-	}
-	else {
+	if ( !shot
+		|| ( shot->m_target != victim ) ) {
 		if ( victim ) {
 			const auto hdr = Interfaces::ModelInfo->GetStudioModel( victim->GetModel( ) );
 			if ( !hdr )
@@ -228,18 +228,14 @@ void PlayerHurt( IGameEvent* pEvent ) {
 			const auto min = Math::VectorTransform( hitbox->vecBBMin, victim->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
 			const auto max = Math::VectorTransform( hitbox->vecBBMax, victim->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
 
-			point = ( min + max ) * 0.5f;
+			const auto point = ( min + max ) * 0.5f;
 
 			Features::Visuals.AddHit( { point, damage, Interfaces::Globals->flCurTime } );
 		}
+		return;
 	}
 
-
-	const auto shot = Features::Shots.LastUnprocessed( );
-
-	if ( !shot
-		|| ( shot->m_target != victim ) )
-		return;
+	Features::Visuals.AddHit( { shot->m_shot_pos, damage, Interfaces::Globals->flCurTime } );
 
 	shot->m_server_info.m_hitgroup = hitgroup;
 	shot->m_server_info.m_damage = damage;

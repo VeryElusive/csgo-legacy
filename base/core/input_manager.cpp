@@ -45,6 +45,8 @@ void Inputsys::updateNeededKeys( ) {
 		DODAKEYBINDCUH( MiscSlowWalkKey );
 		DODAKEYBINDCUH( MiscFakeDuckKey );
 		DODAKEYBINDCUH( MiscAutoPeekKey );
+		DODAKEYBINDCUH( AntiaimInvert );
+		DODAKEYBINDCUH( AntiaimInvertSpam );
 		DODAKEYBINDCUH( RagebotDamageOverrideKey );
 		DODAKEYBINDCUH( RagebotForceBaimKey );
 		DODAKEYBINDCUH( ExploitsDoubletapKey );

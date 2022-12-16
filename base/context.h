@@ -36,6 +36,7 @@ struct LocalData_t {
 	bool m_bRestoreTickbase{ };
 
 	bool m_bThrowingNade{ };
+	bool m_bRevolverCock{ };
 
 	QAngle m_angViewAngles{ };
 
@@ -63,9 +64,12 @@ struct LocalData_t {
 	FORCEINLINE void Save( CBasePlayer* local, CUserCmd& cmd, CWeaponCSBase* weapon ) {
 		this->m_flSpawnTime = local->m_flSpawnTime( );
 		this->m_bOverrideTickbase = false;
+		this->m_bRestoreTickbase = false;
 		this->m_iShiftAmount = 0;
 		this->m_iCommandNumber = cmd.iCommandNumber;
 		this->m_iTickbase = local->m_nTickBase( );
+		if ( this->m_iTickbase - this->m_iAdjustedTickbase < 18 )
+			this->m_iAdjustedTickbase = 0;
 		this->m_MoveType = local->m_MoveType( );
 		if ( !weapon )
 			return;
@@ -87,6 +91,17 @@ struct LocalData_t {
 
 struct LocalData_t;
 
+struct SequenceObject_t
+{
+	SequenceObject_t( int iInReliableState, int iOutReliableState, int iSequenceNr, float flCurrentTime )
+		: iInReliableState( iInReliableState ), iOutReliableState( iOutReliableState ), iSequenceNr( iSequenceNr ), flCurrentTime( flCurrentTime ) { }
+
+	int iInReliableState;
+	int iOutReliableState;
+	int iSequenceNr;
+	float flCurrentTime;
+};
+
 struct HAVOCCTX {
 	Vector2D m_ve2ScreenSize{ };
 	CBasePlayer* m_pLocal{ };
@@ -97,6 +112,8 @@ struct HAVOCCTX {
 
 	matrix3x4_t m_matRealLocalBones[ 256 ];
 
+	FakeAnimData_t m_cFakeData{ };
+
 	QAngle m_angOriginalViewangles{ };
 
 	Vector m_vecEyePos{ };
@@ -104,7 +121,7 @@ struct HAVOCCTX {
 	std::array< LocalData_t, MULTIPLAYER_BACKUP > m_cLocalData{ };
 
 	std::vector<int> m_iSentCmds{ };
-	std::vector<std::pair<std::string, void*>> m_strDbgLogs{ };
+	//std::vector<std::string> m_strDbgLogs{ };
 
 	//std::vector<std::pair<QAngle, int>> m_pQueuedCommands{ };
 	bool m_bFilledAnims{ };
@@ -117,12 +134,17 @@ struct HAVOCCTX {
 	bool m_bCanShoot{ };
 	bool m_bCanPenetrate{ };
 	bool m_bSetupBones{ };
+	bool m_bClampbones{ };
 	bool m_bUpdatingAnimations{ };
-	bool m_bForceBoneMask{ };
+	bool m_bServerSetupbones{ };
 	bool m_bFakeDucking{ };
 	bool m_bSendPacket{ };
 	bool m_bClearKillfeed{ };
 	bool m_bExploitsEnabled{ };
+	bool m_bRevolverCanShoot{ };
+	bool m_bRevolverCanCock{ };
+	bool m_bDontSavePredVars{ };
+	//bool m_bCollisionForced{ };
 
 	int m_iTicksAllowed{ };
 	int m_iLastSentCmdNumber{ };
@@ -131,7 +153,8 @@ struct HAVOCCTX {
 	int m_iBombCarrier{ };
 
 	float m_iLastShotTime{ };
-	float m_flOutLatency{ };
+	float m_iLastPacketTime{ };
+	float m_flRealOutLatency{ };
 	float m_flInLatency{ };
 	float m_flLerpTime{ };
 

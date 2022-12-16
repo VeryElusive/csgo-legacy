@@ -5,8 +5,8 @@
 void CAntiAim::Pitch( CUserCmd& cmd ) {
 	switch ( Config::Get<int>( Vars.AntiaimPitch ) ) {
 	case 1: cmd.viewAngles.x = -89.f; break;// up
-	case 2: cmd.viewAngles.x =  89.f; break;// down
-	case 3: cmd.viewAngles.x =  0.f;  break;// zero
+	case 2: cmd.viewAngles.x = 89.f; break;// down
+	case 3: cmd.viewAngles.x = 0.f;  break;// zero
 	default: break;
 	}
 }
@@ -65,8 +65,8 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 		}
 	}
 
-	if ( !m_bCanBreakLBY 
-		&& m_flVelocityLengthXY <= 0.1f 
+	if ( !m_bCanBreakLBY
+		&& m_flVelocityLengthXY <= 0.1f
 		&& Config::Get<bool>( Vars.AntiaimDistortion ) ) {
 		static bool reRoll{ };
 		static float random{ };

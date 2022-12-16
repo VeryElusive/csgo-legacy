@@ -25,15 +25,16 @@ case WEAPONTYPE_MACHINEGUN: name = Config::Get<int>( Vars.name##Machine );break;
 
 struct AimPoint_t {
 	AimPoint_t( ) {}
-	AimPoint_t( Vector point, int ind, Vector center ) : m_vecPoint{ point }, m_iHitgroup{ ind } { 
+	AimPoint_t( Vector point, int ind, Vector center ) : m_vecPoint{ point }, m_iHitgroup{ ind } {
 		m_flCenterAmt = ( ( point - ctx.m_vecEyePos ) - ( center - ctx.m_vecEyePos ) ).Length2D( );
 	}
 
 	Vector m_vecPoint{ };
+	//int m_iHitbox{ };
 	int m_iHitgroup{ };
-	//int m_iIntersections{ };
 	int m_flDamage{ };
-	float m_flCenterAmt{ FLT_MAX };
+
+	float m_flCenterAmt{ };
 
 	bool m_bValid{ };
 	bool m_bPenetrated{ };
@@ -41,16 +42,47 @@ struct AimPoint_t {
 };
 
 struct AimTarget_t {
-	std::shared_ptr<LagRecord_t> m_pRecord{ };
+	std::shared_ptr< LagRecord_t > m_pRecord{ };
 	CBasePlayer* m_pPlayer{ };
-	std::optional<AimPoint_t> m_cAimPoint{ };
+	AimPoint_t* m_cAimPoint{ };
+	//std::string* m_pDbgLog{ };
 
 	std::vector<AimPoint_t> m_cPoints{ };
 
 	int m_iMissedShots{ };
 
 	AimTarget_t( ) {}
-	AimTarget_t( std::shared_ptr<LagRecord_t> r, CBasePlayer* p, int m ) : m_pRecord( r ), m_pPlayer( p ), m_iMissedShots( m ) {}
+	AimTarget_t( std::shared_ptr< LagRecord_t > r, PlayerEntry& e ) : m_pRecord( r ), m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ) {}
+};
+
+struct TraceRayBackup {
+	CAnimationLayer m_pLayers[ 13 ];
+	std::array<float, 24> m_flPoseParameter;
+
+	int m_nSequence;
+	float m_flCycle;
+
+	void Apply( CBasePlayer* ent ) {
+		memcpy( ent->m_AnimationLayers( ), this->m_pLayers, 0x38 * ent->m_iAnimationLayersCount( ) );
+		ent->m_flPoseParameter( ) = this->m_flPoseParameter;
+
+		// CBaseAnimating::SetSequence
+		if ( ent->m_nSequence( ) != this->m_nSequence ) {
+			ent->m_nSequence( ) = this->m_nSequence;
+			ent->InvalidatePhysicsRecursive( 0x20 );//SEQUENCE_CHANGED
+		}
+
+		// server CBaseAnimating::SetCycle does not call any other function
+		ent->m_flCycle( ) = this->m_flCycle;
+	}
+
+	TraceRayBackup( CBasePlayer* ent ) {
+		this->m_flPoseParameter = ent->m_flPoseParameter( );
+		memcpy( this->m_pLayers, ent->m_AnimationLayers( ), 0x38 * ent->m_iAnimationLayersCount( ) );
+
+		this->m_flCycle = ent->m_flCycle( );
+		this->m_nSequence = ent->m_nSequence( );
+	}
 };
 
 class CRageBot {
@@ -60,21 +92,20 @@ public:
 	bool RagebotBetweenShots{ };
 
 	void Main( CUserCmd& cmd );
-	std::shared_ptr<LagRecord_t> GetBestLagRecord( PlayerEntry& entry );
+	std::shared_ptr< LagRecord_t > GetBestLagRecord( PlayerEntry& entry );
 	std::vector<AimTarget_t> m_cAimTargets{ };
 private:
-
 	std::vector<int> m_iHitboxes{ };
 
-	int QuickScan( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, bool& metScaled );
-	int OffsetDelta( CBasePlayer* player, std::shared_ptr<LagRecord_t> record );
+	FORCEINLINE int QuickScan( CBasePlayer* player, LagRecord_t* record, bool& metScaled );
+	FORCEINLINE int OffsetDelta( CBasePlayer* player, LagRecord_t* record );
 	void ScanTargets( );
-	bool CreatePoints( AimTarget_t& aim_target, std::vector<AimPoint_t>& aim_points );
+	bool CreatePoints( AimTarget_t& aim_target );
 	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
-	void Multipoint( const Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aimPoints, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index );
-	void ScanPoint( CBasePlayer* player, std::shared_ptr<LagRecord_t> record, AimPoint_t& point );
-	std::optional< AimPoint_t> PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
-	std::optional<AimTarget_t> PickTarget( );
+	void Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index );
+	void ScanPoint( AimTarget_t& aim_target, AimPoint_t& point );
+	AimPoint_t* PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
+	AimTarget_t* PickTarget( );
 	void Fire( CUserCmd& cmd );
 	bool HitChance( CBasePlayer* player, const QAngle& ang, int hitchance, int index );
 	//bool FastHitChance( CBasePlayer* player, const Vector& dir, const Vector& mins, const Vector& maxs, const float& radius, int hitchance );
@@ -82,8 +113,11 @@ private:
 
 	FORCEINLINE void Reset( ) {
 		m_bShouldStop = false;
-		m_iHitboxes.clear( );
-		m_cAimTargets.clear( );
+
+		if ( !m_iHitboxes.empty( ) )
+			m_iHitboxes.clear( );
+		if ( !m_cAimTargets.empty( ) )
+			m_cAimTargets.clear( );
 	}
 
 	FORCEINLINE void SetupHitboxes( ) {

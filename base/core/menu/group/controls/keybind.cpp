@@ -28,7 +28,7 @@ void MenuGroup::Keybind( const char* name, keybind_t& value ) {
 	const bool opened{ Menu::OpenedID == name };
 	const char* rendaName{ keys[ value.key ] };
 	const auto Size{ Render::GetTextSize( rendaName, Fonts::Menu ) };
-	const auto pos{ Menu::CursorPos + Vector2D( size.x - 20 - Size.x, -18 ) };
+	const auto pos{ Menu::CursorPos + Vector2D( size.x - 30 - Size.x, -18 ) };
 
 	const bool Hovered{ Inputsys::hovered( pos, { Size.x, 12 } ) };
 

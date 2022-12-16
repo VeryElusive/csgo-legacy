@@ -45,6 +45,8 @@ void Render::FilledRoundedBox( Vector2D pos, Vector2D size, int points, int radi
 	Interfaces::Surface->DrawSetTexture( Texture );
 
 	Interfaces::Surface->DrawTexturedPolygon( 4 * points, round );
+
+	delete[ ] round;
 }
 
 void Render::FilledRectangle( int x, int y, int w, int h, Color col ) {

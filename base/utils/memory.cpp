@@ -304,3 +304,24 @@ std::string MEM::BytesToPattern(const std::uint8_t* arrBytes, const std::size_t 
 
 	return szPattern;
 }
+
+TypeDescription_t* MEM::GetTypeDescription( DataMap_t* map, const char* name ) {
+	while ( map ) {
+		for ( int i = 0; i < map->nDataFields; i++ ) {
+			if ( map->pDataDesc[ i ].szFieldName == nullptr )
+				continue;
+			if ( strcmp( name, map->pDataDesc[ i ].szFieldName ) == 0 )
+				return &map->pDataDesc[ i ];
+
+			if ( map->pDataDesc[ i ].iFieldType == FIELD_EMBEDDED ) {
+				if ( map->pDataDesc[ i ].pTypeDescription ) {
+					TypeDescription_t* offset{ };
+					if ( ( offset = GetTypeDescription( map->pDataDesc[ i ].pTypeDescription, name ) ) != nullptr )
+						return offset;
+				}
+			}
+		}
+		map = map->pBaseMap;
+	}
+	return nullptr;
+}

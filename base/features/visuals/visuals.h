@@ -95,7 +95,6 @@ public:
 	bool GetBBox( CBasePlayer* ent, rect& box );
 	void Main( CBasePlayer* ent );
 
-	// not needed to be ptr as we are gonna always keep on heap
 	std::array< VisualPlayerEntry, 64> Entries;
 
 	void DrawBox( VisualPlayerEntry& entry );

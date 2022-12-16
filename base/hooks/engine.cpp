@@ -1,5 +1,6 @@
 #include "../core/hooks.h"
 #include "../core/config.h"
+#include "../features/rage/exploits.h"
 #include "../context.h"
 #include <intrin.h>
 
@@ -16,6 +17,8 @@ float FASTCALL Hooks::hkGetScreenAspectRatio( void* ecx, void* edx, int32_t iWid
 bool FASTCALL Hooks::hkIsPaused( void* ecx, void* edx ) {
 	static auto oIsPaused{ DTR::IsPaused.GetOriginal<decltype( &hkIsPaused )>( ) };
 	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToExtrapolate )
+	//|| ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToInterpolateServerEntities 
+	//	&& Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand ) )
 		return true;
 
 	return oIsPaused( ecx, edx );
@@ -23,7 +26,7 @@ bool FASTCALL Hooks::hkIsPaused( void* ecx, void* edx ) {
 
 bool FASTCALL Hooks::hkIsHltv( void* ecx, void* edx ) {
 	static auto oIsHltv{ DTR::IsHLTV.GetOriginal<decltype( &hkIsHltv )>( ) };
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.SetupVelocityReturn && ctx.m_bUpdatingAnimations )
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.SetupVelocityReturn )
 		return true;
 
 	return oIsHltv( ecx, edx );

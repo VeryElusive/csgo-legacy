@@ -211,7 +211,7 @@ public:
 		: pSkip( pSkipEntity ), pSkip2( pSkipEntity2 ), iTraceType( iTraceType ), checkCallback( nullptr ) { }
 
 	CTraceFilterSkipTwoEntities( const IHandleEntity* pSkipEntity )
-		: pSkip( pSkipEntity ), iTraceType( TRACE_EVERYTHING ), checkCallback( nullptr ) { }
+		: pSkip( pSkipEntity ), iTraceType( TRACE_EVERYTHING ), checkCallback( *reinterpret_cast< FilterCallbackFn*>( Offsets::Sigs.TraceFilterSkipTwoEntities ) ) { }
 
 	bool ShouldHitEntity( IHandleEntity* pHandleEntity, int fContentsMask ) override {
 		// if given user defined callback - check it

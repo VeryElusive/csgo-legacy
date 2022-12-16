@@ -7,6 +7,11 @@ void CVisuals::Main( ) {
 
 	DormantESP.Start( );
 
+	if ( Interfaces::GameResources )
+		ctx.m_iBombCarrier = Interfaces::GameResources->GetC4Carrier( );
+	else
+		ctx.m_iBombCarrier = -1;
+
 	for ( int i{ }; i <= Interfaces::ClientEntityList->GetHighestEntityIndex( ); i++ ) {
 		const auto ent{ static_cast< CBaseEntity* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 		if ( !ent )
@@ -20,8 +25,8 @@ void CVisuals::Main( ) {
 		}
 	}
 
-	auto& w = ctx.m_ve2ScreenSize.x;
-	auto& h = ctx.m_ve2ScreenSize.y;
+	auto& w{ ctx.m_ve2ScreenSize.x };
+	auto& h{ ctx.m_ve2ScreenSize.y };
 
 	if ( Config::Get<bool>( Vars.RemovalScope ) && ctx.m_pLocal->m_bIsScoped( ) 
 		&& ctx.m_pWeaponData && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER_RIFLE ) {
@@ -34,8 +39,10 @@ void CVisuals::Main( ) {
 			const auto center = ctx.m_ve2ScreenSize / 2;
 			const Color color = ctx.m_bCanPenetrate ? Color( 0, 255, 0, 155 ) : Color( 255, 0, 0, 155 );
 
-			Render::Line( center - Vector2D( 1, 0 ), center + Vector2D( 2, 0 ), color );
-			Render::Line( center - Vector2D( 0, 1 ), center + Vector2D( 0, 2 ), color );
+			const int addAmt{ ( static_cast<int>( w ) % 2 ) ? 2 : 1 };
+
+			Render::Line( center - Vector2D( 1, 0 ), center + Vector2D( addAmt, 0 ), color );
+			Render::Line( center - Vector2D( 0, 1 ), center + Vector2D( 0, addAmt ), color );
 		}
 
 		if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
@@ -67,42 +74,33 @@ void CVisuals::Watermark( ) {
 	if ( !Config::Get<bool>( Vars.MiscWatermark ) )
 		return;
 
-	const auto nci = Interfaces::Engine->GetNetChannelInfo( );
-	int ping = 0;
-
-	if ( nci ) {
-		const auto latency = Interfaces::Engine->IsPlayingDemo( ) ? 0.0f : nci->GetAvgLatency( FLOW_OUTGOING ) - ( 0.5f / Offsets::Cvars.cl_updaterate->GetFloat( ) );
-		ping = static_cast<int>( std::max( 0.f, latency ) * 1000 );
-	}
-
 	const auto name = _( "Havoc [beta] " );
-	const auto pstr = _( "| ping: " ) + std::to_string( ping );
+	const auto pstr = _( "build: 0.0.4" );
 
 	const auto name_size = Render::GetTextSize( name, Fonts::Menu );
 	auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );
 
-	const auto size = Vector2D( name_size.x + ping_size.x + 40, 20 );
+	const auto size = Vector2D( name_size.x + ping_size.x + 37, 20 );
 	const auto pos = Vector2D( ctx.m_ve2ScreenSize.x - size.x - 20, 15 );
 
-	Render::FilledRectangle( pos, size, Menu::BackgroundCol );
+	Render::FilledRoundedBox( pos - Vector2D( 1, 1 ), size + 2, 5, 5, Color( 10, 10, 10 ) );
+	Render::FilledRoundedBox( pos, size, 90, 5, Menu::OutlineLight );
+	Render::FilledRoundedBox( pos + 1, size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10 ) );
+	Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, Menu::BackgroundCol );
 
 	for ( int i{ }; i < 3; ++i ) {
-		Render::Line( pos + Vector2D( size.x - 16 - i, 0 ), pos + Vector2D( size.x, 16 + i ), Menu::AccentCol );
-		Render::Line( pos + Vector2D( size.x - 10 - i, 0 ), pos + Vector2D( size.x, 10 + i ), Menu::Accent2Col );
-
-
-		Render::Line( pos + Vector2D( 0, size.y - 16 - i ), pos + Vector2D( 16 + i, size.y ), Menu::AccentCol );
-		Render::Line( pos + Vector2D( 0, size.y - 10 - i ), pos + Vector2D( 10 + i, size.y ), Menu::Accent2Col );
+		Render::Line( pos + Vector2D( name_size.x + 8 + 19 + i, 2 ), pos + Vector2D( name_size.x + 8 + 4 + i, 17 ), Menu::Accent2Col );
+		Render::Line( pos + Vector2D( name_size.x + 8 + 12 + i, 2 ), pos + Vector2D( name_size.x + 8 - 3 + i, 17 ), Menu::AccentCol );
 	}
 
-	Render::Text( Fonts::Menu, pos + Vector2D( 20, 3 ), Menu::AccentCol, 0, name );
-	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 20, 3 ), Color( 150, 150, 150 ), 0, pstr.c_str( ) );
+	Render::Text( Fonts::Menu, pos + Vector2D( 6, 3 ), Menu::AccentCol, 0, name );
+	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 33, 3 ), Menu::Accent2Col, 0, pstr );
 
-	/*int i{ 1 };
-	for ( auto& dbg : ctx.m_strDbgLogs ) {
-		Render::Text( Fonts::Menu, pos + Vector2D( 0, 10 * i ), Color( 255, 255, 255 ), 0, dbg.first.c_str( ) );
-		++i;
-	}*/
+	//int i{ 1 };
+	//for ( auto& dbg : ctx.m_strDbgLogs ) {
+	//	Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, dbg.c_str( ) );
+	//	++i;
+	//}
 
 
 	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 10 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_angRotation( ).y ).c_str( ) );
@@ -401,8 +399,8 @@ void CVisuals::KeybindsList( ) {
 
 	// gimme binds
 	if ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled )
-		addBind( _( "Doubletap" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).mode );	
-	
+		addBind( _( "Doubletap" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).mode );
+
 	if ( Config::Get<bool>( Vars.ExploitsHideshots ) && Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ).enabled )
 		addBind( _( "Hideshots" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ).mode );
 
@@ -410,7 +408,12 @@ void CVisuals::KeybindsList( ) {
 		addBind( _( "Damage override" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotDamageOverrideKey ).mode );
 
 	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
-		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );
+		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );	
+
+	if ( Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).enabled )
+		addBind( _( "Constant Invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).mode );
+	else if ( Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
+		addBind( _( "Invert desync" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvert ).mode );
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		addBind( _( "Slow walk" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).mode );
@@ -454,22 +457,26 @@ void CVisuals::KeybindsList( ) {
 	auto& size = m_vec2KeyBindAbsSize;
 
 
-	Interfaces::Surface->SetClipRect( pos.x, pos.y, size.x, size.y );
+	Interfaces::Surface->SetClipRect( pos.x - 1, pos.y - 1, size.x + 1, size.y + 1 );
 	{
-		// gimme header
-		Render::FilledRectangle( pos, size, Menu::BackgroundCol.Set<COLOR_A>( 255 * alpha_mod ) );
+		Render::FilledRoundedBox( pos - Vector2D( 1, 1 ), size + 2, 5, 5, Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
+		Render::FilledRoundedBox( pos, size, 90, 5, Menu::OutlineLight.Set<COLOR_A>( 255 * alpha_mod ) );
+		Render::FilledRoundedBox( pos + 1, size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
+		Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, Menu::BackgroundCol.Set<COLOR_A>( 255 * alpha_mod ) );
 
 		for ( int i{ }; i < 3; ++i ) {
-			Render::Line( pos + Vector2D( size.x - 16 - i, 0 ), pos + Vector2D( size.x, 16 + i ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
-			Render::Line( pos + Vector2D( size.x - 10 - i, 0 ), pos + Vector2D( size.x, 10 + i ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( size.x - 19 - i, 2 ), pos + Vector2D( size.x - 4 - i, 17 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( size.x - 12 - i, 2 ), pos + Vector2D( size.x - 2, 12 + i ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
 
-
-			Render::Line( pos + Vector2D( 0, size.y - 16 - i ), pos + Vector2D( 16 + i, size.y ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
-			Render::Line( pos + Vector2D( 0, size.y - 10 - i ), pos + Vector2D( 10 + i, size.y ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 19 + i, 2 ), pos + Vector2D( 4 + i, 17 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 11 + i, 2 ), pos + Vector2D( 1, 12 + i ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
 		}
 
-		if ( alpha_mod >= 1.f )
-			Render::Gradient( pos.x, pos.y + 20, size.x, 20, Color( 0, 0, 0, static_cast< int >( 180 * alpha_mod ) ), Menu::BackgroundCol.Set<COLOR_A>( 0 ), false );
+		if ( size.y > 20 ) {
+			Render::Line( pos + Vector2D( 1, 17 ), pos + Vector2D( size.x - 2, 17 ), Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
+			Render::Line( pos + Vector2D( 1, 18 ), pos + Vector2D( size.x - 2, 18 ), Menu::OutlineLight.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 1, 19 ), pos + Vector2D( size.x - 2, 19 ), Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
+		}
 
 		/*18.0000000 key
 		25.0000000 binds*/
