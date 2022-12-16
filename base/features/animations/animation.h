@@ -112,7 +112,8 @@ class CAnimationSys {
 public:
 	void RunAnimationSystem( );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
-	void UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side );
+	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
+	void OleksiiReznikov( CBasePlayer* player, LagRecord_t* current );
 	//FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
 	bool SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags, CIKContext* ik = 0 );

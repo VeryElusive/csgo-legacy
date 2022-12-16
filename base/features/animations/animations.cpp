@@ -1,4 +1,4 @@
-#include "animation.h"
+﻿#include "animation.h"
 
 // https://www.youtube.com/watch?v=a3Z7zEc7AXQ
 void CAnimationSys::RunAnimationSystem( ) {
@@ -177,7 +177,7 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 
 	entry.m_pPlayer->SetAbsOrigin( current->m_cAnimData.m_vecOrigin );
 
-	UpdateSide( entry, current, 0 );
+	UpdateSide( entry, current );
 
 	current->m_bAnimated = true;
 
@@ -186,7 +186,14 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	std::memcpy( entry.m_pPlayer->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * entry.m_pPlayer->m_iAnimationLayersCount( ) );
 }
 
-void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side ) {
+/* обожаю Алексея Резникова !!!!!!!!!!!!!!! */
+void CAnimationSys::OleksiiReznikov( CBasePlayer* player, LagRecord_t* current ) {
+	if ( current->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
+
+	}
+}
+
+void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 	const auto state{ entry.m_pPlayer->m_pAnimState( ) };
 	if ( !state )
 		return;
@@ -224,13 +231,6 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int si
 
 	if ( current->m_bLanded.has_value( ) )
 		state->flDurationInAir = std::max( current->m_cAnimData.m_flSimulationTime - TICKS_TO_TIME( 1 ) - current->m_flOnGroundTime, 0.f );
-
-	if ( side == 1 )
-		state->flAbsYaw = entry.m_pPlayer->m_angEyeAngles( ).y + 120.f;
-	else if ( side == 2 )
-		state->flAbsYaw = entry.m_pPlayer->m_angEyeAngles( ).y - 120.f;
-
-	state->flAbsYaw = std::remainderf( state->flAbsYaw, 360.f );
 
 	entry.m_pPlayer->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = Interfaces::ClientState->bIsHLTV = true;
 	entry.m_pPlayer->UpdateClientsideAnimations( );

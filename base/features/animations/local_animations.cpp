@@ -30,6 +30,28 @@ void CAnimationSys::UpdateLocalFull( CUserCmd& cmd, bool sendPacket ) {
 		if ( curUserCmd.iTickCount >= INT_MAX )
 			continue;
 
+		if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 0.2f
+			&& curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
+			&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
+			if ( !curLocalData.m_bThrowingNade
+				&& !( curUserCmd.iButtons & IN_ATTACK && ( !ctx.m_pWeapon->IsGrenade( ) || ctx.m_pWeapon->m_iItemDefinitionIndex( ) != WEAPON_REVOLVER || !curLocalData.m_bRevolverCock ) )
+				&& !( curUserCmd.iButtons & IN_ATTACK2 && ctx.m_pWeapon->IsKnife( ) )
+				&& !( curUserCmd.iButtons & IN_USE ) ) {
+				const auto oldViewAngles{ curUserCmd.viewAngles };
+
+				if ( chokedCmds > 0 && !inShot && Config::Get<bool>( Vars.AntiaimDesync ) )
+					curUserCmd.viewAngles.y = std::remainderf( curUserCmd.viewAngles.y + ( Features::Antiaim.ChokeCycleJitter ? -120.f : 120.f ), 360.f );
+
+				Features::Misc.MoveMINTFix(
+					curUserCmd, oldViewAngles,
+					curLocalData.PredictedNetvars.m_iFlags,
+					curLocalData.PredictedNetvars.m_MoveType
+				);
+			}
+
+			Features::Misc.NormalizeMovement( curUserCmd );
+		}
+
 		ctx.m_pLocal->m_nTickBase( ) = curLocalData.PredictedNetvars.m_nTickBase;
 		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
 		ctx.m_pLocal->m_vecVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;

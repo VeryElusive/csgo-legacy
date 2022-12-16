@@ -15,11 +15,11 @@ public:
 
 	int ManualSide{ };
 	bool m_bCanBreakLBY{ };
+	bool ChokeCycleJitter{ };
 
 private:
 	float m_flLowerBodyRealignTimer{ };
 
-	bool ChokeCycleJitter{ };
 	float BaseYaw( CUserCmd& cmd );
 	void PickYaw( float& yaw );
 	void AtTarget( float& yaw );

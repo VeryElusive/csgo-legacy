@@ -3,6 +3,9 @@
 #include "../rage/exploits.h"
 
 void CAntiAim::Pitch( CUserCmd& cmd ) {
+	if ( Condition( cmd ) )
+		return;
+
 	switch ( Config::Get<int>( Vars.AntiaimPitch ) ) {
 	case 1: cmd.viewAngles.x = -89.f; break;// up
 	case 2: cmd.viewAngles.x = 89.f; break;// down
@@ -50,8 +53,6 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 	// https://gitlab.com/KittenPopo/csgo-2018-source/-/blob/main/game/shared/cstrike15/csgo_playeranimstate.cpp#L2353
 
 	m_bCanBreakLBY = false;
-	// pull the lower body direction towards the eye direction, but only when the player is moving
-	const auto curtime{ TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) };// this will fuck up when we shift
 	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
 
 	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) {
@@ -60,7 +61,7 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 			m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) + ( CSGO_ANIM_LOWER_REALIGN_DELAY * 0.2f );
 		else {
 			// dont set m_flLowerBodyRealignTimer yet
-			if ( curtime > m_flLowerBodyRealignTimer )
+			if ( Interfaces::Globals->flCurTime > m_flLowerBodyRealignTimer )
 				m_bCanBreakLBY = true;
 		}
 	}
@@ -112,7 +113,7 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 		}
 
 		if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, breakAngle ) ) > 35.0f )
-			m_flLowerBodyRealignTimer = curtime + CSGO_ANIM_LOWER_REALIGN_DELAY;
+			m_flLowerBodyRealignTimer = Interfaces::Globals->flCurTime + CSGO_ANIM_LOWER_REALIGN_DELAY;
 	}
 
 	cmd.viewAngles.Normalize( );
@@ -230,8 +231,10 @@ void CAntiAim::FakeLag( ) {
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return;
 
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f )
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f ) {
+		ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 0;
 		return;
+	}
 
 	static int maxChoke = Config::Get<int>( Vars.AntiaimFakeLagLimit );
 

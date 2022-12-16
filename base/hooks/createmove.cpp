@@ -204,6 +204,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 		Features::Misc.AutoPeek( cmd );
 
 		Features::Antiaim.Pitch( cmd );
+		Features::Antiaim.Yaw( cmd, ctx.m_bSendPacket );
 
 		Features::Misc.MoveMINTFix( cmd, ctx.m_angOriginalViewangles, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 
@@ -226,7 +227,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 	ShouldShift( cmd );
 
-	Features::Antiaim.Yaw( cmd, ctx.m_bSendPacket );
+	Features::AnimSys.UpdateLocalFull( cmd, ctx.m_bSendPacket );
 
 	bSendPacket = ctx.m_bSendPacket;
 
