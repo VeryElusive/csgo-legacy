@@ -150,34 +150,29 @@ void CAnimationSys::UpdatePlayerMatrixes( ) {
 }
 
 void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
-	struct anim_backup_t {
-		__forceinline constexpr anim_backup_t( ) = default;
-
-		__forceinline anim_backup_t( CBasePlayer* const player )
-			: m_anim_state{ *player->m_pAnimState( ) }, m_abs_yaw{ m_anim_state.flAbsYaw },
-			m_pose_params{ player->m_flPoseParameter( ) }
-		{ memcpy( m_anim_layers, player->m_AnimationLayers( ), 0x38 * player->m_iAnimationLayersCount( ) ); }
-			
-		__forceinline void restore( CBasePlayer* const player ) const {
-			*player->m_pAnimState( ) = m_anim_state;
-
-			player->SetAbsAngles( { 0.f, m_abs_yaw, 0.f } );
-
-			memcpy( player->m_AnimationLayers( ), m_anim_layers, 0x38 * player->m_iAnimationLayersCount( ) );
-			player->m_flPoseParameter( ) = m_pose_params;
-		}
-
-		CCSGOPlayerAnimState		m_anim_state{ };
-
-		float					m_abs_yaw{ }, m_lby{ };
-
-		CAnimationLayer m_anim_layers[ 13 ];
-		std::array<float, 24>	m_pose_params{ };
-	} anim_backup{ entry.m_pPlayer };
+	const auto backupEyeYaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
 
 	entry.m_pPlayer->SetAbsOrigin( current->m_cAnimData.m_vecOrigin );
 
+	if ( current->m_cAnimData.m_iFlags & FL_ONGROUND ) {
+		if ( current->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f ) {
+			entry.m_flLowerBodyRealignTimer = current->m_cAnimData.m_flSimulationTime + ( CSGO_ANIM_LOWER_REALIGN_DELAY * 0.2f );
+			current->m_bBrokeLBY = true;
+		}
+		else {
+			if ( current->m_cAnimData.m_flSimulationTime > entry.m_flLowerBodyRealignTimer /* && std::abs( Math::AngleDiff( entry.m_pPlayer->m_pAnimState( )->flAbsYaw, m_flEyeYaw ) ) > 35.0f*/ ) {
+				entry.m_flLowerBodyRealignTimer = current->m_cAnimData.m_flSimulationTime + CSGO_ANIM_LOWER_REALIGN_DELAY;
+				current->m_bBrokeLBY = true;
+			}
+		}
+	}
+
+
+	OleksiiReznikov( entry, current );
+
 	UpdateSide( entry, current );
+
+	entry.m_pPlayer->m_angEyeAngles( ).y = backupEyeYaw;
 
 	current->m_bAnimated = true;
 
@@ -187,9 +182,44 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 }
 
 /* обожаю Алексея Резникова !!!!!!!!!!!!!!! */
-void CAnimationSys::OleksiiReznikov( CBasePlayer* player, LagRecord_t* current ) {
-	if ( current->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
+void CAnimationSys::OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current ) {
+	if ( !Config::Get<bool>( Vars.RagebotResolver ) )
+		return;
 
+	// TODO: antifreestand
+	if ( current->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
+		switch ( entry.m_iMissedShots % 6 ) {
+		case 0:
+			entry.m_pPlayer->m_angEyeAngles( ).y += 180.f;
+			break;
+
+		case 1:
+			entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+			break;
+
+		case 2:
+			entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( ) + 180.f;
+			break;
+
+		case 3:
+			entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( ) + 110.f;
+			break;
+
+		case 4:
+			entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( ) - 110.f;
+			break;
+
+		case 5:
+			//entry.m_pPlayer->m_angEyeAngles( ).y;
+			break;
+
+		default:
+			break;
+		}
+	}
+	else {
+		//if ( entry.m_flLowerBodyRealignTimer > 0.22f )
+		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 	}
 }
 

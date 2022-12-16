@@ -51,9 +51,10 @@ struct LagRecord_t {
 	AnimData_t m_cAnimData;
 
 	bool m_bBrokeLC{ true };
+	bool m_bBrokeLBY{ };
 	bool m_bAnimated{ };
 	bool m_bDormant{ };
-	bool m_bResolverThisTick{ };
+	//bool m_bResolverThisTick{ };
 
 	std::optional<bool> m_bLanded{ };
 	float m_flOnGroundTime{ };
@@ -87,6 +88,7 @@ struct PlayerEntry {
 
 	float m_flSpawnTime{ };
 	float m_flTrackSimulationTime{ };
+	float m_flLowerBodyRealignTimer{ };
 	//float m_flJitterAmount{ };
 
 	bool m_bBrokeLC{ };
@@ -113,7 +115,7 @@ public:
 	void RunAnimationSystem( );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
 	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
-	void OleksiiReznikov( CBasePlayer* player, LagRecord_t* current );
+	void OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current );
 	//FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
 	bool SetupBonesFixed( CBasePlayer* const player, matrix3x4_t bones[ 256 ], const int mask, const float time, const int flags, CIKContext* ik = 0 );

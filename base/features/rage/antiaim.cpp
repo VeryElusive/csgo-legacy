@@ -40,14 +40,14 @@ void CAntiAim::PickYaw( float& yaw ) {
 	}
 }
 
-#define CSGO_ANIM_LOWER_REALIGN_DELAY	1.1f
-#define CSGO_ANIM_LOWER_CATCHUP_IDLE	100.0f
-
 FORCEINLINE float NormaliseYaw( float yaw ) {
 	return std::clamp( std::remainderf( yaw, 360.f ), -180.f, 180.f );
 }
 
 void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
+	if ( Condition( cmd ) )
+		return;
+
 	cmd.viewAngles.y = NormaliseYaw( BaseYaw( cmd ) );
 
 	// https://gitlab.com/KittenPopo/csgo-2018-source/-/blob/main/game/shared/cstrike15/csgo_playeranimstate.cpp#L2353
@@ -231,10 +231,10 @@ void CAntiAim::FakeLag( ) {
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return;
 
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f ) {
-		ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 0;
+	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 0;
+
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f )
 		return;
-	}
 
 	static int maxChoke = Config::Get<int>( Vars.AntiaimFakeLagLimit );
 

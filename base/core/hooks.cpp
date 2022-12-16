@@ -46,8 +46,8 @@ bool Hooks::Setup( ) {
 	if ( !DTR::GetScreenAspectRatio.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::GETSCREENASPECTRATIO ), &hkGetScreenAspectRatio ) )
 		return false;	
 
-	//if ( !DTR::IsPaused.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISPAUSED ), &hkIsPaused ) )
-	//	return false;
+	if ( !DTR::IsPaused.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISPAUSED ), &hkIsPaused ) )
+		return false;
 
 	if ( !DTR::IsHLTV.Create( MEM::GetVFunc( Interfaces::Engine, VTABLE::ISHLTV ), &hkIsHltv ) )
 		return false;

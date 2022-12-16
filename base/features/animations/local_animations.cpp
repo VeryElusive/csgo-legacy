@@ -18,6 +18,8 @@ void CAnimationSys::UpdateLocalFull( CUserCmd& cmd, bool sendPacket ) {
 	const auto inShot = ctx.m_iLastShotNumber > Interfaces::ClientState->iLastOutgoingCommand
 		&& ctx.m_iLastShotNumber <= ( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 );
 
+	const auto condition{ Features::Antiaim.Condition( cmd ) };
+
 	for ( ; i <= totalCmds; ++i, --chokedCmds ) {
 		const auto j = ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150;
 
@@ -30,9 +32,11 @@ void CAnimationSys::UpdateLocalFull( CUserCmd& cmd, bool sendPacket ) {
 		if ( curUserCmd.iTickCount >= INT_MAX )
 			continue;
 
-		if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 0.2f
+		if ( !condition 
+			&& ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 1.f
 			&& curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
 			&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
+
 			if ( !curLocalData.m_bThrowingNade
 				&& !( curUserCmd.iButtons & IN_ATTACK && ( !ctx.m_pWeapon->IsGrenade( ) || ctx.m_pWeapon->m_iItemDefinitionIndex( ) != WEAPON_REVOLVER || !curLocalData.m_bRevolverCock ) )
 				&& !( curUserCmd.iButtons & IN_ATTACK2 && ctx.m_pWeapon->IsKnife( ) )

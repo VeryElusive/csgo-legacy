@@ -217,8 +217,8 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	if ( Interfaces::ClientState->nChokedCommands + extraTicks >= 15 - ctx.m_iTicksAllowed )
 		ctx.m_bSendPacket = true;
 
-	if ( !ctx.m_bFakeDucking && cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
-		ctx.m_bSendPacket = true;
+	if ( cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
+		ctx.m_bSendPacket = false;
 
 	if ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot ) {
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
@@ -226,8 +226,6 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	}
 
 	ShouldShift( cmd );
-
-	Features::AnimSys.UpdateLocalFull( cmd, ctx.m_bSendPacket );
 
 	bSendPacket = ctx.m_bSendPacket;
 
@@ -255,17 +253,15 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 				++timer;
 				timer = std::min( timer, 15 );
-				const auto peek{ Features::Misc.InPeek( ) };
-
-				if ( Features::Exploits.m_bAlreadyPeeked
-					|| !peek 
-					|| timer < 15 )
-					Features::Exploits.m_bWasDefensiveTick = true;
-				else {
-					Features::Visuals.Chams.AddHitmatrix( ctx.m_pLocal, ctx.m_matRealLocalBones );
+				if ( timer >= ctx.m_iTicksAllowed ) {
 					Features::Exploits.m_bAlreadyPeeked = true;
-					//ctx.m_cLocalData.at( ( cmd.iCommandNumber + 1 ) % 150 ).m_iAdjustedTickbase = localData.m_iTickbase + 1 - 14;
 					timer = 0;
+				}
+				else
+					Features::Exploits.m_bWasDefensiveTick = true;
+
+				if ( timer > 2 && timer < 12 ) {
+					cmd.viewAngles.y += 180.f;
 				}
 			}
 			else
@@ -276,6 +272,8 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	}
 	else
 		KeepCommunication( );
+
+	Features::AnimSys.UpdateLocalFull( cmd, ctx.m_bSendPacket );
 
 	localData.m_angViewAngles = cmd.viewAngles;
 

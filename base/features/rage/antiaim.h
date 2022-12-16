@@ -6,6 +6,9 @@
 #include "../misc/misc.h"
 #include "autowall.h"
 
+#define CSGO_ANIM_LOWER_REALIGN_DELAY	1.1f
+#define CSGO_ANIM_LOWER_CATCHUP_IDLE	100.0f
+
 class CAntiAim {
 public:
 	void Pitch( CUserCmd& cmd );

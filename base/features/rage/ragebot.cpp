@@ -603,7 +603,7 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 		return nullptr;
 
 	if ( !Config::Get<bool>( Vars.RagebotLagcompensation ) )
-		return entry.m_pRecords.front( );
+		return entry.m_pRecords.back( );
 
 	std::shared_ptr< LagRecord_t > bestRecord{ };
 	std::shared_ptr< LagRecord_t > prevRecord{ };
@@ -641,8 +641,6 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 
 	int bestDamage{ };
 
-	bool noLookForNonPriorityRecord{ };
-
 	for ( auto it{ entry.m_pRecords.rbegin( ) }; it != entry.m_pRecords.rend( ); it = std::next( it ) ) {
 		const auto& record{ *it };
 
@@ -660,8 +658,14 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 		bool metScaled{ };
 
 		const auto dmg{ QuickScan( entry.m_pPlayer, record.get( ), metScaled ) };
+		if ( dmg > 1.f && !bestRecord ) {
+			bestRecord = record;
+			continue;
+		}
 
-		if ( !noLookForNonPriorityRecord ) {
+		if ( dmg > bestDamage + 10 
+			|| !bestRecord
+			|| bestRecord->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
 			if ( dmg > bestDamage ) {
 				bestDamage = dmg;
 				bestRecord = record;
@@ -673,19 +677,25 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 		}
 
 		if ( metScaled ) {
-			// endgame
-			if ( record->m_bResolverThisTick ) {
+			if ( !bestRecord 
+				|| ( bestRecord->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f
+				&& record->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f ) ) {
 				bestRecord = record;
 				break;
 			}
-			else if ( record->m_angEyeAngles.x < 55.f ) {
+			else if ( record->m_bBrokeLBY
+				&& !bestRecord->m_bBrokeLBY ) {
 				bestRecord = record;
-				break;
+				if ( std::find_if( entry.m_pRecords.begin( ), entry.m_pRecords.end( ),
+					[ & ]( const std::shared_ptr< LagRecord_t >& lag_record ) -> bool {
+						return lag_record->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f; }
+				) == entry.m_pRecords.end( ) )
+					break;
 			}
-
-			noLookForNonPriorityRecord = true;
+			
 		}
 	}
+
 
 	backup->Apply( entry.m_pPlayer );
 
@@ -715,6 +725,14 @@ FORCEINLINE int CRageBot::QuickScan( CBasePlayer* player, LagRecord_t* record, b
 
 		if ( hb == HITBOX_HEAD ) {
 			if ( data.dmg >= 110 )
+				metScaled = true;
+		}
+		else if ( hb == HITBOX_STOMACH ) {
+			auto dmgScaler{ static_cast< float >( ctx.m_pWeaponData->iDamage ) };
+
+			Features::Autowall.ScaleDamage( player, dmgScaler, ctx.m_pWeaponData->flArmorRatio, data.hitgroup );
+
+			if ( data.dmg >= dmgScaler - 10 )
 				metScaled = true;
 		}
 
