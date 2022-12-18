@@ -344,14 +344,50 @@ void CMisc::SlowWalk( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeaponData )
 		return;
 
+	if ( !ctx.m_pLocal->m_hGroundEntity( ) )
+		return;
+
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) {
 		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
 
-		const float opt_speed = ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) / 3.f;
-		const float movement_speed = std::sqrtf( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) + ( cmd.flUpMove * cmd.flUpMove );
-		float speed = ctx.m_pLocal->m_vecVelocity( ).Length2D( );
+		// reference:
+		// https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/game/shared/gamemovement.cpp#L1612
 
-		LimitSpeed( cmd, opt_speed );
+		// calculate friction.
+		const auto friction{ Offsets::Cvars.sv_friction->GetFloat( ) * ctx.m_pLocal->m_surfaceFriction( ) };
+
+		const auto maxLag{ ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) ? 16 : 15 };
+		int ticks{ };
+
+		for ( ; ticks < maxLag; ++ticks ) {
+			// calculate speed.
+			const auto speed{ ctx.m_pLocal->m_vecVelocity( ).Length( ) };
+
+			// if too slow return.
+			if ( speed <= 0.1f )
+				break;
+
+			// bleed off some speed, but if we have less than the bleed, threshold, bleed the threshold amount.
+			const auto control{ std::max( speed, Offsets::Cvars.sv_stopspeed->GetFloat( ) ) };
+
+			// calculate the drop amount.
+			const auto drop{ control * friction * Interfaces::Globals->flIntervalPerTick };
+
+			// scale the velocity.
+			float newspeed{ std::max( 0.f, speed - drop ) };
+
+			if ( newspeed != speed ) {
+				// determine proportion of old speed we are using.
+				newspeed /= speed;
+
+				// adjust velocity according to proportion.
+				ctx.m_pLocal->m_vecVelocity( ) *= newspeed;
+			}
+		}
+
+		// zero forwardmove and sidemove.
+		if ( ticks > ( ( 15 ) - Interfaces::ClientState->nChokedCommands ) || !Interfaces::ClientState->nChokedCommands )
+			cmd.flForwardMove = cmd.flSideMove = 0.f;
 	}
 }
 

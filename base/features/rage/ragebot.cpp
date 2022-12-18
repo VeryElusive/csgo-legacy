@@ -651,6 +651,10 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 		if ( sameRecord( record.get( ), prevRecord.get( ) ) )
 			continue;
 
+		if ( !record->m_bBrokeLBY
+			&& Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ).enabled )
+			continue;
+
 		prevRecord = record;
 		bool metScaled{ };
 
@@ -671,8 +675,8 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 
 		if ( metScaled ) {
 			if ( !bestRecord 
-				|| ( bestRecord->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f
-				&& record->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f ) ) {
+				|| ( !bestRecord->m_bSafeMoving
+				&& record->m_bSafeMoving ) ) {
 				bestRecord = record;
 				break;
 			}
@@ -681,7 +685,7 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 				bestRecord = record;
 				if ( std::find_if( entry.m_pRecords.begin( ), entry.m_pRecords.end( ),
 					[ & ]( const std::shared_ptr< LagRecord_t >& lag_record ) -> bool {
-						return lag_record->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f; }
+						return lag_record->m_bSafeMoving; }
 				) == entry.m_pRecords.end( ) )
 					break;
 			}

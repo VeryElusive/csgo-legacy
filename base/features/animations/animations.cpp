@@ -157,7 +157,7 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	if ( current->m_cAnimData.m_iFlags & FL_ONGROUND ) {
 		if ( current->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f ) {
 			entry.m_flLowerBodyRealignTimer = current->m_cAnimData.m_flSimulationTime + ( CSGO_ANIM_LOWER_REALIGN_DELAY * 0.2f );
-			current->m_bBrokeLBY = true;
+			current->m_bBrokeLBY = current->m_bSafeMoving = true;
 		}
 		else {
 			if ( current->m_cAnimData.m_flSimulationTime > entry.m_flLowerBodyRealignTimer /* && std::abs( Math::AngleDiff( entry.m_pPlayer->m_pAnimState( )->flAbsYaw, m_flEyeYaw ) ) > 35.0f*/ ) {
@@ -186,6 +186,11 @@ void CAnimationSys::OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current ) 
 	if ( !Config::Get<bool>( Vars.RagebotResolver ) )
 		return;
 
+	if ( current->m_bBrokeLBY ) {
+		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+		return;
+	}
+
 	// TODO: antifreestand
 	if ( current->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
 		switch ( entry.m_iMissedShots % 5 ) {
@@ -212,8 +217,6 @@ void CAnimationSys::OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current ) 
 			break;
 		}
 	}
-	else
-		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 }
 
 void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {

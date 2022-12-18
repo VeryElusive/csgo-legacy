@@ -393,6 +393,9 @@ void Menu::DrawRage( ) {
 
 				RagebotGroup->Label( _( "Force baim" ) );
 				RagebotGroup->Keybind( _( "Force baim key" ), Config::Get<keybind_t>( Vars.RagebotForceBaimKey ) );
+
+				RagebotGroup->Label( _( "Force safe record" ) );
+				RagebotGroup->Keybind( _( "Force safe record key" ), Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ) );
 			}
 			RagebotGroup->End( );
 		}

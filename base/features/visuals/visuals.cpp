@@ -408,7 +408,10 @@ void CVisuals::KeybindsList( ) {
 		addBind( _( "Damage override" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotDamageOverrideKey ).mode );
 
 	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
-		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );	
+		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );		
+	
+	if ( Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ).enabled )
+		addBind( _( "Force safe record" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ).mode );
 
 	if ( Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).enabled )
 		addBind( _( "Constant Invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).mode );

@@ -67,18 +67,14 @@ void CAnimationSys::UpdateLocalFull( CUserCmd& cmd, bool sendPacket ) {
 	const auto state{ ctx.m_pLocal->m_pAnimState( ) };
 
 	// we landed.
-	if ( !( ctx.m_cLocalData.at( cmd.iCommandNumber % 150 ).PredictedNetvars.m_iFlags & FL_ONGROUND ) && state->bOnGround ) {
-		Features::Antiaim.m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) );
-	}
-	// walking, delay lby update by .22.
-	else if ( state->flVelocityLength2D > 0.1f ) {
-		Features::Antiaim.m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) );
-	}
-	// WHAT IS GOING ON WTF
-	// standing update every 1.1s
-	else if ( Config::Get<bool>( Vars.RagebotLagcompensation ) 
-		&& TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) > Features::Antiaim.m_flLowerBodyRealignTimer ) {
-		Features::Antiaim.m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) + 1.1f;
+	if ( state->bOnGround ) {
+		// walking, delay lby update by .22.
+		if ( state->flVelocityLength2D > 0.1f )
+			Features::Antiaim.m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) );
+		// standing update every 1.1s
+		else if ( Config::Get<bool>( Vars.RagebotLagcompensation )
+			&& TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) > Features::Antiaim.m_flLowerBodyRealignTimer )
+			Features::Antiaim.m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) + 1.1f;
 	}
 
 	ctx.m_bFilledAnims = true;

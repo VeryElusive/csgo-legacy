@@ -91,8 +91,8 @@ namespace VTABLE
 		GETBOOL = 13,
 
 		/* netchannel table */
-		SENDNETMSG = 40,
-		SENDDATAGRAM = 46,
+		SENDNETMSG = 42,
+		SENDDATAGRAM = 48,
 
 		/* gamemovement table*/
 		PROCESSMOVEMENT = 1

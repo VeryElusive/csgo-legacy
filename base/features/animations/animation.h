@@ -52,6 +52,7 @@ struct LagRecord_t {
 
 	bool m_bBrokeLC{ true };
 	bool m_bBrokeLBY{ };
+	bool m_bSafeMoving{ };
 	bool m_bAnimated{ };
 	bool m_bDormant{ };
 	//bool m_bResolverThisTick{ };

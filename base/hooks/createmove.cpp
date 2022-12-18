@@ -214,8 +214,11 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 
 	const auto extraTicks{ **( int** )Offsets::Sigs.numticks - 1 };
 
-	if ( Interfaces::ClientState->nChokedCommands + extraTicks >= 15 - ctx.m_iTicksAllowed )
-		ctx.m_bSendPacket = true;
+	if ( !Config::Get<bool>( Vars.MiscSlowWalk ) 
+		|| !Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) {
+		if ( Interfaces::ClientState->nChokedCommands + extraTicks >= 15 - ctx.m_iTicksAllowed )
+			ctx.m_bSendPacket = true;
+	}
 
 	if ( cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
 		ctx.m_bSendPacket = false;
@@ -266,7 +269,7 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 				else
 					Features::Exploits.m_bWasDefensiveTick = true;
 
-				if ( ctx.m_pLocal->m_flSimulationTime( ) <= lastHighestTimebase ) {
+				if ( ctx.m_pLocal->m_flSimulationTime( ) < lastHighestTimebase ) {
 					const auto backupAng{ cmd.viewAngles };
 					cmd.viewAngles.y += 180.f;
 					Features::Misc.MoveMINTFix( cmd, backupAng, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
@@ -290,12 +293,11 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	localData.m_angViewAngles = cmd.viewAngles;
 
 	if ( Interfaces::ClientState->pNetChannel ) {
-		// TODO: LEGACY!
-		//if ( !DTR::SendNetMsg.IsHooked( ) )
-		//	DTR::SendNetMsg.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDNETMSG ), &Hooks::hkSendNetMsg );
+		if ( !DTR::SendNetMsg.IsHooked( ) )
+			DTR::SendNetMsg.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDNETMSG ), &Hooks::hkSendNetMsg );
 
-		//if ( !DTR::SendDatagram.IsHooked( ) )
-		//	DTR::SendDatagram.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDDATAGRAM ), &Hooks::hkSendDatagram );
+		if ( !DTR::SendDatagram.IsHooked( ) )
+			DTR::SendDatagram.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDDATAGRAM ), &Hooks::hkSendDatagram );
 	}
 
 	verifiedCmd.userCmd = cmd;

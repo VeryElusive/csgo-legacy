@@ -142,15 +142,15 @@ bool Hooks::Setup( ) {
 		&Hooks::hkCalcView ) )
 		return false;		
 	
-	if ( !DTR::OnLatchInterpolatedVariables.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 10 53 56 8B F1 57 80 BE ? ? ? ? ? 75 41" ) ) ),
-		&Hooks::hkOnLatchInterpolatedVariables ) )
-		return false;
+	//if ( !DTR::OnLatchInterpolatedVariables.Create(
+	//	( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 10 53 56 8B F1 57 80 BE ? ? ? ? ? 75 41" ) ) ),
+	//	&Hooks::hkOnLatchInterpolatedVariables ) )
+	//	return false;
 	
-	if ( !DTR::OnNewCollisionBounds.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 8B 45 10 F3 0F 10 81" ) ) ),
-		&Hooks::hkOnNewCollisionBounds ) )
-		return false;	
+	//if ( !DTR::OnNewCollisionBounds.Create(
+	//	( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 8B 45 10 F3 0F 10 81" ) ) ),
+	//	&Hooks::hkOnNewCollisionBounds ) )
+	//	return false;	
 	
 	if ( !DTR::UpdatePostProcessingEffects.Create(
 		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 51 53 56 57 8B F9 8B 4D 04 E8 ? ? ? ? 8B 35" ) ) ),

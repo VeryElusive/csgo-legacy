@@ -230,6 +230,7 @@ struct Variables_t {
 	ADD_RAGE_VAR( bool, RagebotPreferBaimDoubletap, false );
 	ADD_RAGE_VAR( bool, RagebotPreferBaimLethal, false );
 	C_ADD_VARIABLE( keybind_t, RagebotForceBaimKey, { } );
+	C_ADD_VARIABLE( keybind_t, RagebotForceSafeRecordkey, { } );
 
 	// anti aim
 	C_ADD_VARIABLE( bool, AntiaimEnable, false );

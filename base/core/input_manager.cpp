@@ -51,6 +51,7 @@ void Inputsys::updateNeededKeys( ) {
 		DODAKEYBINDCUH( RagebotForceBaimKey );
 		DODAKEYBINDCUH( ExploitsDoubletapKey );
 		DODAKEYBINDCUH( ExploitsHideshotsKey );
+		DODAKEYBINDCUH( RagebotForceSafeRecordkey );
 
 		if ( !Config::Get<keybind_t>( Vars.AntiaimRight ).enabled )
 			DODAKEYBINDCUH( AntiaimRight );
