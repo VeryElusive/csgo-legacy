@@ -602,9 +602,6 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 	if ( entry.m_pRecords.empty( ) )
 		return nullptr;
 
-	if ( !Config::Get<bool>( Vars.RagebotLagcompensation ) )
-		return entry.m_pRecords.back( );
-
 	std::shared_ptr< LagRecord_t > bestRecord{ };
 	std::shared_ptr< LagRecord_t > prevRecord{ };
 
@@ -658,10 +655,6 @@ std::shared_ptr< LagRecord_t > CRageBot::GetBestLagRecord( PlayerEntry& entry ) 
 		bool metScaled{ };
 
 		const auto dmg{ QuickScan( entry.m_pPlayer, record.get( ), metScaled ) };
-		if ( dmg > 1.f && !bestRecord ) {
-			bestRecord = record;
-			continue;
-		}
 
 		if ( dmg > bestDamage + 10 
 			|| !bestRecord

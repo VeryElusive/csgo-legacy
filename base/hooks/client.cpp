@@ -14,7 +14,7 @@ void draw_server_hitboxes( int index ) {
 
 	auto get_player_by_index = [ ]( int index ) -> CBasePlayer* {
 		typedef CBasePlayer* ( __fastcall* player_by_index )( int );
-		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 ? ? A1 ? ? ? ? 3B 48 18 7F 28" ) ) );
+		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 7E 2A A1" ) ) );
 
 		if ( !player_index )
 			return false;
@@ -179,6 +179,8 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				*( DWORD* )( *( DWORD* )( varMapping + 8u ) + 36u ) = dead ? Interfaces::Globals->flIntervalPerTick * 2 : 0;
 				*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;*/
 			}
+
+			Features::EnginePrediction.RestoreNetvars( ctx.m_pLocal->m_nTickBase( ) );
 		}
 
 		if ( Config::Get<bool>( Vars.RemovalSmoke ) ) {
@@ -204,7 +206,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		Features::AnimSys.SetupLocalMatrix( );
 		//Features::AnimSys.UpdatePlayerMatrixes( );
 
-		/*for ( int i{ 1 }; i <= 64; i++ ) {
+		for ( int i{ 1 }; i <= 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 			if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
 				continue;
@@ -212,7 +214,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			//player->SetAbsOrigin( player->m_vecOrigin( ) );
 
 			draw_server_hitboxes( i );
-		}*/
+		}
 	}break;
 	case FRAME_RENDER_END: {
 		**reinterpret_cast< int** >( Offsets::Sigs.SmokeCount + 0x1 ) = backupsmokeCount;

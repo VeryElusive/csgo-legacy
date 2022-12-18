@@ -12,6 +12,7 @@ bool FASTCALL Hooks::hkSvCheatsGetBool( CConVar* thisptr, int edx ) {
 }
 
 void CDECL Hooks::m_bClientSideAnimationHook( CRecvProxyData* data, void* entity, void* output ) {
+	//Features::Logger.Log( "fuck", false );
 	if ( !( ( CBasePlayer* )entity )->IsHostage( ) )
 		return;
 

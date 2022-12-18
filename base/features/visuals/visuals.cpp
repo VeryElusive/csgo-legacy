@@ -75,7 +75,7 @@ void CVisuals::Watermark( ) {
 		return;
 
 	const auto name = _( "Havoc [beta] " );
-	const auto pstr = _( "build: 0.0.4" );
+	const auto pstr = _( "legacy port v0.0.1" );
 
 	const auto name_size = Render::GetTextSize( name, Fonts::Menu );
 	auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );

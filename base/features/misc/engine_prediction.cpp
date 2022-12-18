@@ -133,6 +133,7 @@ void CEnginePrediction::StoreNetvars( int slot ) {
 
 	auto& data = m_cCompressionVars.at( slot % 150 );
 
+	data.m_iCommandNumber = local->m_nTickBase( );
 	data.m_aimPunchAngleVel = local->m_aimPunchAngleVel( );
 	data.m_aimPunchAngle = local->m_aimPunchAngle( );
 	data.m_vecViewOffsetZ = local->m_vecViewOffset( ).z;

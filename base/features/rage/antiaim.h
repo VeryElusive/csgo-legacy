@@ -17,11 +17,11 @@ public:
 	bool Condition( CUserCmd& cmd );
 
 	int ManualSide{ };
-	bool m_bCanBreakLBY{ };
+	//bool m_bCanBreakLBY{ };
 	bool ChokeCycleJitter{ };
+	float m_flLowerBodyRealignTimer{ };
 
 private:
-	float m_flLowerBodyRealignTimer{ };
 
 	float BaseYaw( CUserCmd& cmd );
 	void PickYaw( float& yaw );

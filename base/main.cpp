@@ -42,12 +42,12 @@ void Entry( HMODULE hModule ) {
 		return;
 
 	// How many real new commands have queued up
-	auto MAX_NEW_COMMANDS{ MEM::FindPattern( ENGINE_DLL, _( "B8 ? ? ? ? 3B F0 0F 4F F0 89 5D FC" ) ) + 0x1 };
+	/*auto MAX_NEW_COMMANDS{ MEM::FindPattern( ENGINE_DLL, _( "B8 ? ? ? ? 3B F0 0F 4F F0 89 5D FC" ) ) + 0x1 };
 	DWORD old{ };
 
 	VirtualProtect( ( void* )MAX_NEW_COMMANDS, sizeof( uint32_t ), PAGE_EXECUTE_READWRITE, &old );
 	*( uint32_t* )MAX_NEW_COMMANDS = 62;
-	VirtualProtect( ( void* )MAX_NEW_COMMANDS, sizeof( uint32_t ), old, &old );
+	VirtualProtect( ( void* )MAX_NEW_COMMANDS, sizeof( uint32_t ), old, &old );*/
 
 	Features::Logger.Log( _( "Deployed Havoc." ), true );
 

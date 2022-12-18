@@ -300,7 +300,6 @@ void Menu::DrawRage( ) {
 			{
 				RagebotGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.RagebotEnable ) );
 				RagebotGroup->Checkbox( _( "Resolver" ), Config::Get<bool>( Vars.RagebotResolver ) );
-				RagebotGroup->Checkbox( _( "Lag-compensation" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
 				RagebotGroup->Combo( _( "Weapon group" ), weapGroup, { _( "Pistol" ), _( "Heavy pistol" ), _( "SMG" ), _( "Rifle" ), _( "Shotgun" ), _( "Awp" ), ( "Scout" ), ( "Auto" ), _( "Machine gun" ) } );
 				RAGEINTSLIDER( RagebotGroup, _( "FOV" ), RagebotFOV, weapGroup, 1, 180 );
 				RAGECHECKBOX( RagebotGroup, _( "Auto fire" ), RagebotAutoFire, weapGroup );
@@ -418,15 +417,16 @@ void Menu::DrawRage( ) {
 				AntiaimGroup->Combo( _( "At targets" ), Config::Get<int>( Vars.AntiaimAtTargets ), { _( "Off" ), _( "FOV" ), _( "Distance" ) } );
 
 				AntiaimGroup->Checkbox( _( "Fake angles" ), Config::Get<bool>( Vars.AntiaimDesync ) );
+				AntiaimGroup->Checkbox( _( "Fake Fake angles" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
 				if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
-					AntiaimGroup->Combo( _( "Break angle" ), Config::Get<int>( Vars.AntiaimBreakAngle ), { _( "Opposite" ), _( "Back" ) } );
+					AntiaimGroup->Combo( _( "Desync angle" ), Config::Get<int>( Vars.AntiaimBreakAngle ), { _( "Opposite" ), _( "Back" ) } );
 
 					AntiaimGroup->Checkbox( _( "Yaw randomisation" ), Config::Get<bool>( Vars.AntiaimDistortion ) );
 					if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
 						AntiaimGroup->Slider( _( "Range" ), Config::Get<int>( Vars.AntiaimDistortionRange ), 1, 360 );
 						AntiaimGroup->Checkbox( _( "Spike" ), Config::Get<bool>( Vars.AntiaimDistortionSpike ) );
 						if ( !Config::Get<bool>( Vars.AntiaimDistortionSpike ) )
-							AntiaimGroup->Slider( _( "Speed" ), Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 10.f );
+							AntiaimGroup->Slider( _( "Speed" ), Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 40.f );
 					}
 				}
 
@@ -459,7 +459,7 @@ void Menu::DrawRage( ) {
 			static auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
 			AntiaimGroup->Begin( _( "Fakelag" ), Vector2D( CompensatedLength.x, ( Size.y - 119 ) / 2 - 10 ) );
 			{
-				AntiaimGroup->Slider( _( "Limit" ), Config::Get<int>( Vars.AntiaimFakeLagLimit ), 0, 15 );
+				AntiaimGroup->Slider( _( "Limit" ), Config::Get<int>( Vars.AntiaimFakeLagLimit ), 0, 13 );
 				AntiaimGroup->Slider( _( "Randomization" ), Config::Get<int>( Vars.AntiaimFakeLagVariance ), 0, 100 );
 				AntiaimGroup->Checkbox( _( "Break lagcompensation" ), Config::Get<bool>( Vars.AntiaimFakeLagBreakLC ) );
 			}

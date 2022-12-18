@@ -188,7 +188,7 @@ void CAnimationSys::OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current ) 
 
 	// TODO: antifreestand
 	if ( current->m_cAnimData.m_vecVelocity.Length2D( ) <= 0.1f ) {
-		switch ( entry.m_iMissedShots % 6 ) {
+		switch ( entry.m_iMissedShots % 5 ) {
 		case 0:
 			entry.m_pPlayer->m_angEyeAngles( ).y += 180.f;
 			break;
@@ -208,19 +208,12 @@ void CAnimationSys::OleksiiReznikov( PlayerEntry& entry, LagRecord_t* current ) 
 		case 4:
 			entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( ) - 110.f;
 			break;
-
-		case 5:
-			//entry.m_pPlayer->m_angEyeAngles( ).y;
-			break;
-
 		default:
 			break;
 		}
 	}
-	else {
-		//if ( entry.m_flLowerBodyRealignTimer > 0.22f )
+	else
 		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
-	}
 }
 
 void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {

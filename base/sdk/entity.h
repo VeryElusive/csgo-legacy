@@ -484,7 +484,7 @@ public:
 	OFFSET( float*, m_flEncodedController( ), Offsets::m_flEncodedController );
 	OFFSET( uint8_t, m_hRender( ), Offsets::m_nRenderMode + 0x17 );// 0x172
 	OFFSET( uint8_t, m_VisibilityBits( ), Offsets::m_nRenderMode + 0x19 ); // 0x174
-	OFFSET( bool, m_bUseNewAnimstate( ), 0x3874 ); // 0x998b
+	OFFSET( bool, m_bUseNewAnimstate( ), 0x39E1 );
 	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2970 );
 	OFFSET( CCommandContext, m_CmdContext( ), 0x258u );
 	OFFSET( int, m_nSimulationTick( ), 0x2a8u );

@@ -37,7 +37,7 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 
 			Features::Exploits.m_bRealCmds = ( !ctx.m_bExploitsEnabled || isDTEnabled || ctx.m_bFakeDucking );
 			Features::Exploits.m_iShiftAmount = Features::Exploits.m_bRealCmds ? ctx.m_iTicksAllowed : 9;
-
+			ctx.m_bSendPacket = true;
 			//**( int** )Offsets::Sigs.numticks += ctx.m_iTicksAllowed; 1 line dt xD
 		}
 	}
@@ -220,6 +220,9 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	if ( cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
 		ctx.m_bSendPacket = false;
 
+	if ( cmd.iCommandNumber - ctx.m_iLastShotNumber <= 1 && Interfaces::ClientState->nChokedCommands )
+		ctx.m_bSendPacket = true;
+
 	if ( cmd.iButtons & IN_ATTACK && ctx.m_bCanShoot ) {
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
 		ctx.m_iLastShotTime = Interfaces::Globals->flRealTime;
@@ -228,6 +231,8 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	ShouldShift( cmd );
 
 	bSendPacket = ctx.m_bSendPacket;
+
+	static auto lastHighestTimebase{ ctx.m_pLocal->m_flSimulationTime( ) };
 
 	if ( bSendPacket ) {
 		if ( !Features::Exploits.m_iShiftAmount
@@ -256,13 +261,17 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 				if ( timer >= ctx.m_iTicksAllowed ) {
 					Features::Exploits.m_bAlreadyPeeked = true;
 					timer = 0;
+					ctx.m_iNextTickbase = ctx.m_pLocal->m_nTickBase( ) + ctx.m_iTicksAllowed;
 				}
 				else
 					Features::Exploits.m_bWasDefensiveTick = true;
 
-				if ( timer > 2 && timer < 12 ) {
+				if ( ctx.m_pLocal->m_flSimulationTime( ) <= lastHighestTimebase ) {
+					const auto backupAng{ cmd.viewAngles };
 					cmd.viewAngles.y += 180.f;
+					Features::Misc.MoveMINTFix( cmd, backupAng, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 				}
+
 			}
 			else
 				timer = 0;
@@ -272,6 +281,9 @@ static void STDCALL CreateMove( int nSequenceNumber, float flInputSampleFrametim
 	}
 	else
 		KeepCommunication( );
+
+	if ( lastHighestTimebase < ctx.m_pLocal->m_flSimulationTime( ) )
+		lastHighestTimebase = ctx.m_pLocal->m_flSimulationTime( );
 
 	Features::AnimSys.UpdateLocalFull( cmd, ctx.m_bSendPacket );
 

@@ -17,12 +17,9 @@ void FASTCALL Hooks::hkLockCursor( ISurface* thisptr, int edx )
 	oLockCursor( thisptr, edx );
 }
 
-void FASTCALL Hooks::hkPaintTraverse( ISurface* thisptr, int edx, unsigned int uPanel, bool bForceRepaint, bool bForce )
-{
+void FASTCALL Hooks::hkPaintTraverse( ISurface* thisptr, int edx, unsigned int uPanel, bool bForceRepaint, bool bForce ) {
 	static auto oPaintTraverse = DTR::PaintTraverse.GetOriginal<decltype( &hkPaintTraverse )>( );
 	const FNV1A_t uPanelHash = FNV1A::Hash( Interfaces::Panel->GetName( uPanel ) );
-
-	ctx.GetLocal( );
 
 	if ( Config::Get<bool>( Vars.RemovalScope ) && uPanelHash == FNV1A::HashConst( _( "HudZoom" ) ) )
 		return;

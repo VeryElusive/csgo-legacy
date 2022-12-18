@@ -158,6 +158,7 @@ void Offsets::Init( ) {
 
 	//Interfaces::ConVar->FindVar( _( "r_occlusion" ) )->SetValue( 0 );
 	Interfaces::ConVar->FindVar( _( "r_jiggle_bones" ) )->SetValue( 0 );
+	Interfaces::ConVar->FindVar( _( "engine_no_focus_sleep" ) )->SetValue( 0 );
 	//Interfaces::ConVar->FindVar( _( "cl_pred_optimize" ) )->nFlags &= ~FCVAR_HIDDEN;
 	//Interfaces::ConVar->FindVar( _( "cl_pred_optimize" ) )->SetValue( 0 );
 	//Interfaces::ConVar->FindVar( _( "cl_pred_doresetlatch" ) )->nFlags &= ~FCVAR_HIDDEN;

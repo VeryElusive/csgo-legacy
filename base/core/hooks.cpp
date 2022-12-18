@@ -20,6 +20,9 @@ bool Hooks::Setup( ) {
 		return false;
 
 	if ( !DTR::Paint.Create( MEM::GetVFunc( Interfaces::EngineVGui, VTABLE::VGUI_PAINT ), &HkPaint ) )
+		return false;	
+	
+	if ( !DTR::PaintTraverse.Create( MEM::GetVFunc( Interfaces::Panel, VTABLE::PAINTTRAVERSE ), &hkPaintTraverse ) )
 		return false;
 
 	if ( !DTR::FrameStageNotify.Create( MEM::GetVFunc( Interfaces::Client, VTABLE::FRAMESTAGENOTIFY ), &hkFrameStageNotify ) )
@@ -154,10 +157,10 @@ bool Hooks::Setup( ) {
 		&Hooks::hkUpdatePostProcessingEffects ) )
 		return false;
 	
-	if ( !DTR::CHudScopePaint.Create(
-		( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 78 56 57 8B 3D" ) ) ),
-		&Hooks::hkCHudScopePaint ) )
-		return false;		
+	//if ( !DTR::CHudScopePaint.Create(
+	//	( byte* )( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 78 56 57 8B 3D" ) ) ),
+	//	&Hooks::hkCHudScopePaint ) )
+	//	return false;		
 
 
 #ifdef SERVER_DBGING

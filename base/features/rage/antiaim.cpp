@@ -50,70 +50,54 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 
 	cmd.viewAngles.y = NormaliseYaw( BaseYaw( cmd ) );
 
-	// https://gitlab.com/KittenPopo/csgo-2018-source/-/blob/main/game/shared/cstrike15/csgo_playeranimstate.cpp#L2353
-
-	m_bCanBreakLBY = false;
 	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
 
-	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) {
+	if ( !sendPacket ) {
+		//cmd.viewAngles.y += 180.f;
 
-		if ( m_flVelocityLengthXY > 0.1f )
-			m_flLowerBodyRealignTimer = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) + ( CSGO_ANIM_LOWER_REALIGN_DELAY * 0.2f );
-		else {
-			// dont set m_flLowerBodyRealignTimer yet
-			if ( Interfaces::Globals->flCurTime > m_flLowerBodyRealignTimer )
-				m_bCanBreakLBY = true;
+		if ( m_flVelocityLengthXY <= 0.1f ) {
+			if ( !Interfaces::ClientState->nChokedCommands && Interfaces::Globals->flCurTime >= m_flLowerBodyRealignTimer ) {
+
+			}
+			else {
+				if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
+					switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
+					case 0:// opposite
+						cmd.viewAngles.y += 180.f;
+						break;
+					case 1:// back
+						cmd.viewAngles.y = ctx.m_angOriginalViewangles.y + 180.f;
+						break;
+					default: break;
+					}
+				}
+			}
 		}
 	}
+	else if ( m_flVelocityLengthXY <= 0.1f ) {
+		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
+			static bool reRoll{ };
+			static float random{ };
+			static float cur{ };
 
-	if ( !m_bCanBreakLBY
-		&& m_flVelocityLengthXY <= 0.1f
-		&& Config::Get<bool>( Vars.AntiaimDistortion ) ) {
-		static bool reRoll{ };
-		static float random{ };
-		static float cur{ };
-
-		if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
-			random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-			cmd.viewAngles.y += random;
-		}
-		else {
-			if ( reRoll ) {
+			if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
 				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-				reRoll = false;
+				cmd.viewAngles.y += random;
 			}
+			else {
+				if ( reRoll ) {
+					random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
+					reRoll = false;
+				}
 
-			cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
+				cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
 
-			cmd.viewAngles.y += cur;
+				cmd.viewAngles.y += cur;
 
-			if ( std::abs( cur - random ) < 5.f )
-				reRoll = true;
-		}
-	}
-
-	if ( m_bCanBreakLBY ) {
-		auto breakAngle{ cmd.viewAngles.y };
-
-		if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
-			switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
-			case 0:// opposite
-				breakAngle = std::remainderf( cmd.viewAngles.y + 180.f, 360.f );
-				break;
-			case 1:// back
-				breakAngle = std::remainderf( ctx.m_angOriginalViewangles.y + 180.f, 360.f );
-				break;
-			default: break;
+				if ( std::abs( cur - random ) < 5.f )
+					reRoll = true;
 			}
-
-			if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, breakAngle ) ) <= 35.0f )
-				breakAngle = breakAngle < ctx.m_pLocal->m_pAnimState( )->flAbsYaw ? ctx.m_pLocal->m_pAnimState( )->flAbsYaw - 42.f : ctx.m_pLocal->m_pAnimState( )->flAbsYaw + 42.f;
-
-			cmd.viewAngles.y = breakAngle;
 		}
-
-		if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, breakAngle ) ) > 35.0f )
-			m_flLowerBodyRealignTimer = Interfaces::Globals->flCurTime + CSGO_ANIM_LOWER_REALIGN_DELAY;
 	}
 
 	cmd.viewAngles.Normalize( );
@@ -225,13 +209,15 @@ bool CAntiAim::Condition( CUserCmd& cmd ) {
 }
 
 void CAntiAim::FakeLag( ) {
+	//m_bCanBreakLBY = false;
+
+	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > Config::Get<bool>( Vars.RagebotLagcompensation ) ? 0 : 1;
+
 	if ( !Config::Get<int>( Vars.AntiaimFakeLagLimit ) && !Config::Get<bool>( Vars.AntiaimEnable ) )
 		return;
 
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return;
-
-	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 0;
 
 	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f )
 		return;

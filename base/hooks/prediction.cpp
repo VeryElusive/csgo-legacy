@@ -30,11 +30,19 @@ CUserCmd* FASTCALL Hooks::hkGetUserCmd( uint8_t* ecx, uint8_t* edx, int slot, in
 	if ( !ctx.m_pLocal )
 		return oGetUserCmd( ecx, edx, slot, seqnr );
 
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToPerformPrediction
-		&& ctx.m_cLocalData.at( seqnr % 150 ).m_bOverrideTickbase )
-		ctx.m_pLocal->m_nTickBase( ) = ctx.m_cLocalData.at( seqnr % 150 ).m_iAdjustedTickbase;
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToPerformPrediction ) {
+		if ( ctx.m_iNextTickbase > 0 ) {
+			//const auto backupTickbase{ ctx.m_pLocal->m_nTickBase( ) };
+			ctx.m_pLocal->m_nTickBase( ) = ctx.m_iNextTickbase;
+			ctx.m_iNextTickbase = 0;
+		}
+		else if ( ctx.m_cLocalData.at( seqnr % 150 ).m_bOverrideTickbase )
+			ctx.m_pLocal->m_nTickBase( ) = ctx.m_cLocalData.at( seqnr % 150 ).m_iAdjustedTickbase;
+	}
 
-	return oGetUserCmd( ecx, edx, slot, seqnr );
+	const auto ret{ oGetUserCmd( ecx, edx, slot, seqnr ) };
+
+	return ret;
 }
 
 void FASTCALL Hooks::hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper ) {
@@ -49,21 +57,7 @@ void FASTCALL Hooks::hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CU
 		return Features::EnginePrediction.StoreNetvars( player->m_nTickBase( ) );
 	}
 
-	const auto& LocalData{ ctx.m_cLocalData.at( cmd->iCommandNumber % 150 ) };
-	const auto backupTickbase{ player->m_nTickBase( ) };
-	if ( LocalData.m_flSpawnTime == player->m_flSpawnTime( )
-		&& LocalData.m_bOverrideTickbase
-		&& LocalData.m_iCommandNumber == cmd->iCommandNumber )
-		player->m_nTickBase( ) = LocalData.m_iAdjustedTickbase;
-
 	oRunCommand( ecx, edx, player, cmd, moveHelper );
 
 	Features::EnginePrediction.StoreNetvars( player->m_nTickBase( ) );
-
-	if ( LocalData.m_flSpawnTime == player->m_flSpawnTime( )
-		&& LocalData.m_bOverrideTickbase && LocalData.m_bRestoreTickbase
-		&& LocalData.m_iCommandNumber == cmd->iCommandNumber ) {
-		player->m_nTickBase( ) = backupTickbase + player->m_nTickBase( ) - LocalData.m_iAdjustedTickbase;
-		Interfaces::Globals->flCurTime = TICKS_TO_TIME( player->m_nTickBase( ) );
-	}
 }

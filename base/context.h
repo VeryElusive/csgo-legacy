@@ -146,6 +146,7 @@ struct HAVOCCTX {
 	bool m_bDontSavePredVars{ };
 	//bool m_bCollisionForced{ };
 
+	int m_iNextTickbase{ };
 	int m_iTicksAllowed{ };
 	int m_iLastSentCmdNumber{ };
 	int m_iLastShotNumber{ };

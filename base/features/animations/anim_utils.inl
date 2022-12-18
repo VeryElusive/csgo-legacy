@@ -110,7 +110,7 @@ inline bool LagRecord_t::IsValid( ) {
 	const auto maxShiftedCmds{ newCmds - Interfaces::ClientState->nChokedCommands - 1 - extraTicks };
 
 	const auto ticksAllowed{ ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) && Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ? maxShiftedCmds : 0 };
-	const auto correct{ std::clamp( ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Offsets::Cvars.sv_maxunlag->GetFloat( ) ) };
+	const auto correct{ std::clamp( ctx.m_flRealOutLatency + ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Offsets::Cvars.sv_maxunlag->GetFloat( ) ) };
 	const auto delta{ correct - ( TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) - ticksAllowed ) - this->m_cAnimData.m_flSimulationTime ) };
 	return std::abs( delta ) < 0.2f;
 }

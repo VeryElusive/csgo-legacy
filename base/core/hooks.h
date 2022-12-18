@@ -231,7 +231,7 @@ namespace Hooks
 	void	FASTCALL	hkGetColorModulation( IMaterial* const ecx, const std::uintptr_t edx, float* const r, float* const g, float* const b );
 	float	FASTCALL	hkGetAlphaModulation( IMaterial* ecx, uint32_t ebx );
 	void	FASTCALL	hkOnLatchInterpolatedVariables( CBasePlayer* const ecx, const std::uintptr_t edx, const int flags );
-	void	CDECL		hkCHudScopePaint( );
+	void	FASTCALL	hkCHudScopePaint( void* ecx, uint32_t edx );
 	void	FASTCALL	hkOnNewCollisionBounds( CBasePlayer* ecx, uint32_t edx, Vector* oldMins, Vector* newMins, Vector* oldMaxs, Vector* new_Maxs );
 	bool	FASTCALL	hkNET_ProcessSocket( void* ecx, void* handler );
 	void	FASTCALL	hkBuildTransformations( CBasePlayer* ecx, int edx, CStudioHdr* hdr, Vector* pos, Quaternion* q, int cameraTransform, int boneMask, int boneComputed );
