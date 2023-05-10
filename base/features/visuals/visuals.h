@@ -6,7 +6,6 @@
 #include "../../utils/render.h"
 #include "../misc/misc.h"
 #include "../../context.h"
-#include "game_visual_abuse.h"
 
 struct rect {
 	bool is_zero( ) {
@@ -82,6 +81,7 @@ struct BindInfo_t {
 };
 
 struct C_HitMatrixEntry {
+	CBasePlayer* m_pPlayer{ };
 	int ent_index;
 	ModelRenderInfo_t info;
 	DrawModelState_t state;
@@ -121,14 +121,15 @@ private:
 	std::vector<C_HitMatrixEntry> m_Hitmatrix;
 
 	IMaterial* CreateMaterial( const std::string_view name, const std::string_view shader, const std::string_view data ) const;
-	void OverrideMaterial( const int type, const bool ignore_z, const float r, const float g, const float b, const float a, const int glow, const bool wireframe ) const;
+	void OverrideMaterial( const int type, const bool ignore_z, Color col, const int glow, const bool wireframe ) const;
 public:
 	void InitMaterials( );
 	void Main( DrawModelResults_t* pResults, const DrawModelInfo_t& info, matrix3x4_t* pBoneToWorld, float* flFlexWeights, float* flFlexDelayedWeights, const Vector& vecModelOrigin, int nFlags );
-	void OnPostScreenEffects( );
+	void OnSceneEnd( );
+	void RenderShotChams( );
 	void AddHitmatrix( CBasePlayer* player, matrix3x4_t* bones );
 
-	bool m_bFakeModel{ };
+	bool m_bInSceneEnd{ };
 
 };
 
@@ -181,12 +182,50 @@ private:
 	std::vector< CBaseEntity* > vecIgnoredEntities;
 };
 
+struct TracerData_t {
+	TracerData_t( Vector start, Vector end, CBasePlayer* shooter ) 
+		: m_vecStart( start ), m_vecEnd( end ), m_pShooter( shooter ), m_flStartTime( Interfaces::Globals->flRealTime ) { };
+
+	float m_flStartTime{ };
+	Vector m_vecStart{ };
+	Vector m_vecEnd{ };
+	CBasePlayer* m_pShooter{ };
+};
+
+class CBulletTracers {
+public:
+	void Draw( );
+	void AddTracer( Vector start, Vector end, CBasePlayer* shooter ) {
+		const auto& col{ Config::Get<Color>( Vars.VisOtherBulletTracersCol ) };
+		//if ( !Config::Get<int>( Vars.VisBulletTracersType ) )
+		//	Interfaces::DebugOverlay->AddLineOverlay( start, end, col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), true, 5.f );
+		//else {
+			m_vecTracers.erase(
+				std::remove_if(
+					m_vecTracers.begin( ), m_vecTracers.end( ),
+					[ & ]( const TracerData_t& tracer ) -> bool {
+						return tracer.m_flStartTime == Interfaces::Globals->flRealTime
+							&& shooter == tracer.m_pShooter;
+					}
+				),
+				m_vecTracers.end( )
+						);
+
+			m_vecTracers.emplace_back( start, end, shooter );
+		//}
+	};
+private:
+	std::vector<TracerData_t> m_vecTracers{ };
+};
+
 class CVisuals {
 public:
 	void Main( );
 	void EntModulate( CBaseEntity* ent );
 	void Watermark( );
+	void SkyboxChanger( );
 	void KeybindsList( );
+	void ModelChanger( );
 
 	FORCEINLINE void AddHit( hitmarker_t hit ) { hits.push_back( std::make_shared< hitmarker_t>( hit ) ); }
 
@@ -194,7 +233,7 @@ public:
 	CChams Chams;
 	CPlayerESP PlayerESP;
 	CGrenadePrediction GrenadePrediction;
-	//CBulletTracer BulletTracers;
+	CBulletTracers BulletTracers;
 
 	std::vector<std::shared_ptr< hitmarker_t >> hits;
 
@@ -211,7 +250,7 @@ private:
 	void OtherEntities( CBaseEntity* ent );
 	void DrawGrenade( CBaseEntity* ent, int maxAlpha );
 	void DrawWrappingRing( CBaseEntity* entity, float seconds, const char* name, float spawntime, float radius, int maxAlpha );
-	void WorldHitMarker( const std::shared_ptr<hitmarker_t>& hit );
+	void DrawHitMarker( const std::shared_ptr<hitmarker_t>& hit );
 	void ManageHitmarkers( );
 
 	FloatColor walls = FloatColor( 1.0f, 1.0f, 1.0f, 1.0f );
@@ -233,6 +272,11 @@ case 2: var = Config::Get<Color>( Vars.##name##Enemy );break; }\
 case 0: var = Config::Get<int>( Vars.##name##Local );break; \
 case 1: var = Config::Get<int>( Vars.##name##Team );break; \
 case 2: var = Config::Get<int>( Vars.##name##Enemy );break; }\
+
+#define GetPlayerBoolFig( type, name, var )switch ( type ) { \
+case 0: var = Config::Get<bool>( Vars.##name##Local );break; \
+case 1: var = Config::Get<bool>( Vars.##name##Team );break; \
+case 2: var = Config::Get<bool>( Vars.##name##Enemy );break; }\
 
 #define CheckIfPlayer( name, type ) 	if ( ( type == LOCAL && Config::Get<bool>( Vars.##name##Local ) ) \
 || ( type == TEAM && Config::Get<bool>( Vars.##name##Team ) ) \

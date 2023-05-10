@@ -6,27 +6,27 @@
 #include "../misc/misc.h"
 #include "autowall.h"
 
-#define CSGO_ANIM_LOWER_REALIGN_DELAY	1.1f
-#define CSGO_ANIM_LOWER_CATCHUP_IDLE	100.0f
-
 class CAntiAim {
 public:
-	void Pitch( CUserCmd& cmd );
-	void Yaw( CUserCmd& cmd, bool sendPacket );
-	void FakeLag( );
-	bool Condition( CUserCmd& cmd );
+	bool Pitch( CUserCmd& cmd );
+	void FakeLag( int cmdNum );
+	void RunLocalModifications( CUserCmd& cmd, bool& sendPacket );
 
 	int ManualSide{ };
-	//bool m_bCanBreakLBY{ };
-	bool ChokeCycleJitter{ };
-	float m_flLowerBodyRealignTimer{ };
-
+	float m_flLowerBodyRealignTimer{};
 private:
+	bool ChokeCycleJitter{ };
+	bool m_bAntiBackstab{ };
 
+	bool Condition( CUserCmd& cmd, bool checkCmd = false );
 	float BaseYaw( CUserCmd& cmd );
+	void Yaw( CUserCmd& cmd, bool& sendPacket );
 	void PickYaw( float& yaw );
 	void AtTarget( float& yaw );
 	//bool AutoDirection( float& yaw );
+
+	bool m_bInvertFlick{ };
+	int m_iFlickTimer{ };
 };
 
 namespace Features { inline CAntiAim Antiaim; };

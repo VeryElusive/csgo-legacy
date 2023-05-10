@@ -29,6 +29,7 @@ struct Variables_t {
 	ADD_PLAYER_VAR( bool, VisWeapText, false );
 	ADD_PLAYER_VAR( Color, VisWeapCol, Color( 255, 255, 255 ) );
 
+	ADD_PLAYER_VAR( bool, VisFlagExploit, false );
 	ADD_PLAYER_VAR( bool, VisFlagBLC, false );
 	ADD_PLAYER_VAR( bool, VisFlagC4, false );
 	ADD_PLAYER_VAR( bool, VisFlagArmor, false );
@@ -45,7 +46,9 @@ struct Variables_t {
 	ADD_PLAYER_VAR( bool, ChamDouble, false );
 	ADD_PLAYER_VAR( Color, ChamDoubleCol, Color( 255, 107, 107 ) );
 	ADD_PLAYER_VAR( int, ChamDoubleMat, 0 );
-	ADD_PLAYER_VAR( int, ChamMat, 0 );
+	ADD_PLAYER_VAR( bool, ChamDoubleZ, false );
+	ADD_PLAYER_VAR( int, ChamMatVisible, 0 );
+	ADD_PLAYER_VAR( int, ChamMatInvisible, 0 );
 	ADD_PLAYER_VAR( int, ChamGlowStrength, 0 );
 
 	C_ADD_VARIABLE( bool, ChamBacktrack, false );
@@ -53,12 +56,31 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, ChamBacktrackMat, 0 );
 
 	C_ADD_VARIABLE( bool, MiscHitMatrix, false );
+	C_ADD_VARIABLE( int, MiscShotVisualizationType, 0 );
+	C_ADD_VARIABLE( bool, MiscHitMatrixXQZ, false );
 	C_ADD_VARIABLE( Color, MiscHitMatrixCol, Color( 255, 255, 255 ) );
 	C_ADD_VARIABLE( int, MiscHitMatrixMat, 0 );
+	C_ADD_VARIABLE( float, MiscHitMatrixTime, 0 );
 
 	C_ADD_VARIABLE( bool, ChamDesync, false );
 	C_ADD_VARIABLE( Color, ChamDesyncCol, Color( 255, 107, 107 ) );
 	C_ADD_VARIABLE( int, ChamDesyncMat, 0 );
+
+	C_ADD_VARIABLE( bool, ChamHand, false );
+	C_ADD_VARIABLE( Color, ChamHandCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( int, ChamHandMat, 0 );
+	C_ADD_VARIABLE( bool, ChamHandOverlay, false );
+	C_ADD_VARIABLE( Color, ChamHandOverlayCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( int, ChamHandOverlayMat, 0 );
+	C_ADD_VARIABLE( int, ChamHandGlow, 0 );
+	C_ADD_VARIABLE( int, ChamWeaponGlow, 0 );
+
+	C_ADD_VARIABLE( bool, ChamWeapon, false );
+	C_ADD_VARIABLE( Color, ChamWeaponCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( int, ChamWeaponMat, 0 );
+	C_ADD_VARIABLE( bool, ChamWeaponOverlay, false );
+	C_ADD_VARIABLE( Color, ChamWeaponOverlayCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( int, ChamWeaponOverlayMat, 0 );
 
 	// other
 	C_ADD_VARIABLE( bool, RemovalScope, false );
@@ -85,6 +107,8 @@ struct Variables_t {
 	C_ADD_VARIABLE( bool, VisBomb, false );
 	C_ADD_VARIABLE( bool, VisLocalBulletImpacts, false );
 	C_ADD_VARIABLE( Color, VisLocalBulletImpactsCol, Color( 255, 107, 107 ) );
+	C_ADD_VARIABLE( bool, VisClientBulletImpacts, false );
+	C_ADD_VARIABLE( Color, VisClientBulletImpactsCol, Color( 255, 107, 107 ) );
 	C_ADD_VARIABLE( bool, VisServerBulletImpacts, false );
 	C_ADD_VARIABLE( Color, VisServerBulletImpactsCol, Color( 255, 107, 107 ) );
 
@@ -112,6 +136,7 @@ struct Variables_t {
 	C_ADD_VARIABLE( Color, WorldAmbientLightingCol, Color( 255, 255, 255 ) );
 
 	C_ADD_VARIABLE( int, VisWorldSkybox, 0 );
+	C_ADD_VARIABLE( std::string, VisWorldSkyboxCustom, "" );
 	C_ADD_VARIABLE( bool, VisWorldBloom, false );
 	C_ADD_VARIABLE( int, VisWorldBloomScale, 0 );
 	C_ADD_VARIABLE( int, VisWorldBloomAmbience, 0 );
@@ -128,6 +153,7 @@ struct Variables_t {
 	// movement
 	C_ADD_VARIABLE( bool, MiscBunnyhop, false );
 	C_ADD_VARIABLE( bool, MiscAutostrafe, false );
+	C_ADD_VARIABLE( int, MiscAutostrafeSpeed, 30 );
 	//C_ADD_VARIABLE( bool, MiscCrouchInAir, false );
 	//C_ADD_VARIABLE( bool, MiscAccurateWalk, false );
 	C_ADD_VARIABLE( bool, MiscInfiniteStamina, false );
@@ -146,6 +172,10 @@ struct Variables_t {
 	C_ADD_VARIABLE( bool, MiscForceCrosshair, false );
 	C_ADD_VARIABLE( bool, MiscClantag, false );
 	C_ADD_VARIABLE( bool, MiscKeybindList, false );
+	C_ADD_VARIABLE( bool, MiscCustomModelChanger, false );
+	C_ADD_VARIABLE( std::string, MiscCustomModelChangerString, "" );
+	C_ADD_VARIABLE( int, MiscKeybindPosX, 0 );
+	C_ADD_VARIABLE( int, MiscKeybindPosY, 0 );
 	C_ADD_VARIABLE( bool, MiscAspectRatio, false );
 	C_ADD_VARIABLE( float, MiscAspectRatioAmt, 1.4f );
 	C_ADD_VARIABLE( int, MiscFOV, 0 );
@@ -154,8 +184,12 @@ struct Variables_t {
 	C_ADD_VARIABLE( bool, MiscPreserveKillfeed, false );
 	C_ADD_VARIABLE( bool, MiscFakePing, false );
 	C_ADD_VARIABLE( int, MiscWeaponVolume, 100 );
-	C_ADD_VARIABLE( bool, MiscHitmarker, false );
-	C_ADD_VARIABLE( Color, MiscHitmarkerCol, Color( 0, 255, 0 ) );
+	C_ADD_VARIABLE( bool, MiscWorldHitmarker, 0 );
+	C_ADD_VARIABLE( bool, MiscScreenHitmarker, 0 );
+	C_ADD_VARIABLE( int, MiscScreenHitmarkerSize, 0 );
+	C_ADD_VARIABLE( int, MiscScreenHitmarkerGap, 0 );	
+	C_ADD_VARIABLE( int, MiscWorldHitmarkerSize, 0 );
+	C_ADD_VARIABLE( int, MiscWorldHitmarkerGap, 0 );
 	C_ADD_VARIABLE( bool, MiscDamageMarker, false );
 	C_ADD_VARIABLE( Color, MiscDamageMarkerCol, Color( 255, 255, 255 ) );
 	C_ADD_VARIABLE( int, MiscHitSound, 0 );
@@ -176,11 +210,14 @@ struct Variables_t {
 	// ragebot
 	C_ADD_VARIABLE( bool, RagebotEnable, false );
 	C_ADD_VARIABLE( bool, RagebotResolver, true );
-	C_ADD_VARIABLE( bool, RagebotLagcompensation, true );
+	//C_ADD_VARIABLE( bool, RagebotLagcompensation, true );
+	//C_ADD_VARIABLE( bool, RagebotForceSafeClampbones, false );
 	ADD_RAGE_VAR( int, RagebotFOV, 0 );
 	ADD_RAGE_VAR( bool, RagebotAutoFire, false );
 	ADD_RAGE_VAR( bool, RagebotSilentAim, false );
+	ADD_RAGE_VAR( bool, RagebotAutoScope, false );
 	ADD_RAGE_VAR( int, RagebotHitchance, 0 );
+	ADD_RAGE_VAR( int, RagebotNoscopeHitchance, 0 );
 	ADD_RAGE_VAR( bool, RagebotHitchanceThorough, false );
 	ADD_RAGE_VAR( int, RagebotMinimumDamage, 0 );
 	ADD_RAGE_VAR( bool, RagebotAutowall, false );
@@ -192,8 +229,11 @@ struct Variables_t {
 	ADD_RAGE_VAR( bool, RagebotAutoStop, false );
 	ADD_RAGE_VAR( bool, RagebotBetweenShots, false );
 	C_ADD_VARIABLE( bool, RagebotZeusbot, false );
+	C_ADD_VARIABLE( bool, RagebotKnifebot, false );
+
 	C_ADD_VARIABLE( bool, ExploitsDoubletap, false );
 	C_ADD_VARIABLE( bool, ExploitsDoubletapDefensive, false );
+	C_ADD_VARIABLE( bool, ExploitsDoubletapExtended, false );
 	C_ADD_VARIABLE( keybind_t, ExploitsDoubletapKey, { } );	
 	C_ADD_VARIABLE( bool, ExploitsHideshots, false );
 	C_ADD_VARIABLE( keybind_t, ExploitsHideshotsKey, { } );
@@ -225,12 +265,14 @@ struct Variables_t {
 	ADD_RAGE_VAR( int, RagebotBodyScale, 0 );
 	ADD_RAGE_VAR( bool, RagebotIgnoreLimbs, false );
 	C_ADD_VARIABLE( bool, RagebotForceBaimAfterX, false );
+	C_ADD_VARIABLE( bool, RagebotForceSafeClampbones, false );
 	C_ADD_VARIABLE( int, RagebotForceBaimAfterXINT, 0 );
 	ADD_RAGE_VAR( bool, RagebotPreferBaim, false );
 	ADD_RAGE_VAR( bool, RagebotPreferBaimDoubletap, false );
 	ADD_RAGE_VAR( bool, RagebotPreferBaimLethal, false );
 	C_ADD_VARIABLE( keybind_t, RagebotForceBaimKey, { } );
-	C_ADD_VARIABLE( keybind_t, RagebotForceSafeRecordkey, { } );
+	C_ADD_VARIABLE( keybind_t, RagebotForceSafePointKey, { } );
+	C_ADD_VARIABLE( keybind_t, RagebotForceYawSafetyKey, { } );
 
 	// anti aim
 	C_ADD_VARIABLE( bool, AntiaimEnable, false );
@@ -246,6 +288,7 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, AntiaimFreestand, 0 );
 	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
 	C_ADD_VARIABLE( bool, AntiaimDistortion, false );
+	C_ADD_VARIABLE( bool, AntiAimManualDirInd, false );
 	C_ADD_VARIABLE( int, AntiaimDistortionRange, 0 );
 	C_ADD_VARIABLE( int, AntiaimDistortionSpeed, 0 );
 	C_ADD_VARIABLE( bool, AntiaimDistortionSpike, false );
@@ -258,6 +301,10 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, AntiaimFakeLagLimit, 0 );
 	C_ADD_VARIABLE( int, AntiaimFakeLagVariance, 0 );
 	C_ADD_VARIABLE( bool, AntiaimFakeLagBreakLC, false );
+	C_ADD_VARIABLE( bool, AntiaimFakeLagInPeek, false );
+
+	C_ADD_VARIABLE( bool, DBGLC1, true );
+	C_ADD_VARIABLE( keybind_t, DBGKeybind, { } );
 };
 
 inline Variables_t Vars;

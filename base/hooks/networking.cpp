@@ -3,37 +3,17 @@
 #include "../features/visuals/visuals.h"
 #include "../features/rage/exploits.h"
 
-void FASTCALL Hooks::hkPacketEnd( void* cl_state, void* EDX ) {
+void FASTCALL Hooks::hkPacketEnd( void* ecx, void* edx ) {
 	static auto oPacketEnd = DTR::PacketEnd.GetOriginal<decltype( &Hooks::hkPacketEnd )>( );
 
-	if ( !ctx.m_pLocal
-		|| Interfaces::ClientState->iServerTick != Interfaces::ClientState->iDeltaTick ) {
-		oPacketEnd( cl_state, EDX );
-		return Features::Visuals.DormantESP.GetActiveSounds( );
-	}
-
-	/*auto& localData{ ctx.m_cLocalData.at( Interfaces::ClientState->iCommandAck % 150 ) };
-
-	ctx.m_iNextTickBase = 0;
-
-	if ( localData.m_flSpawnTime == ctx.m_pLocal->m_flSpawnTime( )
-		&& localData.m_iShiftAmount > 0
-		&& localData.m_iTickbase > ctx.m_pLocal->m_nTickBase( )
-		&& ( localData.m_iTickbase - ctx.m_pLocal->m_nTickBase( ) ) <= 17 ) {
-		ctx.m_iNextTickBase = ctx.m_pLocal->m_nTickBase( );
-		ctx.m_pLocal->m_nTickBase( ) = localData.m_iTickbase + 1;
-	}*/
-
-	oPacketEnd( cl_state, EDX );
-
-	ctx.m_iLastPacketTime = Interfaces::Globals->flRealTime;
+	oPacketEnd( ecx, edx );
 
 	Features::Visuals.DormantESP.GetActiveSounds( );
 }
 
 void FASTCALL Hooks::hkPacketStart( void* ecx, void* edx, int in_seq, int out_acked ) {
 	static auto oPacketStart = DTR::PacketStart.GetOriginal<decltype( &Hooks::hkPacketStart )>( );
-	ctx.GetLocal( );
+	
 	if ( !ctx.m_pLocal
 		|| ctx.m_pLocal->IsDead( ) )
 		return oPacketStart( ecx, edx, in_seq, out_acked );
@@ -64,21 +44,24 @@ void FASTCALL Hooks::hkPacketStart( void* ecx, void* edx, int in_seq, int out_ac
 	return oPacketStart( ecx, edx, in_seq, out_acked );
 }
 
-/*bool FASTCALL Hooks::hkProcessTempEntities( void* ecx, void* edx, void* msg ) {
+bool FASTCALL Hooks::hkProcessTempEntities( void* ecx, void* edx, void* msg ) {
 	static auto oProcessTempEntities = DTR::ProcessTempEntities.GetOriginal<decltype( &Hooks::hkProcessTempEntities )>( );
 
-	const auto backupMaxClients = Interfaces::ClientState->nMaxClients;
-
-	Interfaces::ClientState->nMaxClients = 1;
-
 	const auto ret = oProcessTempEntities( ecx, edx, msg );
+	
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
+		for ( auto i = Interfaces::ClientState->pEvents; i; i = Interfaces::ClientState->pEvents->next ) {
+			if ( i->iClassID == 0 )
+				continue;
 
-	Interfaces::ClientState->nMaxClients = backupMaxClients;
+			i->flFireDelay = 0.f;
+		}
+	}
 
 	Interfaces::Engine->FireEvents( );
 
 	return ret;
-}*/
+}
 
 bool FASTCALL Hooks::hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage& msg, bool bForceReliable, bool bVoice ) {
 	static auto oSendNetMsg = DTR::SendNetMsg.GetOriginal<decltype( &Hooks::hkSendNetMsg )>( );
@@ -95,6 +78,17 @@ bool FASTCALL Hooks::hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage
 
 	return oSendNetMsg( pNetChan, edx, msg, bForceReliable, bVoice );
 }
+
+void* FASTCALL Hooks::hkAllocKeyValuesMemory( IKeyValuesSystem* thisptr, int edx, int iSize ) {
+	static auto oAllocKeyValuesMemory = DTR::AllocKeyValuesMemory.GetOriginal<decltype( &hkAllocKeyValuesMemory )>( );
+
+	if ( const std::uintptr_t uReturnAddress = reinterpret_cast< std::uintptr_t >( _ReturnAddress( ) ); 
+		uReturnAddress == Offsets::Sigs.uAllocKeyValuesEngine || uReturnAddress == Offsets::Sigs.uAllocKeyValuesClient )
+		return nullptr;
+
+	return oAllocKeyValuesMemory( thisptr, edx, iSize );
+}
+
 
 int FASTCALL Hooks::hkSendDatagram( INetChannel* thisptr, int edx, bf_write* pDatagram ) {
 	static auto oSendDatagram = DTR::SendDatagram.GetOriginal<decltype( &hkSendDatagram )>( );

@@ -69,8 +69,8 @@ namespace Math
 	bool ScreenTransform( const Vector& point, Vector& screen );
 	bool ScreenTransform( const Vector& point, Vector2D& screen );
 
-	FORCEINLINE float SegmentToSegment( const Vector s1, const Vector s2, const Vector k1, const Vector k2 );
-	FORCEINLINE bool IntersectionBoundingBox( const Vector& src, const Vector& dir, const Vector& min, const Vector& max, Vector* hit_point = nullptr );
+	FORCEINLINE bool IntersectionSegmentToSegment( const Vector s1, const Vector s2, const Vector k1, const Vector k2, const float radius );
+	FORCEINLINE bool LineThroughBB( const Vector& src, const Vector& dst, const Vector& min, const Vector& max );
 	FORCEINLINE matrix3x4_t VectorMatrix( const Vector& forward );
 	FORCEINLINE void VectorVectors( const Vector& forward, Vector& right, Vector& up );
 	FORCEINLINE void VectorIRotate( const Vector& in1, const matrix3x4_t& in2, Vector& out );
@@ -84,24 +84,60 @@ namespace Math
 	FORCEINLINE void SinCos( float radians, float& sine, float& cosine ) { sine = sin( radians ); cosine = cos( radians ); }
 	FORCEINLINE float Interpolate( const float from, const float to, const float percent ) { if ( from == to ) return from; return to * percent + from * ( 1.f - percent ); }
 
+	// clamps yaw to 0-360 rather than -180-180
+	FORCEINLINE float NormalizeEyeAngles( float yaw ) {
+		yaw = std::remainderf( yaw, 360.f );
+		if ( yaw < 0 )
+			yaw += 360.f;
+
+		return yaw;
+	}
+
 	/* Normalize each angle and get difference of each angle (normalized) */
 	FORCEINLINE float AngleDiff( float dest_angle, float src_angle ) {
 		float delta; // xmm1_4
 
-		for ( ; dest_angle > 180.0; dest_angle = dest_angle - 360.0 )
+		for ( ; dest_angle > 180.f; dest_angle = dest_angle - 360.f )
 			;
-		for ( ; dest_angle < -180.0; dest_angle = dest_angle + 360.0 )
+		for ( ; dest_angle < -180.f; dest_angle = dest_angle + 360.f )
 			;
-		for ( ; src_angle > 180.0; src_angle = src_angle - 360.0 )
+		for ( ; src_angle > 180.f; src_angle = src_angle - 360.f )
 			;
-		for ( ; src_angle < -180.0; src_angle = src_angle + 360.0 )
+		for ( ; src_angle < -180.f; src_angle = src_angle + 360.f )
 			;
-		for ( delta = src_angle - dest_angle; delta > 180.0; delta = delta - 360.0 )
+		for ( delta = src_angle - dest_angle; delta > 180.f; delta = delta - 360.f )
 			;
-		for ( ; delta < -180.0; delta = delta + 360.0 )
+		for ( ; delta < -180.f; delta = delta + 360.f )
 			;
 		return delta;
 	}
+
+	/* round the number */
+	FORCEINLINE int round( int n, int to = 10 ) {
+		// Smaller multiple
+		int a = ( n / to ) * to;
+
+		// Larger multiple
+		int b = a + to;
+
+		// Return of closest of two
+		return ( n - a > b - n ) ? b : a;
+	}
+
+	/* get the mean angle */
+	//https://rosettacode.org/wiki/Averages/Mean_angle if you wanna do morethan 2 angles!
+	FORCEINLINE float meanAngle( float angle1, float angle2 ) {
+		float y_part{ }, x_part{ };
+
+		x_part += std::cos( angle1 * M_PI / 180 );
+		y_part += std::sin( angle1 * M_PI / 180 );
+
+		x_part += std::cos( angle2 * M_PI / 180 );
+		y_part += std::sin( angle2 * M_PI / 180 );
+
+		return std::atan2( y_part / 2.f, x_part / 2.f ) * 180.f / M_PI;
+	}
+
 
 	template <class T>
 	__forceinline T Lerp( float flPercent, T const& A, T const& B ) {

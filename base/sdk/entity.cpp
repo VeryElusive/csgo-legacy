@@ -2,6 +2,18 @@
 #include "../utils/math.h"
 #include "../core/interfaces.h"
 
+void* CIKContext::operator new( size_t size )
+{
+	CIKContext* ptr = ( CIKContext* ) Interfaces::MemAlloc->Alloc( size );
+	Construct( ptr );
+
+	return ptr;
+}
+
+void CIKContext::operator delete( void* ptr ) {
+	Interfaces::MemAlloc->Free( ptr );
+}
+
 bool CBaseEntity::IsBreakable( )
 {
 	// @ida isbreakableentity: client.dll @ 55 8B EC 51 56 8B F1 85 F6 74 68

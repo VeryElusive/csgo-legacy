@@ -28,7 +28,7 @@ bool Config::Save(std::string_view szFileName)
 		fsFilePath.replace_extension(_(".cfg"));
 
 	// get utf-8 full path to config
-	const std::string szFile = std::filesystem::path(fsPath / fsFilePath).string();
+	const auto szFile = std::filesystem::path(fsPath / fsFilePath);
 	nlohmann::json config = { };
 
 	try
@@ -150,7 +150,7 @@ bool Config::Save(std::string_view szFileName)
 	}
 
 	// open output config file
-	std::ofstream ofsOutFile(szFile, std::ios::out | std::ios::trunc);
+	std::ofstream ofsOutFile( szFile, std::ios::out | std::ios::trunc );
 
 	if (!ofsOutFile.good())
 		return false;
@@ -173,7 +173,7 @@ bool Config::Save(std::string_view szFileName)
 bool Config::Load(std::string_view szFileName)
 {
 	// get utf-8 full path to config
-	const std::string szFile = std::filesystem::path(fsPath / szFileName).string();
+	const auto szFile = std::filesystem::path( fsPath / szFileName );
 	nlohmann::json config = { };
 
 	// open input config file
@@ -321,12 +321,9 @@ void Config::Remove(const std::size_t nIndex)
 	const std::string& szFileName = vecFileNames.at(nIndex);
 
 	// get utf-8 full path to config
-	const std::string szFile = std::filesystem::path(fsPath / szFileName).string();
+	const auto szFile = std::filesystem::path(fsPath / szFileName);
 
-	if (std::filesystem::remove(szFile))
-	{
-		vecFileNames.erase(vecFileNames.cbegin() + static_cast<std::ptrdiff_t>(nIndex));
-	}
+	std::filesystem::remove( szFile );
 }
 
 void Config::Refresh()

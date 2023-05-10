@@ -19,7 +19,7 @@ void MenuGroup::Begin( const char* name, Vector2D Size ) {
 	Menu::CursorPos.y -= scroll;
 }
 
-void MenuGroup::End( ) {
+void MenuGroup::End( bool x ) {
 	const bool Hovered{ Inputsys::hovered( OldCursorPos, size ) };
 
 	const float outside{ std::max( 0.f, Menu::CursorPos.y - OldCursorPos.y - size.y + scroll ) };
@@ -39,7 +39,7 @@ void MenuGroup::End( ) {
 
 	Interfaces::Surface->SetClipRect( 0, 0, ctx.m_ve2ScreenSize.x, ctx.m_ve2ScreenSize.y );
 
-	Menu::CursorPos = OldCursorPos + Vector2D( size.x + 20, 0 );
+	Menu::CursorPos = OldCursorPos + ( x ? Vector2D( size.x + 20, 0 ) : Vector2D( 0, size.y + 10 ) );
 
 	//Render::Gradient( OldCursorPos.x + 2, OldCursorPos.y + size.y * 0.5f - 1, size.x - 2, size.y / 2, Menu::BackgroundCol.Set<COLOR_A>( 0 ), Menu::BackgroundCol, false );
 

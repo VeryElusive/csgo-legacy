@@ -17,9 +17,12 @@ void FASTCALL Hooks::hkLockCursor( ISurface* thisptr, int edx )
 	oLockCursor( thisptr, edx );
 }
 
-void FASTCALL Hooks::hkPaintTraverse( ISurface* thisptr, int edx, unsigned int uPanel, bool bForceRepaint, bool bForce ) {
+void FASTCALL Hooks::hkPaintTraverse( ISurface* thisptr, int edx, unsigned int uPanel, bool bForceRepaint, bool bForce )
+{
 	static auto oPaintTraverse = DTR::PaintTraverse.GetOriginal<decltype( &hkPaintTraverse )>( );
 	const FNV1A_t uPanelHash = FNV1A::Hash( Interfaces::Panel->GetName( uPanel ) );
+
+	
 
 	if ( Config::Get<bool>( Vars.RemovalScope ) && uPanelHash == FNV1A::HashConst( _( "HudZoom" ) ) )
 		return;
@@ -85,14 +88,4 @@ void FASTCALL Hooks::HkPaint( const std::uintptr_t ecx, const std::uintptr_t edx
 		}
 		beep_boop++;
 	}
-}
-
-void FASTCALL Hooks::hkAddBoxOverlay( void* ecx, void* edx, const Vector& origin, const Vector& mins, const Vector& max, QAngle const& orientation, int r, int g, int b, int a, float duration ) {
-	static auto oAddBoxOverlay = DTR::AddBoxOverlay.GetOriginal<decltype( &hkAddBoxOverlay )>( );
-
-	if ( !Config::Get<bool>( Vars.VisLocalBulletImpacts ) || uintptr_t( _ReturnAddress( ) ) != Offsets::Sigs.AddBoxOverlayReturn )
-		return oAddBoxOverlay( ecx, edx, origin, mins, max, orientation, r, g, b, a, duration );
-
-	const auto& col = Config::Get<Color>( Vars.VisLocalBulletImpactsCol );
-	return oAddBoxOverlay( ecx, edx, origin, mins, max, orientation, col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), col.Get<COLOR_A>( ), duration );
 }

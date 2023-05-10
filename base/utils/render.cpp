@@ -1,13 +1,13 @@
 #include "Render.h"
 
 void Render::CreateFonts( ) {
-	Interfaces::Surface->SetFontGlyphSet( Fonts::WeaponIcon = Interfaces::Surface->FontCreate( ), _( "undefeated" ), 13, FW_MEDIUM, NULL, NULL, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
-	Interfaces::Surface->SetFontGlyphSet( Fonts::NameESP = Interfaces::Surface->FontCreate( ), _( "Tahoma" ), 13, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW );
-	Interfaces::Surface->SetFontGlyphSet( Fonts::HealthESP = Interfaces::Surface->FontCreate( ), _( "04B03" ), 8, FW_NORMAL, NULL, NULL, FONTFLAG_OUTLINE );
+	Interfaces::Surface->SetFontGlyphSet( Fonts::WeaponIcon = Interfaces::Surface->FontCreate( ), _( "undefeated" ), 12, FW_MEDIUM, NULL, NULL, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
+	Interfaces::Surface->SetFontGlyphSet( Fonts::NameESP = Interfaces::Surface->FontCreate( ), _( "Verdana" ), 12, FW_MEDIUM, NULL, NULL, FONTFLAG_DROPSHADOW );
+	Interfaces::Surface->SetFontGlyphSet( Fonts::HealthESP = Interfaces::Surface->FontCreate( ), _( "Small Fonts" ), 8, FW_MEDIUM, NULL, NULL, FONTFLAG_OUTLINE );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::Menu = Interfaces::Surface->FontCreate( ), _( "Tahoma" ), 13, FW_DONTCARE, NULL, NULL, FONTFLAG_DROPSHADOW );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::Logs = Interfaces::Surface->FontCreate( ), _( "Tahoma" ), 11, FW_DONTCARE, NULL, NULL, NULL );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::MenuTabs = Interfaces::Surface->FontCreate( ), _( "test2" ), 35, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW | FONTFLAG_ANTIALIAS );
-	Interfaces::Surface->SetFontGlyphSet( Fonts::DamageMarker = Interfaces::Surface->FontCreate( ), _( "Verdana" ), 12, FW_DONTCARE, NULL, NULL, FONTFLAG_ANTIALIAS );
+	Interfaces::Surface->SetFontGlyphSet( Fonts::DamageMarker = Interfaces::Surface->FontCreate( ), _( "Verdana" ), 14, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW | FONTFLAG_ANTIALIAS );
 }
 
 void Render::FilledRectangle( Vector2D pos, Vector2D size, Color col ) {

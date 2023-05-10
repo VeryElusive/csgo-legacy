@@ -2,7 +2,7 @@
 #include "../animations/animation.h"
 #include "../misc/engine_prediction.h"
 #include "../misc/logger.h"
-#include "../misc/shot_info.h"
+#include "../misc/shots.h"
 #include "../../sdk/entity.h"
 #include "../../context.h"
 #include "autowall.h"
@@ -12,7 +12,7 @@ case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) na
 case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<bool>( Vars.name##SMG );break; \
 case WEAPONTYPE_RIFLE: name = Config::Get<bool>( Vars.name##Rifle );break; \
 case WEAPONTYPE_SHOTGUN: name = Config::Get<bool>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER_RIFLE: if ( idx == WEAPON_AWP ) name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<bool>( Vars.name##Scout ); else name = Config::Get<bool>( Vars.name##Auto );break; \
+case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<bool>( Vars.name##Scout ); else name = Config::Get<bool>( Vars.name##Auto );break; \
 case WEAPONTYPE_MACHINEGUN: name = Config::Get<bool>( Vars.name##Machine );break; }\
 
 #define SETRAGEINT( name ) switch ( type ) { \
@@ -20,69 +20,50 @@ case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) na
 case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<int>( Vars.name##SMG );break; \
 case WEAPONTYPE_RIFLE: name = Config::Get<int>( Vars.name##Rifle );break; \
 case WEAPONTYPE_SHOTGUN: name = Config::Get<int>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER_RIFLE: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<int>( Vars.name##Scout ); else name = Config::Get<int>( Vars.name##Auto );break; \
+case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<int>( Vars.name##Scout ); else name = Config::Get<int>( Vars.name##Auto );break; \
 case WEAPONTYPE_MACHINEGUN: name = Config::Get<int>( Vars.name##Machine );break; }\
 
 struct AimPoint_t {
 	AimPoint_t( ) {}
-	AimPoint_t( Vector point, int ind, Vector center ) : m_vecPoint{ point }, m_iHitgroup{ ind } {
-		m_flCenterAmt = ( ( point - ctx.m_vecEyePos ) - ( center - ctx.m_vecEyePos ) ).Length2D( );
-	}
+	AimPoint_t( Vector point, int ind ) : m_vecPoint{ point }, m_iHitgroup{ ind } {}
 
 	Vector m_vecPoint{ };
-	//int m_iHitbox{ };
+	int m_iHitbox{ };
 	int m_iHitgroup{ };
 	int m_flDamage{ };
 
-	float m_flCenterAmt{ };
+	//float m_flCenterAmt{ };
 
 	bool m_bValid{ };
 	bool m_bPenetrated{ };
-	bool m_bScanned{ };
+	//bool m_bScanned{ };
 };
 
 struct AimTarget_t {
 	std::shared_ptr< LagRecord_t > m_pRecord{ };
 	CBasePlayer* m_pPlayer{ };
 	AimPoint_t* m_cAimPoint{ };
-	//std::string* m_pDbgLog{ };
+	std::shared_ptr< std::string > m_pDbgLog{ };
 
 	std::vector<AimPoint_t> m_cPoints{ };
 
 	int m_iMissedShots{ };
 
+	float m_iBestDamage{ };
+	bool m_bExtrapolating{ };
+
 	AimTarget_t( ) {}
-	AimTarget_t( std::shared_ptr< LagRecord_t > r, PlayerEntry& e ) : m_pRecord( r ), m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ) {}
+	AimTarget_t( PlayerEntry& e ) : m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ) { }
+	AimTarget_t( std::shared_ptr< LagRecord_t > r, PlayerEntry& e, int side, std::shared_ptr< std::string > dbg ) : m_pRecord( r ), m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ), m_pDbgLog( dbg ) {}
 };
 
-struct TraceRayBackup {
-	CAnimationLayer m_pLayers[ 13 ];
-	std::array<float, 24> m_flPoseParameter;
-
-	int m_nSequence;
-	float m_flCycle;
-
-	void Apply( CBasePlayer* ent ) {
-		memcpy( ent->m_AnimationLayers( ), this->m_pLayers, 0x38 * ent->m_iAnimationLayersCount( ) );
-		ent->m_flPoseParameter( ) = this->m_flPoseParameter;
-
-		// CBaseAnimating::SetSequence
-		if ( ent->m_nSequence( ) != this->m_nSequence ) {
-			ent->m_nSequence( ) = this->m_nSequence;
-			ent->InvalidatePhysicsRecursive( 0x20 );//SEQUENCE_CHANGED
-		}
-
-		// server CBaseAnimating::SetCycle does not call any other function
-		ent->m_flCycle( ) = this->m_flCycle;
-	}
-
-	TraceRayBackup( CBasePlayer* ent ) {
-		this->m_flPoseParameter = ent->m_flPoseParameter( );
-		memcpy( this->m_pLayers, ent->m_AnimationLayers( ), 0x38 * ent->m_iAnimationLayersCount( ) );
-
-		this->m_flCycle = ent->m_flCycle( );
-		this->m_nSequence = ent->m_nSequence( );
-	}
+struct KnifeTarget_t {
+	KnifeTarget_t( CBasePlayer* player ) : m_pPlayer( player ) {}
+	CBasePlayer* m_pPlayer{ };
+	bool m_bIsBackstab{ };
+	bool m_bCanHitSecondary{ };
+	bool m_bIsDamageable{ };
+	std::shared_ptr< LagRecord_t > m_pRecord{ };
 };
 
 class CRageBot {
@@ -91,53 +72,45 @@ public:
 	bool RagebotAutoStop{ };
 	bool RagebotBetweenShots{ };
 
-	void Main( CUserCmd& cmd );
-	std::shared_ptr< LagRecord_t > GetBestLagRecord( PlayerEntry& entry );
-	std::vector<AimTarget_t> m_cAimTargets{ };
-private:
-	std::vector<int> m_iHitboxes{ };
+	void Main( CUserCmd& cmd, bool shoot );
+	void GetBestLagRecord( PlayerEntry& entry, AimTarget_t* target );
+	float ExtrapolateYaw( std::vector<std::pair<int, float> >& pattern, int extrapolationAmount );
+	std::vector<std::shared_ptr<AimTarget_t>> m_cAimTargets{ };
 
-	FORCEINLINE int QuickScan( CBasePlayer* player, LagRecord_t* record, bool& metScaled );
+private:
+	void KnifeBot( CUserCmd& cmd );
+	void KnifeBotTargetPlayer( CUserCmd& cmd, KnifeTarget_t& target, LagRecord_t* record );
+	bool KnifeBotCanHitTarget( CUserCmd& cmd, KnifeTarget_t& target, Vector dst, bool backStab );
+
+	std::vector<int> m_iHitboxes{ };
+	AimTarget_t* m_pFinalTarget{ };
+	FORCEINLINE int QuickScan( AimTarget_t* target, std::vector<int> hitgroups );
 	FORCEINLINE int OffsetDelta( CBasePlayer* player, LagRecord_t* record );
+	FORCEINLINE bool CheckRecordSafePoint( CBasePlayer* player, LagRecord_t* record, PlayerEntry& entry );
 	void ScanTargets( );
-	bool CreatePoints( AimTarget_t& aim_target );
+	bool CreatePoints( AimTarget_t* aim_target );
 	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
 	void Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index );
-	void ScanPoint( AimTarget_t& aim_target, AimPoint_t& point );
+	void ScanPoint( AimTarget_t* aim_target, AimPoint_t& point );
 	AimPoint_t* PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
 	AimTarget_t* PickTarget( );
 	void Fire( CUserCmd& cmd );
 	bool HitChance( CBasePlayer* player, const QAngle& ang, int hitchance, int index );
 	//bool FastHitChance( CBasePlayer* player, const Vector& dir, const Vector& mins, const Vector& maxs, const float& radius, int hitchance );
-	Vector2D CalcSpreadAngle( const int item_index, const float recoil_index, const int i );
+	Vector2D CalcSpreadAngle( const int item_index, const int bullets, const float recoil_index, const int i );
 
 	FORCEINLINE void Reset( ) {
 		m_bShouldStop = false;
-
-		if ( !m_iHitboxes.empty( ) )
-			m_iHitboxes.clear( );
 		if ( !m_cAimTargets.empty( ) )
 			m_cAimTargets.clear( );
 	}
 
 	FORCEINLINE void SetupHitboxes( ) {
+		if ( !m_iHitboxes.empty( ) )
+			m_iHitboxes.clear( );
+
 		if ( ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER )
 			return m_iHitboxes.push_back( HITBOX_CHEST );
-
-		if ( RagebotHBUpperChest )
-			m_iHitboxes.push_back( HITBOX_UPPER_CHEST );
-
-		if ( RagebotHBChest )
-			m_iHitboxes.push_back( HITBOX_CHEST );
-
-		if ( RagebotHBLowerChest )
-			m_iHitboxes.push_back( HITBOX_LOWER_CHEST );
-
-		if ( RagebotHBStomach )
-			m_iHitboxes.push_back( HITBOX_STOMACH );
-
-		if ( RagebotHBPelvis )
-			m_iHitboxes.push_back( HITBOX_PELVIS );
 
 		if ( RagebotHBArms ) {
 			m_iHitboxes.push_back( HITBOX_RIGHT_UPPER_ARM );
@@ -156,6 +129,21 @@ private:
 			m_iHitboxes.push_back( HITBOX_RIGHT_FOOT );
 			m_iHitboxes.push_back( HITBOX_LEFT_FOOT );
 		}
+
+		if ( RagebotHBUpperChest )
+			m_iHitboxes.push_back( HITBOX_UPPER_CHEST );
+
+		if ( RagebotHBChest )
+			m_iHitboxes.push_back( HITBOX_CHEST );
+
+		if ( RagebotHBLowerChest )
+			m_iHitboxes.push_back( HITBOX_LOWER_CHEST );
+
+		if ( RagebotHBStomach )
+			m_iHitboxes.push_back( HITBOX_STOMACH );
+
+		if ( RagebotHBPelvis )
+			m_iHitboxes.push_back( HITBOX_PELVIS );
 
 		if ( RagebotHBHead )
 			m_iHitboxes.push_back( HITBOX_HEAD );
@@ -222,6 +210,7 @@ private:
 		SETRAGEBOOL( RagebotMPLegs );
 		SETRAGEBOOL( RagebotMPFeet );
 
+		SETRAGEBOOL( RagebotAutoScope );
 		SETRAGEBOOL( RagebotAutoFire );
 		SETRAGEBOOL( RagebotSilentAim );
 		SETRAGEBOOL( RagebotHitchanceThorough );
@@ -237,6 +226,7 @@ private:
 
 		SETRAGEINT( RagebotFOV );
 		SETRAGEINT( RagebotHitchance );
+		SETRAGEINT( RagebotNoscopeHitchance );
 		SETRAGEINT( RagebotMinimumDamage );
 		SETRAGEINT( RagebotPenetrationDamage );
 		SETRAGEINT( RagebotOverrideDamage );
@@ -264,6 +254,7 @@ private:
 	bool RagebotMPFeet{ };
 
 	bool RagebotAutoFire{ };
+	bool RagebotAutoScope{ };
 	bool RagebotSilentAim{ };
 	bool RagebotHitchanceThorough{ };
 	bool RagebotAutowall{ };
@@ -276,6 +267,7 @@ private:
 
 	int RagebotFOV{ };
 	int RagebotHitchance{ };
+	int RagebotNoscopeHitchance{ };
 	int RagebotMinimumDamage{ };
 	int RagebotPenetrationDamage{ };
 	int RagebotOverrideDamage{ };
@@ -304,6 +296,40 @@ public:
 		default:
 			return "pelvis";
 		}
+	}
+	FORCEINLINE int Hitbox2Hitgroup( int hitgroup ) {
+		switch ( hitgroup )
+		{
+		case HITBOX_HEAD:
+			return HITGROUP_HEAD;
+		case HITBOX_NECK:
+			return HITGROUP_NECK;
+		case HITBOX_PELVIS:
+		case HITBOX_STOMACH:
+			return HITGROUP_STOMACH;
+		case HITBOX_LOWER_CHEST:
+		case HITBOX_CHEST:
+		case HITBOX_UPPER_CHEST:
+			return HITGROUP_CHEST;
+		case HITBOX_RIGHT_THIGH:
+		case HITBOX_RIGHT_FOOT:
+		case HITBOX_RIGHT_CALF:
+			return HITGROUP_RIGHTLEG;
+		case HITBOX_LEFT_CALF:
+		case HITBOX_LEFT_THIGH:
+		case HITBOX_LEFT_FOOT:
+			return HITGROUP_LEFTLEG;
+		case HITBOX_RIGHT_HAND:
+		case HITBOX_RIGHT_UPPER_ARM:
+		case HITBOX_RIGHT_FOREARM:
+			return HITGROUP_RIGHTARM;
+		case HITBOX_LEFT_UPPER_ARM:
+		case HITBOX_LEFT_FOREARM:
+		case HITBOX_LEFT_HAND:
+			return HITGROUP_LEFTARM;
+		}
+
+		return 0;
 	}
 };
 

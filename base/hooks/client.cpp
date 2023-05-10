@@ -3,10 +3,15 @@
 #include "../context.h"
 #include "../features/visuals/visuals.h"
 #include "../features/misc/engine_prediction.h"
-#include "../features/misc/shot_info.h"
+#include "../features/misc/shots.h"
 #include "../features/animations/animation.h"
 #include "../features/rage/exploits.h"
 
+struct ClientHitVerify_t {
+	Vector m_vecPos;
+	float  m_flTime;
+	float  m_flExpires;
+};
 
 void draw_server_hitboxes( int index ) {
 	//if ( g_Vars.globals.m_iServerType != 8 )
@@ -14,7 +19,7 @@ void draw_server_hitboxes( int index ) {
 
 	auto get_player_by_index = [ ]( int index ) -> CBasePlayer* {
 		typedef CBasePlayer* ( __fastcall* player_by_index )( int );
-		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 7E 2A A1" ) ) );
+		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 ? ? A1 ? ? ? ? 3B 48 18 7F 28" ) ) );
 
 		if ( !player_index )
 			return false;
@@ -34,72 +39,92 @@ void draw_server_hitboxes( int index ) {
 	__asm {
 		pushad
 		movss xmm1, duration
-		push 1 // 0 - colored, 1 - blue
+		push 0 // 0 - colored, 1 - blue
 		mov ecx, entity
 		call fn
 		popad
 	}
 }
 
-const char* skynames[ 16 ] = {
-	"Default",
-	"cs_baggage_skybox_",
-	"cs_tibet",
-	"embassy",
-	"italy",
-	"jungle",
-	"nukeblank",
-	"office",
-	"sky_csgo_cloudy01",
-	"sky_csgo_night02",
-	"sky_csgo_night02b",
-	"sky_dust",
-	"sky_venice",
-	"vertigo",
-	"vietnam",
-	"sky_lunacy"
-};
-
 void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClientFrameStage stage ) {
 	static auto oFrameStageNotify = DTR::FrameStageNotify.GetOriginal<decltype( &hkFrameStageNotify )>( );
 
-	ctx.m_iLastFSNStage = stage;
+	//ctx.m_iLastFSNStage = stage;
+	
 	ctx.GetLocal( );
-
 	static int backupsmokeCount{ };
 
-	const auto backupInterpAmt{ Interfaces::Globals->flInterpolationAmount };
+	if ( Interfaces::ClientState->pNetChannel ) {
+		if ( !DTR::SendNetMsg.IsHooked( ) )
+			DTR::SendNetMsg.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDNETMSG ), &Hooks::hkSendNetMsg );
+
+		if ( !DTR::SendDatagram.IsHooked( ) )
+			DTR::SendDatagram.Create( MEM::GetVFunc( Interfaces::ClientState->pNetChannel, VTABLE::SENDDATAGRAM ), &Hooks::hkSendDatagram );
+	}
 
 	if ( stage == FRAME_RENDER_START ) {
 		if ( ctx.m_pLocal ) {
-			if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand )
-				Interfaces::Globals->flInterpolationAmount = 0;
+			/*if ( Interfaces::Input->bCameraInThirdPerson ) {
+				auto state{ ctx.m_pLocal->m_pAnimState( ) };
+				if ( state )
+					ctx.m_pLocal->SetAbsAngles( { 0.f, state->flAbsYaw, 0.f } );
+			}
+
+			if ( Config::Get<bool>( Vars.VisClientBulletImpacts ) ) {
+				static int lastcount{ };
+				auto& clientImpactsList{ *( CUtlVector < ClientHitVerify_t >* )( ( uintptr_t )ctx.m_pLocal + 0x11C50u ) };
+
+
+				Color col{ Config::Get<Color>( Vars.VisClientBulletImpactsCol ) };
+				for ( auto i = clientImpactsList.Count( ); i > lastcount; --i )
+					Interfaces::DebugOverlay->AddBoxOverlay( clientImpactsList[ i - 1 ].m_vecPos, Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), QAngle( 0, 0, 0 ),
+						col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), col.Get<COLOR_A>( ), Offsets::Cvars.sv_showimpacts_time->GetFloat( ) );
+
+				if ( clientImpactsList.Count( ) != lastcount )
+					lastcount = clientImpactsList.Count( );
+			}
+
+			for ( int i{ 1 }; i <= 64; i++ ) {
+				const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
+				if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
+					continue;
+
+				auto& varMap{ player->m_pVarMapping( ) };
+				for ( int i{ }; i < varMap.m_nInterpolatedEntries; ++i ) {
+					//if ( reinterpret_cast< int >( varMap.m_Entries[ i ].data ) - reinterpret_cast< int >( player ) == 71632 )
+					//	varMap.m_Entries[ i ].m_bNeedsToInterpolate = false;
+					if ( reinterpret_cast< int >( varMap.m_Entries[ i ].data ) - reinterpret_cast< int >( player ) == 172 )
+						varMap.m_Entries[ i ].watcher->m_InterpolationAmount = Interfaces::Globals->flIntervalPerTick;
+					else
+						varMap.m_Entries[ i ].m_bNeedsToInterpolate = false;
+				}
+
+				/* filtered
+				[ HAVOC ] 71632
+				[ HAVOC ] 264
+				[ HAVOC ] 10808
+				[ HAVOC ] 10752
+				[ HAVOC ] 2580
+				[ HAVOC ] 10104
+				[ HAVOC ] 2644
+				[ HAVOC ] 172
+
+
+				71632 = eyeangles
+				172 = origin
+				*/
+
+				/* start up
+				[ HAVOC ] 2580
+				[ HAVOC ] 2644
+				[ HAVOC ] 10104
+			}*/
 
 			if ( Config::Get<bool>( Vars.RemovalFlash ) )
 				ctx.m_pLocal->m_flFlashDuration( ) = 0.f;
-
-			if ( Config::Get<bool>( Vars.MiscForceCrosshair ) && !ctx.m_pLocal->m_bIsScoped( ) ) {
-				if ( Offsets::Cvars.weapon_debug_spread_show->GetInt( ) != 3 )
-					Offsets::Cvars.weapon_debug_spread_show->SetValue( 3 );
-			}
-			else {
-				if ( Offsets::Cvars.weapon_debug_spread_show->GetInt( ) )
-					Offsets::Cvars.weapon_debug_spread_show->SetValue( 0 );
-			}
 		}
 
 		{
-
-			static int oldSky = 0;
-			static auto fnLoadNamedSkys = ( void( __fastcall* )( const char* ) )Offsets::Sigs.LoadNamedSkys;
-			static auto defaultSkyname = Interfaces::ConVar->FindVar( _( "sv_skyname" ) );
-			if ( oldSky != Config::Get<int>( Vars.VisWorldSkybox ) ) {
-				const char* name = Config::Get<int>( Vars.VisWorldSkybox ) ? skynames[ Config::Get<int>( Vars.VisWorldSkybox ) ] : defaultSkyname->GetString( );
-				fnLoadNamedSkys( name );
-				oldSky = Config::Get<int>( Vars.VisWorldSkybox );
-			}
-			else if ( !ctx.m_pLocal || Interfaces::ClientState->iDeltaTick > 0 )
-				oldSky = 0;
 
 			if ( Offsets::Cvars.r_modelAmbientMin->GetFloat( ) != ( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f ) )
 				Offsets::Cvars.r_modelAmbientMin->SetValue( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f );
@@ -131,58 +156,61 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			if ( Config::Get<bool>( Vars.RemovalSmoke ) )
 				smokeCount = 0;
 
+			**reinterpret_cast< bool** >( Offsets::Sigs.PostProcess + 0x2 ) = ( ctx.m_pLocal && !Config::Get<bool>( Vars.VisWorldBloom ) && Config::Get<bool>( Vars.RemovalPostProcess ) );
 
-			if ( Offsets::Cvars.r_drawspecificstaticprop->GetBool( ) )
-				Offsets::Cvars.r_drawspecificstaticprop->SetValue( FALSE );
 
-			if ( Offsets::Cvars.cl_foot_contact_shadows->GetBool( ) )
-				Offsets::Cvars.cl_foot_contact_shadows->SetValue( FALSE );
-
-			if ( Offsets::Cvars.cl_csm_shadows->GetBool( ) )
-				Offsets::Cvars.cl_csm_shadows->SetValue( FALSE );
+			//if ( Offsets::Cvars.r_drawspecificstaticprop->GetBool( ) )
+			//	Offsets::Cvars.r_drawspecificstaticprop->SetValue( FALSE );
 
 			//if ( Offsets::Cvars.sv_showimpacts->GetInt( ) != 2 )
 			//	Offsets::Cvars.sv_showimpacts->SetValue( 2 );
 
-			static bool* post_process{ *reinterpret_cast< bool** >( Offsets::Sigs.PostProcess + 0x2 ) };
-			*post_process = ( ctx.m_pLocal && !Config::Get<bool>( Vars.VisWorldBloom ) && Config::Get<bool>( Vars.RemovalPostProcess ) );
+			if ( !Config::Get<bool>( Vars.VisWorldFog ) )
+				Offsets::Cvars.fog_override->SetValue( FALSE );
+			else {
+				Offsets::Cvars.fog_override->SetValue( TRUE );
+
+				if ( Offsets::Cvars.fog_start->GetInt( ) )
+					Offsets::Cvars.fog_start->SetValue( 0 );
+
+
+				if ( Offsets::Cvars.fog_end->GetInt( ) != Config::Get<int>( Vars.VisWorldFogDistance ) )
+					Offsets::Cvars.fog_end->SetValue( Config::Get<int>( Vars.VisWorldFogDistance ) );
+
+				if ( Offsets::Cvars.fog_maxdensity->GetFloat( ) != ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f )
+					Offsets::Cvars.fog_maxdensity->SetValue( ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f );
+
+				if ( Offsets::Cvars.fog_hdrcolorscale->GetFloat( ) != Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f )
+					Offsets::Cvars.fog_hdrcolorscale->SetValue( Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f );
+
+				const auto& col{ Config::Get<Color>( Vars.VisWorldFogCol ) };
+
+				char bufferColor[ 12 ]{ };
+				sprintf_s( bufferColor, 12, "%i %i %i", col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ) );
+
+				if ( strcmp( Offsets::Cvars.fog_color->GetString( ), bufferColor ) )
+					Offsets::Cvars.fog_color->SetValue( bufferColor );
+			}
 		}
 	}
-	else if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_END ) {
+	else if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_START ) {
 		if ( ctx.m_pLocal ) {
-			const bool dead{ ctx.m_pLocal->IsDead( ) };
-			for ( int i{ 1 }; i <= 64; i++ ) {
-				const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-				if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
-					continue;
+			if ( !ctx.m_pLocal->IsDead( ) && !ctx.m_pLocal->m_pAnimState( )->bFirstUpdate ) {
+				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 3 ], &ctx.m_pAnimationLayers[ 3 ], sizeof CAnimationLayer );
+				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 4 ], &ctx.m_pAnimationLayers[ 4 ], sizeof CAnimationLayer );
+				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 5 ], &ctx.m_pAnimationLayers[ 5 ], sizeof CAnimationLayer );
 
-				auto& varMap{ player->m_pVarMapping( ) };
-				for ( int i{ }; i < varMap.m_nInterpolatedEntries; ++i )
-					varMap.m_Entries[ i ].m_bNeedsToInterpolate = false;
-
-				/*const auto varMapping{ *reinterpret_cast< std::uintptr_t* >( ( reinterpret_cast< std::uintptr_t >( player ) + 36u ) ) };
-				if ( !varMapping )
-					continue;
-
-				*( WORD* )( varMapping + 14u ) = 0u;
-				*( DWORD* )( *( DWORD* )( varMapping + 20u ) + 36u ) = 0;
-
-				*( WORD* )( varMapping + 26u ) = 0u;
-				*( DWORD* )( *( DWORD* )( varMapping + 32u ) + 36u ) = 0;
-
-				*( WORD* )( varMapping + 38u ) = 0u;
-				*( DWORD* )( *( DWORD* )( varMapping + 44u ) + 36u ) = 0;
-
-				*( WORD* )( varMapping + 50u ) = 0u;
-				*( DWORD* )( *( DWORD* )( varMapping + 56u ) + 36u ) = 0;
-
-				*( DWORD* )( *( DWORD* )( varMapping + 8u ) + 36u ) = dead ? Interfaces::Globals->flIntervalPerTick * 2 : 0;
-				*( DWORD* )( *( DWORD* )( varMapping + 68u ) + 36u ) = Interfaces::Globals->flIntervalPerTick * 2;*/
+				ctx.m_pLocal->m_AnimationLayers( )[ 6 ].flWeight = ctx.m_pAnimationLayers[ 6 ].flWeight;
+				ctx.m_pLocal->m_AnimationLayers( )[ 6 ].flCycle = ctx.m_pAnimationLayers[ 6 ].flCycle;
+				ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight = ctx.m_pAnimationLayers[ 12 ].flWeight;
 			}
 
-			Features::EnginePrediction.RestoreNetvars( ctx.m_pLocal->m_nTickBase( ) );
+			Features::Visuals.SkyboxChanger( );
+			Features::Visuals.ModelChanger( );
 		}
 
+	}
+	else if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_END ) {
 		if ( Config::Get<bool>( Vars.RemovalSmoke ) ) {
 			static const std::array< IMaterial*, 4u > smokeMaterials{
 				Interfaces::MaterialSystem->FindMaterial( _( "particle/vistasmokev1/vistasmokev1_fire" ), nullptr ),
@@ -197,24 +225,23 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		}
 	}
 
+	//Features::Visuals.ModelChanger( );
 
 	oFrameStageNotify( thisptr, edx, stage );
 
 	switch ( stage ) {
 	case FRAME_RENDER_START: {
-		Interfaces::Globals->flInterpolationAmount = backupInterpAmt;
-		Features::AnimSys.SetupLocalMatrix( );
-		//Features::AnimSys.UpdatePlayerMatrixes( );
+		//Features::AnimSys.SetupFakeMatrix( );
 
-		for ( int i{ 1 }; i <= 64; i++ ) {
+		/*for ( int i{ 1 }; i <= 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
-			if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
+			if ( !player || player->IsDead( ) || !player->IsPlayer( ) )
 				continue;
 
 			//player->SetAbsOrigin( player->m_vecOrigin( ) );
 
 			draw_server_hitboxes( i );
-		}
+		}*/
 	}break;
 	case FRAME_RENDER_END: {
 		**reinterpret_cast< int** >( Offsets::Sigs.SmokeCount + 0x1 ) = backupsmokeCount;
@@ -223,18 +250,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	}break;
 	case FRAME_NET_UPDATE_END: {
 		if ( ctx.m_pLocal ) {
-			const auto correctionTicks{ ctx.CalcCorrectionTicks( ) };
-			if ( correctionTicks == -1 )
-				Features::Exploits.m_iCorrectionAmount = 0;
-			else {
-				if ( ctx.m_pLocal->m_flSimulationTime( ) > ctx.m_pLocal->m_flOldSimulationTime( ) ) {
-					const auto delta{ TIME_TO_TICKS( ctx.m_pLocal->m_flSimulationTime( ) ) - Interfaces::ClientState->iServerTick };
-					if ( std::abs( delta ) <= correctionTicks )
-						Features::Exploits.m_iCorrectionAmount = delta;
-				}
-			}
-
-			if ( !ctx.m_pLocal->IsDead( ) ) {
+			/*if ( !ctx.m_pLocal->IsDead( ) ) {
 				for ( auto i{ Interfaces::ClientState->pEvents }; i; i = Interfaces::ClientState->pEvents->next ) {
 					if ( !i->iClassID )
 						continue;
@@ -243,20 +259,15 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				}
 			}
 
+			Interfaces::Engine->FireEvents( );*/
 
-			//Interfaces::Engine->FireEvents( );// TODO: LEGACY!
-			Features::Shots.OnNetUpdate( );
-
-			static bool did{ };
-			if ( !did )
-				did = Features::EnginePrediction.AddToDataMap( );
-
+			Features::AnimSys.RunAnimationSystem( );
 			//Features::AnimSys.UpdateCommands( );
 		}
 
-		Features::AnimSys.RunAnimationSystem( );
+		Features::Shots.ProcessShots( );
 		
-		{
+		/* {
 			static DWORD* KillFeedTime = nullptr;
 			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
 				if ( !KillFeedTime )
@@ -280,15 +291,15 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			}
 			else
 				KillFeedTime = 0;
-		}
+		}*/
 	}break;
 	default: break;
 
 	}
 
-	if ( ctx.m_pLocal ) {
+	/*if ( ctx.m_pLocal ) {
 		if ( !Interfaces::GameRules )
-			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "8B 0D ? ? ? ? 85 C0 74 0A 8B 01 FF 50 78 83 C0 54" ) ) + 0x2 ) ) );
+			Interfaces::GameRules = ( ( **reinterpret_cast< CCSGameRules*** >( MEM::FindPattern( CLIENT_DLL, _( "A1 ? ? ? ? 85 C0 0F 84 ? ? ? ? 80 B8 ? ? ? ? ? 74 7A" ) ) + 0x1 ) ) );
 
 		if ( !Interfaces::GameResources ) {
 			for ( auto* pClass{ Interfaces::Client->GetAllClasses( ) }; pClass; pClass = pClass->pNext ) {
@@ -309,84 +320,49 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				}
 			}
 		}
-
-		if ( ctx.m_pLocal->m_hViewModel( ) ) {
-			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
-				static float cycle{ }, animTime{ };
-
-				if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_START ) {
-					viewModel->m_flCycle( ) = cycle;
-					viewModel->m_flAnimTime( ) = animTime;
-				}
-
-				cycle = viewModel->m_flCycle( );
-				animTime = viewModel->m_flAnimTime( );
-			}
-		}
 	}
 	else {
 		Interfaces::GameRules = nullptr;
 		Interfaces::GameResources = nullptr;
-	}
+	}*/
 }
-
 
 bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot, bf_write* buf, int from, int to, bool is_new_command ) {
 	static auto oWriteUserCmdDeltaToBuffer = DTR::WriteUserCmdDeltaToBuffer.GetOriginal<decltype( &hkWriteUserCmdDeltaToBuffer )>( );
-	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) 
-		|| ctx.m_pLocal->m_fFlags( ) & FL_FROZEN )
-		return oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, is_new_command );
 
-	const auto moveMsg{ reinterpret_cast< MoveMsg_t* >( *reinterpret_cast< std::uintptr_t* >(
+	if ( from == -1 ) {
+		const auto moveMsg{ reinterpret_cast< MoveMsg_t* >( *reinterpret_cast< std::uintptr_t* >(
 			reinterpret_cast< std::uintptr_t >( _AddressOfReturnAddress( ) ) - sizeof( std::uintptr_t ) ) - 0x58u ) };
 
-	const auto nextCmdNumber{ Interfaces::ClientState->nChokedCommands + Interfaces::ClientState->iLastOutgoingCommand + 1 };
+		moveMsg->m_iBackupCmds = 0;
+		moveMsg->m_iNewCmds = std::min( 16, Interfaces::ClientState->nChokedCommands + 1 );
 
-	bool stoplol{ };
-	static int timer{ };
+		const auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + moveMsg->m_iNewCmds };
 
+		// TODO: make this run at the end and dont call writeusercmd ourself, just makes it look neater, doesnt change performance and technically runs shit that is unnecessary
+		for ( to = Interfaces::ClientState->iLastOutgoingCommand + 1; to <= nextCmdNumber; ++to ) {
+			if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) )
+				return false;
 
-	if ( !Features::Exploits.m_bWasDefensiveTick ) {
-		if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand
-			|| Features::Exploits.m_iShiftAmount ) {
-			if ( from == -1 ) {
-				if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand ) {
-					moveMsg->m_iNewCmds = 1;
-					moveMsg->m_iBackupCmds = 0;
-
-					for ( to = nextCmdNumber - moveMsg->m_iNewCmds + 1; to <= nextCmdNumber; ++to ) {
-						if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
-							stoplol = true;
-							break;
-						}
-
-						from = to;
-					}
-				}
-				else
-					stoplol = Features::Exploits.Shift( ecx, edx, slot, buf, from, to, moveMsg );
-			}
-
-			return !stoplol;
+			from = to;
 		}
+
+		if ( ctx.m_iTicksAllowed > 0 ) {
+			if ( Features::Exploits.m_bWasDefensiveTick )
+				Features::Exploits.BreakLC( buf, ctx.m_iTicksAllowed, moveMsg );
+			else if ( Features::Exploits.m_iShiftAmount )
+				Features::Exploits.Shift( buf, moveMsg );
+			else if ( Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ) {
+				const auto newCmds{ std::min( moveMsg->m_iNewCmds + ctx.m_iTicksAllowed, 16 ) };
+
+				const auto maxShiftedCmds{ newCmds - moveMsg->m_iNewCmds };
+
+				ctx.m_iTicksAllowed = std::max( maxShiftedCmds, 0 );
+			}
+		}
+
+		ctx.m_iSentCmds.push_back( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 );
 	}
-	else {
-		if ( from == -1 )
-			stoplol = Features::Exploits.BreakLC( ecx, edx, slot, buf, from, to, moveMsg );
-
-		return !stoplol;
-	}
-
-	if ( from == -1
-		&& ctx.m_iTicksAllowed > 0 ) {
-		const auto extraTicks{ **( int** )Offsets::Sigs.numticks - 1 };// host_currentframetick not needed
-
-		const auto newCmds{ std::min( moveMsg->m_iNewCmds + extraTicks + ctx.m_iTicksAllowed, 16 ) };
-
-		auto maxShiftedCmds{ newCmds - moveMsg->m_iNewCmds - extraTicks };
-
-		ctx.m_iTicksAllowed = std::max( maxShiftedCmds, 0 );
-	}
-
-	return oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, is_new_command );
+	
+	return true;
 }

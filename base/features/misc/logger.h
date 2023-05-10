@@ -23,6 +23,13 @@ public:
 		Interfaces::ConVar->ConsoleColorPrintf( Menu::AccentCol, _( "[ HAVOC ] " ) );
 		Interfaces::ConVar->ConsolePrintf( text.c_str( ) );
 
+		for ( auto it{ text.begin( ) }; it != text.end( ); ++it ) {
+			auto& character{ *it };
+
+			if ( character > 255 )
+				character = '*';
+		}
+
 		if ( show_on_screen )
 			m_cOnscreenText.push_back( text );
 	}

@@ -79,7 +79,7 @@ bool Interfaces::Setup()
 
 	ViewRenderBeams = *reinterpret_cast<IViewRenderBeams**>(MEM::FindPattern(CLIENT_DLL, _("B9 ? ? ? ? A1 ? ? ? ? FF 10 A1 ? ? ? ? B9")) + 0x1); // @xref: "r_drawbrushmodels"
 	if (ViewRenderBeams == nullptr)
-		return false;
+		return false;	
 
 	Input =	*reinterpret_cast<IInput**>(MEM::FindPattern(CLIENT_DLL, _("B9 ? ? ? ? F3 0F 11 04 24 FF 50 10")) + 0x1); // @note: or address of some indexed input function in chlclient class (like IN_ActivateMouse, IN_DeactivateMouse, IN_Accumulate, IN_ClearStates) + 0x1 (jmp to m_pInput)
 	if (Input == nullptr)

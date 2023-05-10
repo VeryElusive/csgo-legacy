@@ -11,7 +11,6 @@ struct CompressionVars_t {
 
 class CEnginePrediction {
 public:
-	void PreStart( );
 	void RunCommand( CUserCmd& cmd );
 	void Finish( );
 
@@ -24,16 +23,14 @@ public:
 	float Inaccuracy{ };
 	std::array< CompressionVars_t, 150> m_cCompressionVars{ };
 private:
-	float CurTime{ };
-	float FrameTime{ };
+	float m_flCurtime{ };
+	float m_flFrametime{ };
 	//void* m_pOldWeapon{ };
 
 	//float VelocityModifier{ };
-	float RecoilIndex{ };
-	float AccuracyPenalty{ };
 
-	bool FirstTimePrediction{ };
-	bool InPrediction{ };
+	//bool FirstTimePrediction{ };
+	//bool InPrediction{ };
 
 
 	CMoveData MoveData{ };

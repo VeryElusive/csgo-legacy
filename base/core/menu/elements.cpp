@@ -28,6 +28,11 @@ std::vector<multi_item_t> WorldAdjustments = {
 	{ "Fullbright", &Config::Get<bool>( Vars.WorldFullbright ) }
 };
 
+std::vector<multi_item_t> Hitmarkers = {
+	{ "Screen", &Config::Get<bool>( Vars.MiscScreenHitmarker ) },
+	{ "World", &Config::Get<bool>( Vars.MiscWorldHitmarker ) }
+};
+
 // HAHAHHAAHHAHAH FUCKING CRY ABOUT IT I LOOOOOOOOVE ABUSING MACROS HAHAHAHHAHAHAHHA
 #define Convert2PType( name, type ) Vars.##name##type
 #define BoolConvert2PType( name, type ) Config::Get<bool>( Convert2PType( name, type ) )
@@ -250,6 +255,9 @@ void Menu::GetElements( ) {
 			}
 
 			Render::Gradient( alpha_draw_pos.x, alpha_draw_pos.y, 150, 20, Color( 0, 0, 0, 0 ), Menu::ColorPicker.value( ).Color.Set<COLOR_A>( 255 ), true );
+
+			//const auto alpha{ Menu::ColorPicker.value( ).Color.Get<COLOR_A>( ) };
+			//Render::FilledRectangle( alpha_draw_pos + ( 150.f * ( alpha / 255.f ), 0 ), { 3, 20 }, Color( 0, 0, 0 ) );
 		}
 
 		// actual picker
@@ -300,11 +308,14 @@ void Menu::DrawRage( ) {
 			{
 				RagebotGroup->Checkbox( _( "Enable" ), Config::Get<bool>( Vars.RagebotEnable ) );
 				RagebotGroup->Checkbox( _( "Resolver" ), Config::Get<bool>( Vars.RagebotResolver ) );
+				//RagebotGroup->Checkbox( _( "Lag-compensation" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
 				RagebotGroup->Combo( _( "Weapon group" ), weapGroup, { _( "Pistol" ), _( "Heavy pistol" ), _( "SMG" ), _( "Rifle" ), _( "Shotgun" ), _( "Awp" ), ( "Scout" ), ( "Auto" ), _( "Machine gun" ) } );
 				RAGEINTSLIDER( RagebotGroup, _( "FOV" ), RagebotFOV, weapGroup, 1, 180 );
 				RAGECHECKBOX( RagebotGroup, _( "Auto fire" ), RagebotAutoFire, weapGroup );
+				RAGECHECKBOX( RagebotGroup, _( "Auto scope" ), RagebotAutoScope, weapGroup );
 				RAGECHECKBOX( RagebotGroup, _( "Silent aim" ), RagebotSilentAim, weapGroup );
 				RAGEINTSLIDER( RagebotGroup, _( "Hitchance" ), RagebotHitchance, weapGroup, 0, 100 );
+				RAGEINTSLIDER( RagebotGroup, _( "Noscope hitchance" ), RagebotNoscopeHitchance, weapGroup, 0, 100 );
 				RAGECHECKBOX( RagebotGroup, _( "Ensure accuracy" ), RagebotHitchanceThorough, weapGroup );
 				RAGEINTSLIDER( RagebotGroup, _( "Minimum damage" ), RagebotMinimumDamage, weapGroup, 0, 110 );
 				RAGECHECKBOX( RagebotGroup, _( "Autowall" ), RagebotAutowall, weapGroup );
@@ -321,18 +332,13 @@ void Menu::DrawRage( ) {
 				RAGECHECKBOX( RagebotGroup, _( "Autostop" ), RagebotAutoStop, weapGroup );
 				RAGECHECKBOX( RagebotGroup, _( "Move between shots" ), RagebotBetweenShots, weapGroup );
 				RagebotGroup->Checkbox( _( "Zeusbot" ), Config::Get<bool>( Vars.RagebotZeusbot ) );
-				RagebotGroup->Checkbox( _( "Doubletap" ), Config::Get<bool>( Vars.ExploitsDoubletap ) );
-				RagebotGroup->Keybind( _( "Doubletap key" ), Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ) );
-
-				RagebotGroup->Checkbox( _( "Lag peek" ), Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) );
-				RagebotGroup->Checkbox( _( "Hideshots" ), Config::Get<bool>( Vars.ExploitsHideshots ) );
-				RagebotGroup->Keybind( _( "Hideshots key" ), Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ) );
+				RagebotGroup->Checkbox( _( "Knifebot" ), Config::Get<bool>( Vars.RagebotKnifebot ) );
 			}
 			RagebotGroup->End( );
 		}
 		{
 			static auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
-			RagebotGroup->Begin( _( "General" ), CompensatedLength );
+			RagebotGroup->Begin( _( "Selection" ), { CompensatedLength.x, ( ( Size.y - 119 ) / 4 ) * 3 - 10 } );
 			{
 				RagebotGroup->Combo( _( "Target selection" ), Config::Get<int>( Vars.RagebotTargetSelection ), { _( "Highest damage" ), _( "FOV" ), _( "Distance" ), _( "Lowest health" ) } );
 
@@ -375,9 +381,13 @@ void Menu::DrawRage( ) {
 				RAGEINTSLIDER( RagebotGroup, _( "Body scale" ), RagebotBodyScale, weapGroup, 0, 100 );
 			NEXTSTATIC:
 
+				//RagebotGroup->Checkbox( _( "Force onshot safety" ), Config::Get<bool>( Vars.RagebotForceSafeClampbones ) );
+
+
 				RAGECHECKBOX( RagebotGroup, _( "Ignore limbs when moving" ), RagebotIgnoreLimbs, weapGroup );
 				RagebotGroup->Checkbox( _( "Force baim after" ), Config::Get<bool>( Vars.RagebotForceBaimAfterX ) );
-				RagebotGroup->Slider( ( std::to_string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT )) + std::string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT ) == 1 ? " missed shot" : " missed shots" ) ).c_str( ), Config::Get<int>( Vars.RagebotForceBaimAfterXINT ), 1, 20 );
+				if ( Config::Get<bool>( Vars.RagebotForceBaimAfterX ) )
+					RagebotGroup->Slider( ( std::to_string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT )) + std::string( Config::Get<int>( Vars.RagebotForceBaimAfterXINT ) == 1 ? " missed shot" : " missed shots" ) ).c_str( ), Config::Get<int>( Vars.RagebotForceBaimAfterXINT ), 1, 20 );
 
 
 				ItemsPistol = { { "Always", &Config::Get<bool>( Vars.RagebotPreferBaimPistol ) }, { "Doubletap", &Config::Get<bool>( Vars.RagebotPreferBaimDoubletapPistol ) }, { "Lethal", &Config::Get<bool>( Vars.RagebotPreferBaimLethalPistol ) } };
@@ -394,8 +404,30 @@ void Menu::DrawRage( ) {
 				RagebotGroup->Label( _( "Force baim" ) );
 				RagebotGroup->Keybind( _( "Force baim key" ), Config::Get<keybind_t>( Vars.RagebotForceBaimKey ) );
 
-				RagebotGroup->Label( _( "Force safe record" ) );
-				RagebotGroup->Keybind( _( "Force safe record key" ), Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ) );
+				RagebotGroup->Label( _( "Force safe point" ) );
+				RagebotGroup->Keybind( _( "Force safe point key" ), Config::Get<keybind_t>( Vars.RagebotForceSafePointKey ) );				
+
+				RagebotGroup->Label( _( "Force yaw safety" ) );
+				RagebotGroup->Keybind( _( "Force yaw safety key" ), Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ) );
+			}
+			RagebotGroup->End( false );
+		}
+
+		{
+			static auto RagebotGroup{ std::make_unique< MenuGroup >( ) };
+			RagebotGroup->Begin( _( "Exploits" ), { CompensatedLength.x, ( Size.y - 119 ) / 4 - 20 } );
+			{
+				RagebotGroup->Checkbox( _( "Doubletap" ), Config::Get<bool>( Vars.ExploitsDoubletap ) );
+				RagebotGroup->Keybind( _( "Doubletap key" ), Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ) );
+
+				if ( Config::Get<bool>( Vars.ExploitsDoubletap ) ) {
+					RagebotGroup->Checkbox( _( "Lag peek" ), Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) );
+					if ( Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) )
+						RagebotGroup->Checkbox( _( "Delay teleport" ), Config::Get<bool>( Vars.ExploitsDoubletapExtended ) );
+				}
+
+				RagebotGroup->Checkbox( _( "Hideshots" ), Config::Get<bool>( Vars.ExploitsHideshots ) );
+				RagebotGroup->Keybind( _( "Hideshots key" ), Config::Get<keybind_t>( Vars.ExploitsHideshotsKey ) );
 			}
 			RagebotGroup->End( );
 		}
@@ -420,7 +452,7 @@ void Menu::DrawRage( ) {
 				AntiaimGroup->Combo( _( "At targets" ), Config::Get<int>( Vars.AntiaimAtTargets ), { _( "Off" ), _( "FOV" ), _( "Distance" ) } );
 
 				AntiaimGroup->Checkbox( _( "Fake angles" ), Config::Get<bool>( Vars.AntiaimDesync ) );
-				AntiaimGroup->Checkbox( _( "Fake Fake angles" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
+				//AntiaimGroup->Checkbox( _( "Fake Fake angles" ), Config::Get<bool>( Vars.RagebotLagcompensation ) );
 				if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
 					AntiaimGroup->Combo( _( "Desync angle" ), Config::Get<int>( Vars.AntiaimBreakAngle ), { _( "Opposite" ), _( "Back" ) } );
 
@@ -444,6 +476,7 @@ void Menu::DrawRage( ) {
 				//AntiaimGroup->Combo( _( "Auto direction" ), Config::Get<int>( Vars.AntiaimFreestand ), { _( "Off" ), _( "Desync side" ), _( "Yaw" ) } );
 
 				AntiaimGroup->Checkbox( _( "Manual direction" ), Config::Get<bool>( Vars.AntiAimManualDir ) );
+				AntiaimGroup->Checkbox( _( "Manual direction indicator" ), Config::Get<bool>( Vars.AntiAimManualDirInd ) );
 				AntiaimGroup->ColorPicker( _( "Manual direction Color" ), Config::Get<Color>( Vars.AntiaimManualCol ) );
 				AntiaimGroup->Label( _( "Left" ) );
 				AntiaimGroup->Keybind( _( "Left key" ), Config::Get<keybind_t>( Vars.AntiaimLeft ) );
@@ -462,8 +495,9 @@ void Menu::DrawRage( ) {
 			static auto AntiaimGroup{ std::make_unique< MenuGroup >( ) };
 			AntiaimGroup->Begin( _( "Fakelag" ), Vector2D( CompensatedLength.x, ( Size.y - 119 ) / 2 - 10 ) );
 			{
-				AntiaimGroup->Slider( _( "Limit" ), Config::Get<int>( Vars.AntiaimFakeLagLimit ), 0, 13 );
+				AntiaimGroup->Slider( _( "Limit" ), Config::Get<int>( Vars.AntiaimFakeLagLimit ), 0, 15 );
 				AntiaimGroup->Slider( _( "Randomization" ), Config::Get<int>( Vars.AntiaimFakeLagVariance ), 0, 100 );
+				AntiaimGroup->Checkbox( _( "Choke peek" ), Config::Get<bool>( Vars.AntiaimFakeLagInPeek ) );
 				AntiaimGroup->Checkbox( _( "Break lagcompensation" ), Config::Get<bool>( Vars.AntiaimFakeLagBreakLC ) );
 			}
 			AntiaimGroup->End( );
@@ -473,6 +507,34 @@ void Menu::DrawRage( ) {
 		//NewGroupRow( CompensatedLength.x );
 	}
 }
+std::vector<std::string> models_to_change{
+	_( "Local T Agent" ),
+	_( "Local CT Agent" ),
+	_( "Blackwolf | Sabre" ),
+	_( "Rezan The Ready | Sabre" ),
+	_( "Maximus | Sabre" ),
+	_( "Dragomir | Sabre" ),
+	_( "Lt. Commander Ricksaw | NSWC SEAL" ),
+	_( "'Two Times' McCoy | USAF TACP" ),
+	_( "Seal Team 6 Soldier | NSWC SEAL" ),
+	_( "3rd Commando Company | KSK" ),
+	_( "'The Doctor' Romanov | Sabre" ),
+	_( "Michael Syfers  | FBI Sniper" ),
+	_( "Markus Delrow | FBI HRT" ),
+	_( "Operator | FBI SWAT" ),
+	_( "Slingshot | Phoenix" ),
+	_( "Enforcer | Phoenix" ),
+	_( "Soldier | Phoenix" ),
+	_( "The Elite Mr. Muhlik | Elite Crew" ),
+	_( "Prof. Shahmat | Elite Crew" ),
+	_( "Osiris | Elite Crew" ),
+	_( "Ground Rebel  | Elite Crew" ),
+	_( "Special Agent Ava | FBI" ),
+	_( "B Squadron Officer | SAS" ),
+	_( "Anarchist" ),
+	_( "Anarchist (Variant A)" ),
+};
+
 
 void Menu::DrawMisc( ) {
 	const Vector2D CompensatedLength = Vector2D( ( ( Size.x - APPEND_LEN.x ) / 2 ), Size.y - APPEND_LEN.y );
@@ -494,40 +556,31 @@ void Menu::DrawMisc( ) {
 
 			MiscGroup->Slider( _( "Field of view" ), Config::Get<int>( Vars.MiscFOV ), 0, 70 );
 
-			/*MiscGroup->Combo( _( "Player model changer T" ), Config::Get<int>( Vars.MiscPlayerModelT ),
-				{ "Default",
-				"Enforcer",
-				"Soldier",
-				"Ground Rebel",
-				"Maximus",
-				"Osiris",
-				"Slingshot",
-				"Dragomir",
-				"Blackwolf",
-				"Prof. Shahmat",
-				"Rezan The Ready",
-				"Doctor Romanov",
-				"Mr. Muhlik" } );
+			MiscGroup->Checkbox( _( "Custom player model" ), Config::Get<bool>( Vars.MiscCustomModelChanger ) );
+			if ( !Config::Get<bool>( Vars.MiscCustomModelChanger ) ) {
+				MiscGroup->Combo( _( "Player model changer T" ), Config::Get<int>( Vars.MiscPlayerModelT ),
+					models_to_change );
 
-			MiscGroup->Combo( _( "Player model changer CT" ), Config::Get<int>( Vars.MiscPlayerModelCT ),
-				{ "Default",
-				"Seal Team 6",
-				"3rd Commando",
-				"Operator FBI",
-				"Squadron Officer",
-				"Markus Delrow",
-				"Buckshot",
-				"McCoy",
-				"Commander Ricksaw",
-				"Agent Ava" } );*/
+				MiscGroup->Combo( _( "Player model changer CT" ), Config::Get<int>( Vars.MiscPlayerModelCT ),
+					models_to_change );
+			}
+			else 
+				MiscGroup->TextInput( Config::Get<std::string>( Vars.MiscCustomModelChangerString ) );
 
 			MiscGroup->Checkbox( _( "Fake ping" ), Config::Get<bool>( Vars.MiscFakePing ) );
 
 			MiscGroup->Checkbox( _( "Preserve killfeed" ), Config::Get<bool>( Vars.MiscPreserveKillfeed ) );
 			MiscGroup->Checkbox( _( "Force crosshair" ), Config::Get<bool>( Vars.MiscForceCrosshair ) );
 			MiscGroup->Slider( _( "Weapon volume" ), Config::Get<int>( Vars.MiscWeaponVolume ), 0, 100 );
-			MiscGroup->Checkbox( _( "Hit marker" ), Config::Get<bool>( Vars.MiscHitmarker ) );
-			MiscGroup->ColorPicker( _( "Hit marker Color" ), Config::Get<Color>( Vars.MiscHitmarkerCol ) );
+			MiscGroup->MultiCombo( _( "Hit marker" ), Hitmarkers );
+			if ( Config::Get<bool>( Vars.MiscScreenHitmarker ) ) {
+				MiscGroup->Slider( _( "Screen hit marker size" ), Config::Get<int>( Vars.MiscScreenHitmarkerSize ), 1, 20 );
+				MiscGroup->Slider( _( "Screen hit marker gap" ), Config::Get<int>( Vars.MiscScreenHitmarkerGap ), 0, 20 );
+			}
+			if ( Config::Get<bool>( Vars.MiscWorldHitmarker ) ) {
+				MiscGroup->Slider( _( "World hit marker size" ), Config::Get<int>( Vars.MiscWorldHitmarkerSize ), 1, 20 );
+				MiscGroup->Slider( _( "World hit marker gap" ), Config::Get<int>( Vars.MiscWorldHitmarkerGap ), 0, 20 );
+			}
 			MiscGroup->Checkbox( _( "Damage marker" ), Config::Get<bool>( Vars.MiscDamageMarker ) );
 			MiscGroup->ColorPicker( _( "Damage marker Color" ), Config::Get<Color>( Vars.MiscDamageMarkerCol ) );
 			MiscGroup->Combo( _( "Hitsound" ), Config::Get<int>( Vars.MiscHitSound ), { _( "None" ), _( "Metallic" ), _( "Custom" ) } );
@@ -556,6 +609,8 @@ void Menu::DrawMisc( ) {
 		{
 			MiscGroup->Checkbox( _( "Bunnyhop" ), Config::Get<bool>( Vars.MiscBunnyhop ) );
 			MiscGroup->Checkbox( _( "Autostrafer" ), Config::Get<bool>( Vars.MiscAutostrafe ) );
+			if ( Config::Get<bool>( Vars.MiscAutostrafe ) )
+				MiscGroup->Slider( _( "Autostrafer speed" ), Config::Get<int>( Vars.MiscAutostrafeSpeed ), 0, 100 );
 			//MiscGroup->Checkbox( _( "Crouch in air" ), Config::Get<bool>( Vars.MiscCrouchInAir ) );
 			//MiscGroup->Checkbox( _( "Accurate walk" ), Config::Get<bool>( Vars.MiscAccurateWalk ) );
 			MiscGroup->Checkbox( _( "Infinite Stamina" ), Config::Get<bool>( Vars.MiscInfiniteStamina ) );
@@ -573,6 +628,19 @@ void Menu::DrawMisc( ) {
 			MiscGroup->Keybind( _( "Auto peek key" ), Config::Get<keybind_t>( Vars.MiscAutoPeekKey ) );
 			MiscGroup->Label( _( "Auto peek color" ) );
 			MiscGroup->ColorPicker( _( "Auto peek color" ), Config::Get<Color>( Vars.MiscAutoPeekCol ) );
+		}
+		MiscGroup->End( );
+	}
+
+	{
+		static auto MiscGroup{ std::make_unique< MenuGroup >( ) };
+		MiscGroup->Begin( _( "Beta testingz" ), { CompensatedLength.x, 100 } );
+		{
+			//MiscGroup->Checkbox( _( "Ping fix" ), Config::Get<bool>( Vars.DBGLC1 ) );
+			//MiscGroup->Label( _( "Timewarp" ) );
+			//MiscGroup->Keybind( _( "Timewarp key" ), Config::Get<keybind_t>( Vars.DBGKeybind ) );
+
+			//MiscGroup->Slider( _( "Model Lean" ), Config::Get<float>( Vars.MiscHitMatrixTime ), 0.f, 5.f );
 		}
 		MiscGroup->End( );
 	}
@@ -638,9 +706,10 @@ void Menu::DrawConfig( ) {
 
 void Menu::DrawVisual( ) {
 	static int ActiveSubTab{ };
-	RenderSubtabs( { _( "Local" ), _( "Team" ), _( "Enemy" ), _( "Other" ) }, ActiveSubTab );
+	RenderSubtabs( { _( "Local" ), _( "Team" ), _( "Enemy" ), _( "Viewmodel" ), _( "Other" ) }, ActiveSubTab );
 
 	const Vector2D CompensatedLength = Vector2D( ( ( Size.x - APPEND_LEN.x ) / 2 ), Size.y - APPEND_LEN.y );
+	std::vector<std::string> items{ _( "Regular" ), _( "Flat" ), _( "Glow" ), _( "Metallic" ), _( "Galaxy" ) };
 
 	if ( ActiveSubTab < 3 ) {
 		{
@@ -681,9 +750,9 @@ void Menu::DrawVisual( ) {
 				PlayerColorPicker( EspGroup, _( "WeaponCol" ), VisWeapCol, ActiveSubTab );
 				CursorPos = BackupCursorPos;
 
-				ItemsLocal = { { "Broke lagcompensation", &Config::Get<bool>( Vars.VisFlagBLCLocal ) }, { "C4", &Config::Get<bool>( Vars.VisFlagC4Local ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorLocal ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashLocal ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadLocal ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedLocal ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingLocal ) }, };
-				ItemsTeam = { { "Broke lagcompensation", &Config::Get<bool>( Vars.VisFlagBLCTeam ) }, { "C4", &Config::Get<bool>( Vars.VisFlagC4Team ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorTeam ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashTeam ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadTeam ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedTeam ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingTeam ) }, };
-				ItemsEnemy = { { "Broke lagcompensation", &Config::Get<bool>( Vars.VisFlagBLCEnemy ) }, { "Bomb", &Config::Get<bool>( Vars.VisFlagC4Enemy ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorEnemy ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashEnemy ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadEnemy ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedEnemy ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingEnemy ) }, };
+				ItemsLocal = { { "C4", &Config::Get<bool>( Vars.VisFlagC4Local ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorLocal ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashLocal ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadLocal ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedLocal ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingLocal ) }, };
+				ItemsTeam = { { "Exploit", &Config::Get<bool>( Vars.VisFlagExploitTeam ) }, { "Broke lagcompensation", &Config::Get<bool>( Vars.VisFlagBLCTeam ) }, { "C4", &Config::Get<bool>( Vars.VisFlagC4Team ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorTeam ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashTeam ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadTeam ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedTeam ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingTeam ) }, };
+				ItemsEnemy = { { "Exploit", &Config::Get<bool>( Vars.VisFlagExploitEnemy ) }, { "Broke lagcompensation", &Config::Get<bool>( Vars.VisFlagBLCEnemy ) }, { "Bomb", &Config::Get<bool>( Vars.VisFlagC4Enemy ) }, { "Armor", &Config::Get<bool>( Vars.VisFlagArmorEnemy ) }, { "Flashed", &Config::Get<bool>( Vars.VisFlagFlashEnemy ) }, { "Reloading", &Config::Get<bool>( Vars.VisFlagReloadEnemy ) }, { "Scoped", &Config::Get<bool>( Vars.VisFlagScopedEnemy ) }, { "Defusing", &Config::Get<bool>( Vars.VisFlagDefusingEnemy ) }, };
 
 				PlayerMultiCombo( EspGroup, "Flags", Items, ActiveSubTab );
 			}
@@ -694,17 +763,18 @@ void Menu::DrawVisual( ) {
 			static auto ChamGroup{ std::make_unique< MenuGroup >( ) };
 			ChamGroup->Begin( _( "Chams" ), CompensatedLength );
 			{
+
 				PlayerCheckbox( ChamGroup, _( "Visible" ), ChamVis, ActiveSubTab );
 				PlayerColorPicker( ChamGroup, _( "VisibleCol" ), ChamVisCol, ActiveSubTab );
+				PlayerCombo( ChamGroup, _( "Visible material" ), ChamMatVisible, ActiveSubTab, items );
 
 				PlayerCheckbox( ChamGroup, _( "Hidden" ), ChamHid, ActiveSubTab );
 				PlayerColorPicker( ChamGroup, _( "HiddenCol" ), ChamHidCol, ActiveSubTab );
+				PlayerCombo( ChamGroup, _( "Hidden material" ), ChamMatInvisible, ActiveSubTab, items );
 
-				std::vector<std::string> items{ _( "Regular" ), _( "Flat" ), _( "Glow" ), _( "Metallic" ), _( "Galaxy" ) };
-				PlayerCombo( ChamGroup, _( "Material" ), ChamMat, ActiveSubTab, items );
-
-				PlayerCheckbox( ChamGroup, _( "Double layer" ), ChamDouble, ActiveSubTab );
+				PlayerCheckbox( ChamGroup, _( "Overlay" ), ChamDouble, ActiveSubTab );
 				PlayerColorPicker( ChamGroup, _( "DoubleCol" ), ChamDoubleCol, ActiveSubTab );
+				PlayerCheckbox( ChamGroup, _( "Overlay ignore Z" ), ChamDoubleZ, ActiveSubTab );
 
 				PlayerCombo( ChamGroup, _( "Double layer material" ), ChamDoubleMat, ActiveSubTab, items );
 
@@ -713,9 +783,16 @@ void Menu::DrawVisual( ) {
 					ChamGroup->ColorPicker( _( "Backtrack chams Col" ), Config::Get<Color>( Vars.ChamBacktrackCol ) );
 					ChamGroup->Combo( _( "Backtrack chams material" ), Config::Get<int>( Vars.ChamBacktrackMat ), items );
 
-					ChamGroup->Checkbox( _( "Onshot chams" ), Config::Get<bool>( Vars.MiscHitMatrix ) );
-					ChamGroup->ColorPicker( _( "Onshot chams Color" ), Config::Get<Color>( Vars.MiscHitMatrixCol ) );
-					ChamGroup->Combo( _( "Onshot chams material" ), Config::Get<int>( Vars.MiscHitMatrixMat ), items );
+					ChamGroup->Checkbox( _( "Hitbox visualisation" ), Config::Get<bool>( Vars.MiscHitMatrix ) );
+					ChamGroup->ColorPicker( _( "Hitbox visualisation Color" ), Config::Get<Color>( Vars.MiscHitMatrixCol ) );
+					if ( Config::Get<bool>( Vars.MiscHitMatrix ) ) {
+						ChamGroup->Combo( _( "Hitbox visualisation type" ), Config::Get<int>( Vars.MiscShotVisualizationType ), { _( "Cham" ), _( "Hitboxes" ) } );
+						ChamGroup->Checkbox( _( "Hitbox visualisation hidden" ), Config::Get<bool>( Vars.MiscHitMatrixXQZ ) );
+						if ( Config::Get<int>( Vars.MiscShotVisualizationType ) == 0 ) {
+							ChamGroup->Combo( _( "Onshot chams material" ), Config::Get<int>( Vars.MiscHitMatrixMat ), items );
+						}
+						ChamGroup->Slider( _( "Hitbox visualisation time" ), Config::Get<float>( Vars.MiscHitMatrixTime ), 0.5f, 10.f );
+					}
 				}
 
 				if ( ActiveSubTab == 0 ) {
@@ -725,6 +802,44 @@ void Menu::DrawVisual( ) {
 				}
 
 				PlayerIntSlider( ChamGroup, _( "Glow strength" ), ChamGlowStrength, ActiveSubTab, 0, 100 );
+			}
+			ChamGroup->End( );
+		}
+	}
+	// HAND SUBTAB
+	else if ( ActiveSubTab == 3 ) {
+		{
+			static auto EspGroup{ std::make_unique< MenuGroup >( ) };
+			EspGroup->Begin( _( "Viewmodel" ), CompensatedLength );
+			{
+				
+			}
+			EspGroup->End( );
+		}
+
+		{
+			static auto ChamGroup{ std::make_unique< MenuGroup >( ) };
+			ChamGroup->Begin( _( "Chams" ), CompensatedLength );
+			{
+				ChamGroup->Checkbox( _( "Hand chams" ), Config::Get<bool>( Vars.ChamHand ) );
+				ChamGroup->ColorPicker( _( "Hand chams Col" ), Config::Get<Color>( Vars.ChamHandCol ) );
+				ChamGroup->Combo( _( "Hand chams material" ), Config::Get<int>( Vars.ChamHandMat ), items );
+				ChamGroup->Checkbox( _( "Hand overlay" ), Config::Get<bool>( Vars.ChamHandOverlay ) );
+
+				ChamGroup->ColorPicker( _( "Hand overlay Col" ), Config::Get<Color>( Vars.ChamHandOverlayCol ) );
+				ChamGroup->Combo( _( "Hand overlay material" ), Config::Get<int>( Vars.ChamHandOverlayMat ), items );
+
+				ChamGroup->Slider( _( "Hand glow strength" ), Config::Get<int>( Vars.ChamHandGlow ), 0, 100 );
+
+				ChamGroup->Checkbox( _( "Weapon chams" ), Config::Get<bool>( Vars.ChamWeapon ) );
+				ChamGroup->ColorPicker( _( "Weapon chams Col" ), Config::Get<Color>( Vars.ChamWeaponCol ) );
+				ChamGroup->Combo( _( "Weapon chams material" ), Config::Get<int>( Vars.ChamWeaponMat ), items );
+
+				ChamGroup->Checkbox( _( "Weapon overlay" ), Config::Get<bool>( Vars.ChamWeaponOverlay ) );
+				ChamGroup->ColorPicker( _( "Weapon overlay Col" ), Config::Get<Color>( Vars.ChamWeaponOverlayCol ) );
+				ChamGroup->Combo( _( "Weapon overlay material" ), Config::Get<int>( Vars.ChamWeaponOverlayMat ), items );
+
+				ChamGroup->Slider( _( "Weapon glow strength" ), Config::Get<int>( Vars.ChamWeaponGlow ), 0, 100 );
 			}
 			ChamGroup->End( );
 		}
@@ -756,18 +871,23 @@ void Menu::DrawVisual( ) {
 				EspGroup->Checkbox( _( "Enemy grenades" ), Config::Get<bool>( Vars.VisGrenadesEnemy ) );
 				EspGroup->ColorPicker( _( "Enemy grenades Color" ), Config::Get<Color>( Vars.VisGrenadesEnemyCol ) );
 				EspGroup->Checkbox( _( "Planted Bomb" ), Config::Get<bool>( Vars.VisBomb ) );
-				EspGroup->Checkbox( _( "Local bullet impacts" ), Config::Get<bool>( Vars.VisLocalBulletImpacts ) );
-				EspGroup->ColorPicker( _( "Local bullet impacts col" ), Config::Get<Color>( Vars.VisLocalBulletImpactsCol ) );
-				EspGroup->Checkbox( _( "Other bullet impacts" ), Config::Get<bool>( Vars.VisServerBulletImpacts ) );
-				EspGroup->ColorPicker( _( "Other bullet impacts col" ), Config::Get<Color>( Vars.VisServerBulletImpactsCol ) );
+				EspGroup->Checkbox( _( "Local client bullet impacts" ), Config::Get<bool>( Vars.VisClientBulletImpacts ) );
+				EspGroup->ColorPicker( _( "Local client bullet impacts col" ), Config::Get<Color>( Vars.VisClientBulletImpactsCol ) );
+				EspGroup->Checkbox( _( "Local server bullet impacts" ), Config::Get<bool>( Vars.VisLocalBulletImpacts ) );
+				EspGroup->ColorPicker( _( "Local server bullet impacts col" ), Config::Get<Color>( Vars.VisLocalBulletImpactsCol ) );
+				EspGroup->Checkbox( _( "Enemy bullet impacts" ), Config::Get<bool>( Vars.VisServerBulletImpacts ) );
+				EspGroup->ColorPicker( _( "Enemy bullet impacts col" ), Config::Get<Color>( Vars.VisServerBulletImpactsCol ) );
 
-				/*EspGroup->Checkbox( _( "Local bullet tracers" ), Config::Get<bool>( Vars.VisLocalBulletTracers ) );
+				//EspGroup->Checkbox( _( "Client bullet impacts" ), Config::Get<bool>( Vars.VisClientBulletImpacts ) );
+				//EspGroup->ColorPicker( _( "Client bullet impacts col" ), Config::Get<Color>( Vars.VisClientBulletImpactsCol ) );
+
+				EspGroup->Checkbox( _( "Local bullet tracers" ), Config::Get<bool>( Vars.VisLocalBulletTracers ) );
 				EspGroup->ColorPicker( _( "Local bullet tracers col" ), Config::Get<Color>( Vars.VisLocalBulletTracersCol ) );
 				
-				EspGroup->Checkbox( _( "Other bullet tracers" ), Config::Get<bool>( Vars.VisOtherBulletTracers ) );
-				EspGroup->ColorPicker( _( "Other bullet tracers col" ), Config::Get<Color>( Vars.VisOtherBulletTracersCol ) );
+				EspGroup->Checkbox( _( "Enemy bullet tracers" ), Config::Get<bool>( Vars.VisOtherBulletTracers ) );
+				EspGroup->ColorPicker( _( "Enemy bullet tracers col" ), Config::Get<Color>( Vars.VisOtherBulletTracersCol ) );
 
-				EspGroup->Combo( _( "Bullet tracers type" ), Config::Get<int>( Vars.VisBulletTracersType ), { _( "Line" ), _( "Beam" ) } );*/
+				EspGroup->Combo( _( "Bullet tracers type" ), Config::Get<int>( Vars.VisBulletTracersType ), { _( "Line" ), _( "Laser" ) } );
 			}
 			EspGroup->End( );
 		}
@@ -805,23 +925,33 @@ void Menu::DrawVisual( ) {
 				}
 
 				EspGroup->Combo( _( "Skybox changer" ), Config::Get<int>( Vars.VisWorldSkybox ), {
-					_( "Default" ),
-					_( "cs_baggage_skybox_" ),
-					_( "cs_tibet" ),
-					_( "embassy" ),
-					_( "italy" ),
-					_( "jungle" ),
-					_( "nukeblank" ),
-					_( "office" ),
-					_( "sky_csgo_cloudy01" ),
-					_( "sky_csgo_night02" ),
-					_( "sky_csgo_night02b" ),
-					_( "sky_dust" ),
-					_( "sky_venice" ),
-					_( "vertigo" ),
-					_( "vietnam" ),
-					_( "sky_lunacy" )
+					_( "None" ),
+					_( "Tibet" ),
+					_( "Baggage" ),
+					_( "Italy" ),
+					_( "Aztec" ),
+					_( "Vertigo" ),
+					_( "Daylight" ),
+					_( "Daylight 2" ),
+					_( "Clouds" ),
+					_( "Clouds 2" ),
+					_( "Gray" ),
+					_( "Clear" ),
+					_( "Canals" ),
+					_( "Cobblestone" ),
+					_( "Assault" ),
+					_( "Clouds dark" ),
+					_( "Night" ),
+					_( "Night 2" ),
+					_( "Night flat" ),
+					_( "Dusty" ),
+					_( "Rainy" ),
+					_( "Custom" )
 					} );
+
+				if ( Config::Get<int>( Vars.VisWorldSkybox ) == 21 )
+					EspGroup->TextInput( Config::Get<std::string>( Vars.VisWorldSkyboxCustom ) );
+				
 
 			}
 			EspGroup->End( );

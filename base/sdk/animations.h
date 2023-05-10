@@ -53,11 +53,11 @@ class CBaseAnimating;
 class CBoneAccessor
 {
 public:
-	const CBaseAnimating*	pAnimating;		//0x00
-	matrix3x4a_t*			matBones;		//0x04
+	const CBaseAnimating* pAnimating;		//0x00
+	matrix3x4a_t* matBones;		//0x04
 	int						nReadableBones;	//0x08
 	int						nWritableBones;	//0x0C
-}; // Size: 0x10
+}; // Size: 0x10 (not same aynore)
 
 class CAnimationLayer
 {
@@ -78,7 +78,8 @@ public:
 	int				nInvalidatePhysicsBits;	//0x34
 }; // Size: 0x38
 
-class CBaseEntity;
+class CBaseEntity; 
+class CBasePlayer;
 class CBaseCombatWeapon;
 class CCSGOPlayerAnimState
 {
@@ -116,12 +117,15 @@ public:
 		oResetAnimationState(this);
 	}
 
+	void SetLayerSequence( CAnimationLayer* layer, int32_t activity, bool reset = true );
+	int32_t SelectSequenceFromActMods( int32_t iActivity );
+
 	std::byte	pad0[0x4]; // 0x00
 	bool		bFirstUpdate; // 0x04
 	std::byte	pad1[0x3]; // 0x00
 	int			iTickcount;
 	std::byte	pad2[ 0x54 ]; // 0x00
-	CBaseEntity* pEntity; // 0x60
+	CBasePlayer* m_pPlayer; // 0x60
 	CBaseCombatWeapon* pActiveWeapon; // 0x64
 	CBaseCombatWeapon* pLastActiveWeapon; // 0x68
 	float		flLastUpdateTime; // 0x6C
@@ -154,7 +158,7 @@ public:
 	float		flDurationMoving; // 0x100
 	float		flDurationStill; // 0x104
 	bool		bOnGround; // 0x108
-	bool		bHitGroundAnimation; // 0x109
+	bool		m_bLanding; // 0x109
 	std::byte	pad3[0x2]; // 0x10A
 	float		flNextLowerBodyYawUpdateTime; // 0x10C
 	float		flDurationInAir; // 0x110
@@ -164,7 +168,8 @@ public:
 	std::byte	pad4[0x4]; // 0x120
 	float		flInAirSmoothValue;//0x0131
 	bool		bOnLadder;//0x0135
-	char		pad8[ 47u ];
+	float		m_flLadderWeight;//0x0137
+	char		pad8[ 43u ];
 	float		vecVelocityTestTime;//0x0164
 	Vector		vecPreviousVelocity;
 	Vector		vecDstAcceleration;
@@ -177,7 +182,7 @@ public:
 	int			iStrafeSequence{ };
 	char		pad11[ 388u ]{ };
 	float		flCameraSmoothHeight{ };
-	bool		bSmoothHeightValid{ };
+	bool		m_bJumping{ };//IMPORTANT: this variable is m_bSmoothHeightValid, however is not used on enemies so i am repurposing it for m_bJumping in SetUpMovement rebuild
 	char		pad12[ 11u ]{ };
 	float		flMinBodyYaw; // 0x330
 	float		flMaxBodyYaw; // 0x334

@@ -19,9 +19,9 @@ class CAutowall {
 public:
 	PenetrationData FireBullet( CBasePlayer* const shooter, CBasePlayer* const target, const CCSWeaponData* const wpn_data, const bool is_taser, Vector src, const Vector& dst, bool penetrate );
 	void ClipTraceToPlayer( Vector end, Vector start, CGameTrace* oldtrace, CBasePlayer* ent );
-	void ScaleDamage( CBasePlayer* player, float& damage, float ArmourRatio, int hitgroup );
+	void ScaleDamage( CBasePlayer* player, float& damage, float ArmourRatio, int hitgroup, float headshotMultiplier );
 	bool HandleBulletPenetration( CBasePlayer* const shooter, const CCSWeaponData* const wpn_data, const CGameTrace& enter_trace, Vector& src, const Vector& dir, int& pen_count, float& cur_dmg, const float pen_modifier );
-	bool TraceToExit( const Vector& src, const Vector& dir, const CGameTrace& enter_trace, CGameTrace& exit_trace );
+	bool TraceToExit( CBasePlayer* shooter, const Vector& src, const Vector& dir, const CGameTrace& enter_trace, CGameTrace& exit_trace );
 
 	PenetrationData FireEmulated( CBasePlayer* const shooter, CBasePlayer* const target, Vector src, const Vector& dst );
 

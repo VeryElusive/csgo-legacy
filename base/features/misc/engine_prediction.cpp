@@ -1,217 +1,162 @@
 #include "engine_prediction.h"
 
-void CEnginePrediction::PreStart( ) {
-	if ( !ctx.m_pWeapon )
-		return;
-
-	if ( ctx.m_iLastFSNStage == FRAME_NET_UPDATE_END ) {
-		ctx.m_bDontSavePredVars = true;
-
-		Interfaces::Prediction->Update( Interfaces::ClientState->iDeltaTick, Interfaces::ClientState->iDeltaTick > 0, Interfaces::ClientState->iLastCommandAck,
-			Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands );
-
-		ctx.m_bDontSavePredVars = false;
-	}
-
-	CurTime = Interfaces::Globals->flCurTime;
-	FrameTime = Interfaces::Globals->flFrameTime;
-
-	InPrediction = Interfaces::Prediction->bInPrediction;
-	FirstTimePrediction = Interfaces::Prediction->Split->bIsFirstTimePredicted;
-
-	Interfaces::Globals->flCurTime = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) );
-	Interfaces::Globals->flFrameTime = Interfaces::Prediction->bEnginePaused ? 0.f : Interfaces::Globals->flIntervalPerTick;
-}
-
 void CEnginePrediction::RunCommand( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeapon )
 		return;
 
-	AccuracyPenalty = ctx.m_pWeapon->m_fAccuracyPenalty( );
-	RecoilIndex = ctx.m_pWeapon->m_flRecoilIndex( );
+	m_flCurtime = Interfaces::Globals->flCurTime;
+	m_flFrametime = Interfaces::Globals->flFrameTime;
 
-	const auto backupVelocityModifier = ctx.m_pLocal->m_flVelocityModifier( );
+	Interfaces::Globals->flCurTime = TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) );
+	Interfaces::Globals->flFrameTime = Interfaces::Prediction->bEnginePaused ? 0.f : Interfaces::Globals->flIntervalPerTick;
 
-	// we don't need to set randomseed because CInput::CreateMove already did it for us!
-
-	ctx.m_pLocal->CurrentCommand( ) = &cmd;
-	*( *reinterpret_cast< unsigned int** >( Offsets::Sigs.uPredictionRandomSeed ) ) = cmd.iRandomSeed;
-	*( *reinterpret_cast< CBasePlayer*** >( Offsets::Sigs.pPredictionPlayer ) ) = ctx.m_pLocal;
-
-	Interfaces::MoveHelper->SetHost( ctx.m_pLocal );
+	const auto backupInPrediction{ Interfaces::Prediction->bInPrediction };
+	const auto backupFirstTimePrediction{ Interfaces::Prediction->Split->bIsFirstTimePredicted };
 
 	Interfaces::Prediction->bInPrediction = true;
 	Interfaces::Prediction->Split->bIsFirstTimePredicted = false;
 
-	Interfaces::GameMovement->StartTrackPredictionErrors( ctx.m_pLocal );
+	// run boost fix 
+	Interfaces::Prediction->CheckMovingGround( ctx.m_pLocal, Interfaces::Globals->flFrameTime );
 
-	std::memset( &MoveData, 0, sizeof( CMoveData ) );
-
+	Interfaces::MoveHelper->SetHost( ctx.m_pLocal );
 	Interfaces::Prediction->SetupMove( ctx.m_pLocal, &cmd, Interfaces::MoveHelper, &MoveData );
 	Interfaces::GameMovement->ProcessMovement( ctx.m_pLocal, &MoveData );
 	Interfaces::Prediction->FinishMove( ctx.m_pLocal, &cmd, &MoveData );
-	Interfaces::GameMovement->FinishTrackPredictionErrors( ctx.m_pLocal );
-	Interfaces::MoveHelper->SetHost( nullptr );
+
+	if ( ctx.m_pLocal->m_fFlags( ) & FL_DUCKING ) {
+		//const auto backupMaxs{ ctx.m_pLocal->m_vecMaxs( ).z };
+	
+		ctx.m_pLocal->SetCollisionBounds( { -16.f, -16.f, 0.f }, { 16.f, 16.f, 54.f } );
+		ctx.m_pLocal->m_vecViewOffset( ).z = 46.f;
+
+		/*if ( backupMaxs != ctx.m_pLocal->m_vecMaxs( ).z ) {
+			// rebuild: server.dll/client.dll @ 55 8B EC 8B 45 10 F3 0F 10 81
+			ctx.m_pLocal->m_flNewBoundsMaxs( ) = ctx.m_pLocal->m_flUnknownVar( ) + backupMaxs;
+			ctx.m_pLocal->m_flNewBoundsTime( ) = ctx.m_flFixedCurtime;
+		}*/
+
+	}
+	else {
+		//const auto backupMaxs{ ctx.m_pLocal->m_vecMaxs( ).z };
+
+		ctx.m_pLocal->SetCollisionBounds( { -16.f, -16.f, 0.f }, { 16.f, 16.f, 72.f } );
+		ctx.m_pLocal->m_vecViewOffset( ).z = 64.f;
+
+		/*if ( backupMaxs != ctx.m_pLocal->m_vecMaxs( ).z ) {
+			// rebuild: server.dll/client.dll @ 55 8B EC 8B 45 10 F3 0F 10 81
+			ctx.m_pLocal->m_flNewBoundsMaxs( ) = ctx.m_pLocal->m_flUnknownVar( ) + backupMaxs;
+			ctx.m_pLocal->m_flNewBoundsTime( ) = ctx.m_flFixedCurtime;
+		}*/
+	}
 
 	ctx.m_pWeapon->UpdateAccuracyPenalty( );
 
 	Spread = ctx.m_pWeapon->GetSpread( );
 	Inaccuracy = ctx.m_pWeapon->GetInaccuracy( );
 
-	ctx.m_pLocal->m_flVelocityModifier( ) = backupVelocityModifier;
+	Interfaces::Prediction->bInPrediction = backupInPrediction;
+	Interfaces::Prediction->Split->bIsFirstTimePredicted = backupFirstTimePrediction;
 
-	Interfaces::Prediction->bInPrediction = InPrediction;
-	Interfaces::Prediction->Split->bIsFirstTimePredicted = FirstTimePrediction;
 }
 
 void CEnginePrediction::Finish( ) {
 	if ( !ctx.m_pWeapon )
 		return;
 
-	ctx.m_pLocal->CurrentCommand( ) = nullptr;
-	*( *reinterpret_cast< unsigned int** >( Offsets::Sigs.uPredictionRandomSeed ) ) = -1;
-	*( *reinterpret_cast< CBasePlayer*** >( Offsets::Sigs.pPredictionPlayer ) ) = nullptr;
+	Interfaces::Globals->flCurTime = m_flCurtime;
+	Interfaces::Globals->flFrameTime = m_flFrametime;
 
-	ctx.m_pWeapon->m_flRecoilIndex( ) = RecoilIndex;
-	ctx.m_pWeapon->m_fAccuracyPenalty( ) = AccuracyPenalty;
-
-	Interfaces::Globals->flCurTime = CurTime;
-	Interfaces::Globals->flFrameTime = FrameTime;
-
-	/*if ( m_pOldWeapon == ctx.m_pWeapon )
-		return;
-
-	const auto datamap{ ctx.m_pWeapon->GetPredDescMap( ) };
-
-	bool changed{ };
-
-	const auto m_iIronSightMode{ get_typedescription( datamap, _( "m_iIronSightMode" ) ) };
-	if ( m_iIronSightMode->fFlags != ( 0x0200 | 0x0080 | 0x0400 ) ) {
-		m_iIronSightMode->fFlags = 0x0200 | 0x0080 | 0x0400;
-		changed = true;
-	}	
-	
-	if ( changed )
-		datamap->pOptimizedDataMap = nullptr;
-
-	m_pOldWeapon = ctx.m_pWeapon;*/
+	Interfaces::MoveHelper->SetHost( nullptr );
 }
 
 void CEnginePrediction::RestoreNetvars( int slot ) {
-	const auto local = ctx.m_pLocal;
+	const auto& local{ ctx.m_pLocal };
 	if ( !local || local->IsDead( ) )
 		return;
 
-	const auto& data = m_cCompressionVars.at( slot % 150 );
+	const auto& data{ m_cCompressionVars.at( slot % 150 ) };
 	if ( data.m_iCommandNumber != slot )
 		return;
 
-	const auto m_aimPunchAngleVelDiff = local->m_aimPunchAngleVel( ) - data.m_aimPunchAngleVel;
-	const auto m_aimPunchAngleDiff = local->m_aimPunchAngle( ) - data.m_aimPunchAngle;
-	const auto m_vecViewOffsetDiff = local->m_vecViewOffset( ).z - data.m_vecViewOffsetZ;
+	const auto aimPunchAngleVelDiff{ local->m_aimPunchAngleVel( ) - data.m_aimPunchAngleVel };
+	const auto aimPunchAngleDiff{ local->m_aimPunchAngle( ) - data.m_aimPunchAngle };
+	const auto viewOffsetDiff{ local->m_vecViewOffset( ).z - data.m_vecViewOffsetZ };
 
-	if ( std::abs( m_vecViewOffsetDiff ) <= 0.03125f )
+	if ( std::abs( viewOffsetDiff ) <= 0.03125f )
 		local->m_vecViewOffset( ).z = data.m_vecViewOffsetZ;
 
-	if ( std::abs( m_aimPunchAngleDiff.x ) <= 0.03125f && std::abs( m_aimPunchAngleDiff.y ) <= 0.03125f && std::abs( m_aimPunchAngleDiff.z ) <= 0.03125f )
+	if ( std::abs( aimPunchAngleDiff.x ) <= 0.03125f 
+		&& std::abs( aimPunchAngleDiff.y ) <= 0.03125f 
+		&& std::abs( aimPunchAngleDiff.z ) <= 0.03125f )
 		local->m_aimPunchAngle( ) = data.m_aimPunchAngle;
 
-	if ( std::abs( m_aimPunchAngleVelDiff.x ) <= 0.03125f && std::abs( m_aimPunchAngleVelDiff.y ) <= 0.03125f && std::abs( m_aimPunchAngleVelDiff.z ) <= 0.03125f )
+	if ( std::abs( aimPunchAngleVelDiff.x ) <= 0.03125f 
+		&& std::abs( aimPunchAngleVelDiff.y ) <= 0.03125f 
+		&& std::abs( aimPunchAngleVelDiff.z ) <= 0.03125f )
 		local->m_aimPunchAngleVel( ) = data.m_aimPunchAngleVel;
 
 	auto& viewOffset{ local->m_vecViewOffset( ) };
-	if ( viewOffset.z > 46.f && viewOffset.z < 46.045f )
+	if ( viewOffset.z > 46.f && viewOffset.z < 47.f )
 		viewOffset.z = 46.f;
 	else if ( viewOffset.z > 64.f )
 		viewOffset.z = 64.f;
 }
 
 void CEnginePrediction::StoreNetvars( int slot ) {
-	const auto local = ctx.m_pLocal;
+	const auto& local{ ctx.m_pLocal };
 	if ( !local || local->IsDead( ) )
 		return;
 
 	auto& data = m_cCompressionVars.at( slot % 150 );
 
-	data.m_iCommandNumber = local->m_nTickBase( );
 	data.m_aimPunchAngleVel = local->m_aimPunchAngleVel( );
 	data.m_aimPunchAngle = local->m_aimPunchAngle( );
 	data.m_vecViewOffsetZ = local->m_vecViewOffset( ).z;
 }
 
-TypeDescription_t custom_datamap[ 1009 ]{ };
 bool CEnginePrediction::AddToDataMap( ) {
-	/*if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
-		auto datamap{ ctx.m_pLocal->GetPredDescMap( ) };
-		if ( datamap ) {
-			// copy original datamap
-			memcpy( custom_datamap, datamap->pDataDesc, 996 );
+	return true;
+	/*
+	auto map{ ctx.m_pLocal->GetPredDescMap( ) };
+
+	bool ret{ };
+
+	while ( map ) {
+		// BEGIN_PREDICTION_DATA( C_CSPlayer )
+		if ( FNV1A::Hash( map->szDataClassName ) == FNV1A::HashConst( _( "C_CSPlayer" ) ) ) {
+			static std::unique_ptr<TypeDescription_t[ ]> data( new TypeDescription_t[ map->nDataFields + 1 ] );
+			std::memcpy( data.get( ), map->pDataDesc, map->nDataFields * sizeof TypeDescription_t );
 
 			// extend datamap
-			datamap->pDataDesc = custom_datamap;
-			datamap->nDataFields = 12;
-			datamap->iPackedSize = 1009;
+			map->pDataDesc = data.get( );
+			map->nDataFields += 1;
+			map->iPackedSize += sizeof TypeDescription_t;
 
 			// add m_flVelocityModifier
 			TypeDescription_t velocityModifier{ };
 			velocityModifier.szFieldName = _( "m_flVelocityModifier" );
 			velocityModifier.fFlags = 0x100;
-			velocityModifier.fieldTolerance = 0.00625f;
-			velocityModifier.iFieldOffset = static_cast< int >( Offsets::m_flVelocityModifier );
+			velocityModifier.fieldTolerance = 0.01f;
+			velocityModifier.iFieldOffset = Offsets::m_flVelocityModifier;
 			velocityModifier.uFieldSize = 0x1;
 			velocityModifier.fieldSizeInBytes = 0x4;
 			velocityModifier.iFieldType = 0x1;
-			velocityModifier.flatOffset[ TD_OFFSET_NORMAL ] = static_cast< int >( Offsets::m_flVelocityModifier );
-			datamap->pDataDesc[ 10 ] = velocityModifier;
+			velocityModifier.flatOffset[ TD_OFFSET_NORMAL ] = Offsets::m_flVelocityModifier;
+			map->pDataDesc[ map->nDataFields - 1 ] = velocityModifier;
 
-			// add m_bWaitForNoAttack
-			/*TypeDescription_t waitForNoAttack{ };
-			waitForNoAttack.szFieldName = _( "m_bWaitForNoAttack" );
-			waitForNoAttack.fFlags = 0x100;
-			waitForNoAttack.fieldTolerance = 0x0;
-			waitForNoAttack.iFieldOffset = static_cast< int >( Offsets::m_bWaitForNoAttack );
-			waitForNoAttack.uFieldSize = 0x1;
-			waitForNoAttack.fieldSizeInBytes = 0x1;
-			waitForNoAttack.iFieldType = 0x6;
-			waitForNoAttack.flatOffset[ TD_OFFSET_NORMAL ] = static_cast< int >( Offsets::m_bWaitForNoAttack );
-			datamap->pDataDesc[ 11 ] = waitForNoAttack;
+			map->pOptimizedDataMap = nullptr;
 
-			// add m_iMoveState
-			TypeDescription_t moveState{ };
-			moveState.szFieldName = _( "m_iMoveState" );
-			moveState.fFlags = 0x100;
-			moveState.fieldTolerance = 0x0;
-			moveState.iFieldOffset = static_cast< int >( Offsets::m_iMoveState );
-			moveState.uFieldSize = 0x1;
-			moveState.fieldSizeInBytes = 0x4;
-			moveState.iFieldType = 0x5;
-			moveState.flatOffset[ TD_OFFSET_NORMAL ] = static_cast< int >( Offsets::m_iMoveState );
-			datamap->pDataDesc[ 11 ] = moveState;
-
-			// FTYPEDESC_PRIVATE | FTYPEDESC_OVERRIDE | FTYPEDESC_NOERRORCHECK
-			const auto m_vphysicsCollisionState = MEM::GetTypeDescription( datamap, _( "m_vphysicsCollisionState" ) );
-			m_vphysicsCollisionState->fFlags = 0x0200 | 0x0080 | 0x0400;
-
-			datamap->pOptimizedDataMap = nullptr;
-
-			/*if ( ctx.m_pLocal->m_hViewModel( ) ) {
-				if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
-					datamap = viewModel->GetPredDescMap( );
-
-					const auto m_nAnimationParity{ get_typedescription( datamap, _( "m_nAnimationParity" ) ) };
-					m_nAnimationParity->fFlags = 0x0200 | 0x0080 | 0x0400;
-
-					const auto m_nSequence{ get_typedescription( datamap, _( "m_nSequence" ) ) };
-					m_nSequence->fFlags = 0x0200 | 0x0080 | 0x0400;
-
-					datamap->pOptimizedDataMap = nullptr;
-
-					return true;
-				}
-			}
+			ret = true;
 		}
 
-	}*/
+		map = map->pBaseMap;
+	}
 
-	return false;
+	if ( ret ) {
+		Interfaces::Prediction->ShutDownPredictables( );
+		Interfaces::Prediction->ReinitPredictables( );
+	}
+
+	return ret;*/
 }

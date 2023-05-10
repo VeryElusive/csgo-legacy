@@ -227,156 +227,128 @@ FORCEINLINE bool Math::WorldToScreen( const Vector& in, Vector2D& out ) {
 	return false;
 }
 
-FORCEINLINE float Math::SegmentToSegment( const Vector s1, const Vector s2, const Vector k1, const Vector k2 )
+#define dot(u,v)   ((u).x * (v).x + (u).y * (v).y + (u).z * (v).z)
+#define norm(v)    sqrt(dot(v,v))  // norm = length of  vector
+
+FORCEINLINE bool Math::IntersectionSegmentToSegment( const Vector s1, const Vector s2, const Vector k1, const Vector k2, const float radius )
 {
-	static auto constexpr epsilon = 0.00000011920929f;
+	Vector   u = s2 - s1;
+	Vector   v = k2 - k1;
+	Vector   w = s1 - k1;
+	float    a = dot( u, u );
+	float    b = dot( u, v );
+	float    c = dot( v, v );
+	float    d = dot( u, w );
+	float    e = dot( v, w );
+	float    D = a * c - b * b;
+	float    sc, sN, sD = D;
+	float    tc, tN, tD = D;
 
-	const auto u = s2 - s1;
-	const auto v = k2 - k1;
-	const auto w = s1 - k1;
-
-	const auto a = u.DotProduct( u );
-	const auto b = u.DotProduct( v );
-	const auto c = v.DotProduct( v );
-	const auto d = u.DotProduct( w );
-	const auto e = v.DotProduct( w );
-	const auto D = a * c - b * b;
-	float sn, sd = D;
-	float tn, td = D;
-
-	if ( D < epsilon ) {
-		sn = 0.0f;
-		sd = 1.0f;
-		tn = e;
-		td = c;
+	if ( D < 0.00000001f ) {
+		sN = 0.0;
+		sD = 1.0;
+		tN = e;
+		tD = c;
 	}
 	else {
-		sn = b * e - c * d;
-		tn = a * e - b * d;
-
-		if ( sn < 0.0f ) {
-			sn = 0.0f;
-			tn = e;
-			td = c;
+		sN = ( b * e - c * d );
+		tN = ( a * e - b * d );
+		if ( sN < 0.0 ) {
+			sN = 0.0;
+			tN = e;
+			tD = c;
 		}
-		else if ( sn > sd ) {
-			sn = sd;
-			tn = e + b;
-			td = c;
+		else if ( sN > sD ) {
+			sN = sD;
+			tN = e + b;
+			tD = c;
 		}
 	}
 
-	if ( tn < 0.0f ) {
-		tn = 0.0f;
+	if ( tN < 0.0 ) {
+		tN = 0.0;
 
-		if ( -d < 0.0f )
-			sn = 0.0f;
+		if ( -d < 0.0 )
+			sN = 0.0;
 		else if ( -d > a )
-			sn = sd;
+			sN = sD;
 		else {
-			sn = -d;
-			sd = a;
+			sN = -d;
+			sD = a;
 		}
 	}
-	else if ( tn > td ) {
-		tn = td;
+	else if ( tN > tD ) {
+		tN = tD;
 
-		if ( -d + b < 0.0f )
-			sn = 0.f;
-		else if ( -d + b > a )
-			sn = sd;
+		if ( ( -d + b ) < 0.0 )
+			sN = 0;
+		else if ( ( -d + b ) > a )
+			sN = sD;
 		else {
-			sn = -d + b;
-			sd = a;
+			sN = ( -d + b );
+			sD = a;
 		}
 	}
 
-	const float sc = abs( sn ) < epsilon ? 0.0f : sn / sd;
-	const float tc = abs( tn ) < epsilon ? 0.0f : tn / td;
+	sc = ( abs( sN ) < 0.00000001f ? 0.0 : sN / sD );
+	tc = ( abs( tN ) < 0.00000001f ? 0.0 : tN / tD );
 
-	const auto dp = w + u * sc - v * tc;
-	return dp.Length( );
+	Vector  dP = w + ( u * sc ) - ( v * tc );
+
+	auto shit = norm( dP );
+	//printf( "shit %f | rad %f\n", shit, radius );
+	return shit < radius;
 }
 
-FORCEINLINE bool Math::IntersectionBoundingBox( const Vector& src, const Vector& dir, const Vector& min, const Vector& max, Vector* hit_point ) {
-	/*
-	Fast Ray-Box Intersection
-	by Andrew Woo
-	from "Graphics Gems", Academic Press, 1990
-*/
+FORCEINLINE bool Math::LineThroughBB( const Vector& src, const Vector& dst, const Vector& min, const Vector& max ) {
+	float d1{ }, d2{ }, f{ };
+	auto t1 = -1.f, t2 = 1.f;
 
-	constexpr auto NUMDIM = 3;
-	constexpr auto RIGHT = 0;
-	constexpr auto LEFT = 1;
-	constexpr auto MIDDLE = 2;
+	auto start_solid = true;
 
-	bool inside = true;
-	char quadrant[ NUMDIM ];
-	int i;
+	for ( std::size_t i{ }; i < 6u; ++i ) {
+		if ( i >= 3 ) {
+			const auto j = i - 3u;
 
-	// Rind candidate planes; this loop can be avoided if
-	// rays cast all from the eye(assume perpsective view)
-	Vector candidatePlane;
-	for ( i = 0; i < NUMDIM; i++ ) {
-		if ( src[ i ] < min[ i ] ) {
-			quadrant[ i ] = LEFT;
-			candidatePlane[ i ] = min[ i ];
-			inside = false;
-		}
-		else if ( src[ i ] > max[ i ] ) {
-			quadrant[ i ] = RIGHT;
-			candidatePlane[ i ] = max[ i ];
-			inside = false;
+			d1 = src[ j ] - max[ j ];
+			d2 = d1 + dst[ j ];
 		}
 		else {
-			quadrant[ i ] = MIDDLE;
+			d1 = -src[ i ] + min[ i ];
+			d2 = d1 - dst[ i ];
+		}
+
+		if ( d1 > 0.0f
+			&& d2 > 0.0f )
+			return false;
+
+		if ( d1 <= 0.0f
+			&& d2 <= 0.0f )
+			continue;
+
+		if ( d1 > 0.f )
+			start_solid = false;
+
+		if ( d1 > d2 ) {
+			f = d1;
+
+			if ( f < 0.f )
+				f = 0.f;
+
+			f /= d1 - d2;
+
+			if ( f > t1 )
+				t1 = f;
+		}
+		else {
+			f = d1 / ( d1 - d2 );
+
+			if ( f < t2 )
+				t2 = f;
 		}
 	}
 
-	// Ray origin inside bounding box
-	if ( inside ) {
-		if ( hit_point )
-			*hit_point = src;
-		return true;
-	}
-
-	// Calculate T distances to candidate planes
-	Vector maxT;
-	for ( i = 0; i < NUMDIM; i++ ) {
-		if ( quadrant[ i ] != MIDDLE && dir[ i ] != 0.f )
-			maxT[ i ] = ( candidatePlane[ i ] - src[ i ] ) / dir[ i ];
-		else
-			maxT[ i ] = -1.f;
-	}
-
-	// Get largest of the maxT's for final choice of intersection
-	int whichPlane = 0;
-	for ( i = 1; i < NUMDIM; i++ ) {
-		if ( maxT[ whichPlane ] < maxT[ i ] )
-			whichPlane = i;
-	}
-
-	// Check final candidate actually inside box
-	if ( maxT[ whichPlane ] < 0.f )
-		return false;
-
-	for ( i = 0; i < NUMDIM; i++ ) {
-		if ( whichPlane != i ) {
-			float temp = src[ i ] + maxT[ whichPlane ] * dir[ i ];
-			if ( temp < min[ i ] || temp > max[ i ] ) {
-				return false;
-			}
-			else if ( hit_point ) {
-				( *hit_point )[ i ] = temp;
-			}
-		}
-		else if ( hit_point ) {
-			( *hit_point )[ i ] = candidatePlane[ i ];
-		}
-	}
-
-	// ray hits box
-	return true;
+	return start_solid || ( t1 < t2&& t1 >= 0.f );
 }
 
 FORCEINLINE float Math::ApproachAngle( float target, float value, float speed )

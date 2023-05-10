@@ -29,23 +29,32 @@ void CVisuals::Main( ) {
 	auto& h{ ctx.m_ve2ScreenSize.y };
 
 	if ( Config::Get<bool>( Vars.RemovalScope ) && ctx.m_pLocal->m_bIsScoped( ) 
-		&& ctx.m_pWeaponData && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER_RIFLE ) {
+		&& ctx.m_pWeaponData && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_SNIPER ) {
 		Render::Line( Vector2D( 0, h / 2 ), Vector2D( w, h / 2 ), Color( 0, 0, 0 ) );
 		Render::Line( Vector2D( w / 2, 0 ), Vector2D( w / 2, h ), Color( 0, 0, 0 ) );
 	}
-	
+
+	ManageHitmarkers( );
+	AutoPeekIndicator( );
+	BulletTracers.Draw( );
+
 	if ( !ctx.m_pLocal->IsDead( ) ) {
 		if ( Config::Get<bool>( Vars.VisPenetrationCrosshair ) ) {
 			const auto center = ctx.m_ve2ScreenSize / 2;
 			const Color color = ctx.m_bCanPenetrate ? Color( 0, 255, 0, 155 ) : Color( 255, 0, 0, 155 );
 
-			const int addAmt{ ( static_cast<int>( w ) % 2 ) ? 2 : 1 };
+			int add{ 2 };
+			static auto aa{ Interfaces::ConVar->FindVar( "mat_antialias" ) };
+			if ( aa ) {
+				if ( aa->GetInt( ) )
+					add = 1;
+			}
 
-			Render::Line( center - Vector2D( 1, 0 ), center + Vector2D( addAmt, 0 ), color );
-			Render::Line( center - Vector2D( 0, 1 ), center + Vector2D( 0, addAmt ), color );
+			Render::Line( center - Vector2D( 1, 0 ), center + Vector2D( add, 0 ), color );
+			Render::Line( center - Vector2D( 0, 1 ), center + Vector2D( 0, add ), color );
 		}
 
-		if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
+		if ( Config::Get<bool>( Vars.AntiAimManualDirInd ) ) {
 			const auto& col{ Config::Get<Color>( Vars.AntiaimManualCol ) };
 
 			Vector2D
@@ -63,25 +72,168 @@ void CVisuals::Main( ) {
 		}
 	}
 
-	AutoPeekIndicator( );
-	ManageHitmarkers( );
-
 	GrenadePrediction.Paint( );
+}
 
+const char* models_to_change[ ] = {
+	_( "models/player/custom_player/legacy/tm_phoenix.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_sas.mdl" ),
+	_( "models/player/custom_player/legacy/tm_balkan_variantj.mdl" ),
+	_( "models/player/custom_player/legacy/tm_balkan_variantg.mdl" ),
+	_( "models/player/custom_player/legacy/tm_balkan_varianti.mdl" ),
+	_( "models/player/custom_player/legacy/tm_balkan_variantf.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_st6_varianti.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_st6_variantm.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_st6_variantg.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_st6_variante.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_st6_variantk.mdl" ),
+	_( "models/player/custom_player/legacy/tm_balkan_varianth.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_fbi_varianth.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_fbi_variantg.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_fbi_variantf.mdl" ),
+	_( "models/player/custom_player/legacy/tm_phoenix_variantg.mdl" ),
+	_( "models/player/custom_player/legacy/tm_phoenix_variantf.mdl" ),
+	_( "models/player/custom_player/legacy/tm_phoenix_varianth.mdl" ),
+	_( "models/player/custom_player/legacy/tm_leet_variantf.mdl" ),
+	_( "models/player/custom_player/legacy/tm_leet_varianti.mdl" ),
+	_( "models/player/custom_player/legacy/tm_leet_varianth.mdl" ),
+	_( "models/player/custom_player/legacy/tm_leet_variantg.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_fbi_variantb.mdl" ),
+	_( "models/player/custom_player/legacy/ctm_sas_variantf.mdl" ),
+	_( "models/player/custom_player/legacy/tm_anarchist.mdl" ),
+	_( "models/player/custom_player/legacy/tm_anarchist_varianta.mdl" ),
+};
+
+void CVisuals::ModelChanger( ) {
+	static int lastModelIndex{ };
+
+	if ( Config::Get<bool>( Vars.MiscCustomModelChanger ) ) {
+		int iModelIndex = 0;
+		iModelIndex = Interfaces::ModelInfo->GetModelIndex( ( "models/player/custom_player/legacy/" + ( Config::Get<std::string>( Vars.MiscCustomModelChangerString ) ) + ".mdl" ).c_str( ) );
+		if ( iModelIndex != 0
+			&& lastModelIndex != iModelIndex )
+			ctx.m_pLocal->SetModelIndex( iModelIndex );
+
+		lastModelIndex = iModelIndex;
+		return;
+	}
+
+	int iTeam = ctx.m_pLocal->m_iTeamNum( );
+
+	int iModelIndex = 0;
+	if ( iTeam == TEAM_TT && Config::Get<int>( Vars.MiscPlayerModelT ) != 0 )
+		iModelIndex = Interfaces::ModelInfo->GetModelIndex( models_to_change[ std::max( 0, Config::Get<int>( Vars.MiscPlayerModelT ) - 1 ) ] );
+
+	else if ( iTeam == TEAM_CT && Config::Get<int>( Vars.MiscPlayerModelCT ) != 0 )
+		iModelIndex = Interfaces::ModelInfo->GetModelIndex( models_to_change[ std::max( 0, Config::Get<int>( Vars.MiscPlayerModelCT ) - 1 ) ] );
+
+	if ( iModelIndex != 0
+		&& lastModelIndex != iModelIndex )
+		ctx.m_pLocal->SetModelIndex( iModelIndex );
+
+	lastModelIndex = iModelIndex;
+}
+
+void CVisuals::SkyboxChanger( ) {
+	std::string sv_skyname{ Offsets::Cvars.sv_skyname->GetString( ) };
+
+	switch ( Config::Get<int>( Vars.VisWorldSkybox ) )
+	{
+	case 1:
+		sv_skyname = _( "cs_tibet" );
+		break;
+	case 2:
+		sv_skyname = _( "cs_baggage_kybox_" );
+		break;
+	case 3:
+		sv_skyname = _( "italy" );
+		break;
+	case 4:
+		sv_skyname = _( "jungle" );
+		break;
+	case 5:
+		sv_skyname = _( "office" );
+		break;
+	case 6:
+		sv_skyname = _( "sky_cs15_daylight01_hdr" );
+		break;
+	case 7:
+		sv_skyname = _( "sky_cs15_daylight02_hdr" );
+		break;
+	case 8:
+		sv_skyname = _( "vertigoblue_hdr" );
+		break;
+	case 9:
+		sv_skyname = _( "vertigo" );
+		break;
+	case 10:
+		sv_skyname = _( "sky_day02_05_hdr" );
+		break;
+	case 11:
+		sv_skyname = _( "nukeblank" );
+		break;
+	case 12:
+		sv_skyname = _( "sky_venice" );
+		break;
+	case 13:
+		sv_skyname = _( "sky_cs15_daylight03_hdr" );
+		break;
+	case 14:
+		sv_skyname = _( "sky_cs15_daylight04_hdr" );
+		break;
+	case 15:
+		sv_skyname = _( "sky_csgo_cloudy01" );
+		break;
+	case 16:
+		sv_skyname = _( "sky_csgo_night02" );
+		break;
+	case 17:
+		sv_skyname = _( "sky_csgo_night02b" );
+		break;
+	case 18:
+		sv_skyname = _( "sky_csgo_night_flat" );
+		break;
+	case 19:
+		sv_skyname = _( "sky_dust" );
+		break;
+	case 20:
+		sv_skyname = _( "vietnam" );
+		break;
+	case 21:
+		sv_skyname = Config::Get<std::string>( Vars.VisWorldSkyboxCustom );
+		break;
+	}
+
+	static std::string last{ };
+	if ( last == sv_skyname )
+		return;
+
+	last = sv_skyname;
+
+	if ( Config::Get<int>( Vars.VisWorldSkybox ) <= 0 ) {
+		if ( !Offsets::Cvars.r_3dsky->GetBool( ) )
+			Offsets::Cvars.r_3dsky->SetValue( true );
+	}
+	else if ( Offsets::Cvars.r_3dsky->GetBool( ) )
+		Offsets::Cvars.r_3dsky->SetValue( false );
+
+	static auto fnLoadNamedSkys{ ( void( __fastcall* )( const char* ) )Offsets::Sigs.LoadNamedSkys };
+
+	return fnLoadNamedSkys( sv_skyname.c_str( ) );
 }
 
 void CVisuals::Watermark( ) {
-	if ( !Config::Get<bool>( Vars.MiscWatermark ) )
-		return;
-
 	const auto name = _( "Havoc [beta] " );
-	const auto pstr = _( "legacy port v0.0.1" );
+	const auto pstr = _( "Version: legacy 0.0.1" );
 
 	const auto name_size = Render::GetTextSize( name, Fonts::Menu );
-	auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );
+	const auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );
 
 	const auto size = Vector2D( name_size.x + ping_size.x + 37, 20 );
 	const auto pos = Vector2D( ctx.m_ve2ScreenSize.x - size.x - 20, 15 );
+
+	if ( !Config::Get<bool>( Vars.MiscWatermark ) )
+		return;
 
 	Render::FilledRoundedBox( pos - Vector2D( 1, 1 ), size + 2, 5, 5, Color( 10, 10, 10 ) );
 	Render::FilledRoundedBox( pos, size, 90, 5, Menu::OutlineLight );
@@ -96,16 +248,27 @@ void CVisuals::Watermark( ) {
 	Render::Text( Fonts::Menu, pos + Vector2D( 6, 3 ), Menu::AccentCol, 0, name );
 	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 33, 3 ), Menu::Accent2Col, 0, pstr );
 
-	//int i{ 1 };
-	//for ( auto& dbg : ctx.m_strDbgLogs ) {
-	//	Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, dbg.c_str( ) );
-	//	++i;
-	//}
+	/*if ( ctx.m_pWeapon ) {
+		Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pWeapon->m_flNextPrimaryAttack( ) ).c_str( ) );
+		Render::Text( Fonts::Menu, pos + Vector2D( 0, 30 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_flLastPrimaryAttack ).c_str( ) );
+	}*/
 
+	if ( ctx.m_pLocal ) {
+		if ( !ctx.m_pLocal->IsDead( ) ) {
+			int i{ 1 };
+			for ( auto& dbg : ctx.m_strDbgLogs ) {
+				Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, dbg->c_str( ) );
+				++i;
+			}
 
-	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 10 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_angRotation( ).y ).c_str( ) );
-	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_pAnimState( )->flAbsYaw ).c_str( ) );
-	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 30 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_angEyeAngles( ).y ).c_str( ) );
+			if ( ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick )
+				Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 ), Color( 255, 255, 255 ), 0, std::string( "SAFE" ).c_str( ) );
+			Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 10 ), Color( 255, 255, 255 ), 0, std::string( "AS: " + std::to_string( ctx.m_iAnimsysPerfTimer ) ).c_str( ) );
+			Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 20 ), Color( 255, 255, 255 ), 0, std::string( "RS: " + std::to_string( ctx.m_iRageRecordPerfTimer ) ).c_str( ) );
+		}
+
+		//Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 20 ), Color( 255, 255, 255 ), 0, std::string( "AS: " + std::to_string( ctx.m_iAnimsysPerfTimer ) ).c_str( ) );
+	}
 }
 
 void CVisuals::OtherEntities( CBaseEntity* ent ) {
@@ -261,14 +424,14 @@ void CVisuals::DrawWrappingRing( CBaseEntity* entity, float seconds, const char*
 	if ( !owner || !owner->IsPlayer( ) )
 		return;
 
-	const auto color{ owner->IsTeammate() ? Config::Get<Color>( Vars.VisGrenadesTeamCol ) : Config::Get<Color>( Vars.VisGrenadesEnemyCol ) };
+	const auto color{ owner->IsTeammate() && owner != ctx.m_pLocal ? Config::Get<Color>( Vars.VisGrenadesTeamCol ) : Config::Get<Color>( Vars.VisGrenadesEnemyCol ) };
 
 	Vector text_pos = entity->m_vecOrigin( );
 	text_pos.z += 5.f;
 
 	const float delta = Interfaces::Globals->flCurTime - spawntime;
 	Vector2D world;
-	if ( Math::WorldToScreen( entity->m_vecOrigin( ), world ) ) {
+	if ( Math::WorldToScreen( entity->GetAbsOrigin( ), world ) ) {
 		Vector last_pos;
 
 		const float fill = ( seconds - delta ) / ( seconds ) * 180.f;
@@ -360,7 +523,7 @@ void CVisuals::EntModulate( CBaseEntity* ent ) {
 	}
 
 	// fog
-	if ( client_class->nClassID == EClassIndex::CFogController ) { 
+	/*if ( client_class->nClassID == EClassIndex::CFogController ) {
 		*( byte* )( ( uintptr_t )ent + Offsets::m_fog_enable ) = Config::Get<bool>( Vars.VisWorldFog );				// m_fog.enable
 
 		*( bool* )( uintptr_t( ent ) + 0xA1D ) = Config::Get<bool>( Vars.VisWorldFog );					// m_fog.blend
@@ -372,7 +535,7 @@ void CVisuals::EntModulate( CBaseEntity* ent ) {
 		const auto& col = Config::Get<Color>( Vars.VisWorldFogCol );
 		*( int* )( uintptr_t( ent ) + 0x9E8 ) = rgb_to_int( ( int )( col.Get<COLOR_R>( ) ), ( int )( col.Get<COLOR_G>( ) ), ( int )( col.Get<COLOR_R>( ) ) ); // m_fog.colorPrimary
 		*( int* )( uintptr_t( ent ) + 0x9EC ) = rgb_to_int( ( int )( col.Get<COLOR_B>( ) ), ( int )( col.Get<COLOR_G>( ) ), ( int )( col.Get<COLOR_R>( ) ) ); // m_fog.colorSecondary
-	}
+	}*/
 }
 
 // so embarrassed about this func 
@@ -407,16 +570,17 @@ void CVisuals::KeybindsList( ) {
 	if ( Config::Get<bool>( Vars.RagebotDamageOverride ) && Config::Get<keybind_t>( Vars.RagebotDamageOverrideKey ).enabled )
 		addBind( _( "Damage override" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotDamageOverrideKey ).mode );
 
-	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
-		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );		
-	
-	if ( Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ).enabled )
-		addBind( _( "Force safe record" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceSafeRecordkey ).mode );
+	if ( Config::Get<keybind_t>( Vars.DBGKeybind ).enabled )
+		addBind( _( "Air stuck" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.DBGKeybind ).mode );
 
-	if ( Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).enabled )
-		addBind( _( "Constant Invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvertSpam ).mode );
-	else if ( Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
-		addBind( _( "Invert desync" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvert ).mode );
+	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
+		addBind( _( "Force baim" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).mode );	
+	
+	if ( Config::Get<keybind_t>( Vars.RagebotForceSafePointKey ).enabled )
+		addBind( _( "Force safe point" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceSafePointKey ).mode );	
+
+	if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled )
+		addBind( _( "Force safe yaw" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).mode );
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		addBind( _( "Slow walk" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).mode );
@@ -425,7 +589,7 @@ void CVisuals::KeybindsList( ) {
 		addBind( _( "Auto peek" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscAutoPeekKey ).mode );
 
 	if ( Config::Get<bool>( Vars.MiscFakeDuck ) && Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).enabled )
-		addBind( _( "Fake duck" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).mode );
+		addBind( _( "Fake duck" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).mode );	
 
 	constexpr auto appendLength{ 17 };
 
@@ -448,13 +612,17 @@ void CVisuals::KeybindsList( ) {
 	// gimme drag
 	if ( !m_bKeybindDragging && Inputsys::pressed( VK_LBUTTON ) && topBarHovered && Menu::MenuAlpha )
 		m_bKeybindDragging = true;
-	else if ( m_bKeybindDragging && Inputsys::down( VK_LBUTTON ) )
-		m_vec2KeyBindPos -= Inputsys::MouseDelta;
+	else if ( m_bKeybindDragging && Inputsys::down( VK_LBUTTON ) ) {
+		Config::Get<int>( Vars.MiscKeybindPosX ) -= Inputsys::MouseDelta.x;
+		Config::Get<int>( Vars.MiscKeybindPosY ) -= Inputsys::MouseDelta.y;
+	}
 	else if ( m_bKeybindDragging && !Inputsys::down( VK_LBUTTON ) )
 		m_bKeybindDragging = false;
 
 	if ( m_vec2KeyBindAbsSize.y < 1 )
 		return;
+
+	m_vec2KeyBindPos = { static_cast< float >( Config::Get<int>( Vars.MiscKeybindPosX ) ), static_cast< float >( Config::Get<int>( Vars.MiscKeybindPosY ) ) };
 
 	auto& pos = m_vec2KeyBindPos;
 	auto& size = m_vec2KeyBindAbsSize;

@@ -4,9 +4,12 @@
 #include "../features/rage/antiaim.h"
 
 void Inputsys::update( ) {
-	for ( auto& i : KeysToCheck ) {
-		prev_state[ i ] = state[ i ];
-		state[ i ] = GetAsyncKeyState( i );
+	if ( Interfaces::Engine->IsActiveApp( )
+		&& ( !Interfaces::Engine->IsConsoleVisible( ) && Interfaces::Engine->IsConsoleVisible( ) ) || Menu::Opened ) {
+		for ( auto& i : KeysToCheck ) {
+			prev_state[ i ] = state[ i ];
+			state[ i ] = GetAsyncKeyState( i );
+		}
 	}
 
 	static HWND window;
@@ -17,9 +20,9 @@ void Inputsys::update( ) {
 	GetCursorPos( &mouse );
 	ScreenToClient( window, &mouse );
 
-	MouseDelta = MousePos - Vector2D( mouse.x, mouse.y );
+	MouseDelta = MousePos - Vector2D( static_cast< float >( mouse.x ), static_cast< float >( mouse.y ) );
 
-	MousePos = Vector2D( mouse.x, mouse.y );
+	MousePos = Vector2D( static_cast< float >( mouse.x ), static_cast< float >( mouse.y ) );
 
 	KeysToCheck.clear( );
 }
@@ -46,12 +49,13 @@ void Inputsys::updateNeededKeys( ) {
 		DODAKEYBINDCUH( MiscFakeDuckKey );
 		DODAKEYBINDCUH( MiscAutoPeekKey );
 		DODAKEYBINDCUH( AntiaimInvert );
-		DODAKEYBINDCUH( AntiaimInvertSpam );
 		DODAKEYBINDCUH( RagebotDamageOverrideKey );
 		DODAKEYBINDCUH( RagebotForceBaimKey );
+		DODAKEYBINDCUH( RagebotForceSafePointKey );
 		DODAKEYBINDCUH( ExploitsDoubletapKey );
 		DODAKEYBINDCUH( ExploitsHideshotsKey );
-		DODAKEYBINDCUH( RagebotForceSafeRecordkey );
+		DODAKEYBINDCUH( DBGKeybind );
+		DODAKEYBINDCUH( RagebotForceYawSafetyKey );
 
 		if ( !Config::Get<keybind_t>( Vars.AntiaimRight ).enabled )
 			DODAKEYBINDCUH( AntiaimRight );

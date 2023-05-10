@@ -58,13 +58,21 @@ void MenuGroup::Slider( const char* name, float& value, float min, float max ) {
 
 	Menu::CursorPos += Vector2D( 0, 18 );
 
-	const bool Hovered = Inputsys::hovered( Menu::CursorPos - Vector2D( 12, 0 ), Size + Vector2D( 12, 0 ) );
+	const bool hovered = Inputsys::hovered( Menu::CursorPos - Vector2D( 12, 0 ), Size + Vector2D( 12, 0 ) );
 
-	if ( Hovered ) {
-		if ( Hovered && Inputsys::down( VK_LBUTTON ) && !Menu::DraggingMouse ) {
-			float offset = std::clamp( Vector2D( Inputsys::MousePos - Menu::CursorPos ).x, 0.f, Size.x );
+	if ( Menu::OpenedID == name ) {
+		if ( Inputsys::down( VK_LBUTTON ) && !Menu::DraggingMouse ) {
+			const int offset = std::clamp( Vector2D( Inputsys::MousePos - Menu::CursorPos ).x, 0.f, Size.x );
 			value = map_number( offset, 0, Size.x, min, max );
 		}
+
+		if ( Inputsys::released( VK_LBUTTON ) )
+			Menu::OpenedID = "";
+	}
+
+	if ( Menu::OpenedID == "" && hovered && !Menu::FrameAfterFocus ) {
+		if ( Inputsys::pressed( VK_LBUTTON ) )
+			Menu::OpenedID = name;
 	}
 
 	const float slider_ratio = map_number( ( float )value, ( float )min, ( float )max, 0.f, 1.f );

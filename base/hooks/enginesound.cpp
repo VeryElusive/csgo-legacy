@@ -12,33 +12,15 @@ int FASTCALL Hooks::hkEmitSound( void* _this, int edx, IRecipientFilter& filter,
 			flVolume = std::clamp( flVolume * volume_scale, 0.0f, 1.0f );
 	}
 
-	/*if ( !ctx.m_pLocal )
-		return oEmitSound( _this, edx, filter, iEntIndex, iChannel, pSoundEntry, nSoundEntryHash, pSample, flVolume, nSeed, flAttenuation, iFlags, iPitch, pOrigin, pDirection, pUtlVecOrigins, bUpdatePositions, soundtime, speakerentity, unk );
+	if ( strstr( pSample, ( _( "weapon" ) ) ) && ( strstr( pSample, ( _( "draw" ) ) ) || strstr( pSample, ( _( "deploy" ) ) ) ) ) {
+		static FNV1A_t prev_hash{ };
+		const auto hash{ FNV1A::Hash( pSample ) };
 
-	
-	static int lastEmitTickDraw{ };
-	if ( strstr( pSample, _( "draw" ) ) ) {
-		if ( Interfaces::Globals->iTickCount - lastEmitTickDraw > 16 )
-			lastEmitTickDraw = Interfaces::Globals->iTickCount;
-		else {
-			if ( iEntIndex == ctx.m_pLocal->Index( ) ) {
-				flVolume = 0;
-				lastEmitTickDraw = Interfaces::Globals->iTickCount;
-			}
-		}
+		if ( prev_hash == hash )
+			return 0;
+
+		prev_hash = hash;
 	}
-
-	static int lastEmitTickDeploy{ };
-	if ( strstr( pSample, _( "deploy" ) ) ) {
-		if ( Interfaces::Globals->iTickCount - lastEmitTickDeploy > 16 )
-			lastEmitTickDeploy = Interfaces::Globals->iTickCount;
-		else {
-			if ( iEntIndex == ctx.m_pLocal->Index( ) ) {
-				flVolume = 0;
-				lastEmitTickDeploy = Interfaces::Globals->iTickCount;
-			}
-		}
-	}*/
 
 	return oEmitSound( _this, edx, filter, iEntIndex, iChannel, pSoundEntry, nSoundEntryHash, pSample, flVolume, nSeed, flAttenuation, iFlags, iPitch, pOrigin, pDirection, pUtlVecOrigins, bUpdatePositions, soundtime, speakerentity, unk );
 }

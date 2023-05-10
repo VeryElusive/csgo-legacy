@@ -56,15 +56,15 @@ void CPlayerESP::Main( CBasePlayer* ent ) {
 }
 
 void CPlayerESP::DrawBox( VisualPlayerEntry& entry ) {
-	CheckPlayerBoolFig( entry.type, VisBox )
+	CheckPlayerBoolFig( entry.type, VisBox );
 
-	Color last;
-	GetPlayerColorFig( entry.type, VisBoxCol, last )
+	Color last{};
+	GetPlayerColorFig( entry.type, VisBoxCol, last );
 
 	last = last.Set<COLOR_A>( last.Get<COLOR_A>( ) * entry.Alpha );
 	last = last.Lerp( DormantCol.Set<COLOR_A>( last.Get<COLOR_A>( ) * 0.4f ), entry.DormancyFade );
 
-	const auto outline{ Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) * 0.8f ) ) };
+	const auto outline{ Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) ) ) };
 
 	Render::Rectangle( entry.BBox.x - 1, entry.BBox.y - 1, entry.BBox.w + 2, entry.BBox.h + 2, outline );
 	Render::Rectangle( entry.BBox.x + 1, entry.BBox.y + 1,  entry.BBox.w - 2, entry.BBox.h - 2, outline );
@@ -77,7 +77,6 @@ void CPlayerESP::DrawHealth( VisualPlayerEntry& entry ) {
 	Color last;
 	GetPlayerColorFig( entry.type, VisHealthCol, last );
 
-	// rework this lmfaoooo
 	switch ( entry.type ) {
 		case 0:
 			if ( Config::Get<bool>( Vars.VisHealthOverrideLocal ) )
@@ -97,7 +96,7 @@ void CPlayerESP::DrawHealth( VisualPlayerEntry& entry ) {
 	last = last.Set<COLOR_A>( last.Get<COLOR_A>( ) * entry.Alpha );
 	last = last.Lerp( DormantCol.Set<COLOR_A>( last.Get<COLOR_A>( ) * 0.4f ), entry.DormancyFade );
 
-	const auto outline{ Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) * 0.8f ) ) };
+	const auto outline{ Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) ) ) };
 
 	const auto bar_height{ static_cast<int>( static_cast< float >( entry.health ) * static_cast< float >( entry.BBox.h ) / 100.0f ) };
 	const auto offset{ entry.BBox.h - bar_height };
@@ -106,7 +105,9 @@ void CPlayerESP::DrawHealth( VisualPlayerEntry& entry ) {
 	Render::FilledRectangle( entry.BBox.x - 5, entry.BBox.y + offset, 2, bar_height, last );
 
 	if ( entry.health < 95 )
-		Render::Text( Fonts::HealthESP, entry.BBox.x - 3, entry.BBox.y + offset, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_CENTER, std::to_string( entry.health ).c_str( ) );
+		Render::Text( Fonts::HealthESP, entry.BBox.x - 5, entry.BBox.y + offset - 3, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_CENTER, std::to_string( entry.health ).c_str( ) );
+
+	//Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 15, entry.BBox.y, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_RIGHT, std::to_string( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_iLastChoked ).c_str( ) );
 }
 
 bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
@@ -124,7 +125,7 @@ bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
 		return false;
 
 	const auto weapon_info = weapon->GetCSWeaponData( );
-	if ( !weapon_info || weapon_info->nWeaponType == WEAPONTYPE_HEALTHSHOT )
+	if ( !weapon_info )
 		return false;
 
 	const auto ammo = weapon->m_iClip1( );
@@ -136,13 +137,13 @@ bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
 	last = last.Set<COLOR_A>( last.Get<COLOR_A>( ) * entry.Alpha );
 	last = last.Lerp( DormantCol.Set<COLOR_A>( last.Get<COLOR_A>( ) * 0.4f ), entry.DormancyFade );
 
-	const auto outline = Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) * 0.8f ) );
+	const auto outline = Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) ) );
 
 	// outline
 	Render::FilledRectangle( entry.BBox.x - 1, entry.BBox.y + entry.BBox.h + 2,  entry.BBox.w + 2, 4, outline );
 	// color
 	if ( ammo )
-		Render::FilledRectangle( entry.BBox.x, entry.BBox.y + entry.BBox.h + 3,  ammo * entry.BBox.w / max_clip, 2, last );
+		Render::FilledRectangle( entry.BBox.x, entry.BBox.y + entry.BBox.h + 3,  std::min( entry.BBox.w, ammo * entry.BBox.w / max_clip ), 2, last );
 
 	return true;
 }
@@ -175,7 +176,7 @@ void CPlayerESP::DrawName( VisualPlayerEntry& entry ) {
 
 	const auto name = sanitize( player_info.value( ).szName );
 
-	Render::Text( Fonts::NameESP, entry.BBox.x + entry.BBox.w / 2, entry.BBox.y - 14, last, FONT_CENTER, name.c_str( ) );
+	Render::Text( Fonts::NameESP, entry.BBox.x + entry.BBox.w / 2, entry.BBox.y - 13, last, FONT_CENTER, name.c_str( ) );
 }
 
 void CPlayerESP::DrawWeapon( VisualPlayerEntry& entry, bool AmmoBar ) {
@@ -201,7 +202,7 @@ void CPlayerESP::DrawWeapon( VisualPlayerEntry& entry, bool AmmoBar ) {
 	CheckIfPlayer( VisWeapText, entry.type ) {
 		Render::Text( Fonts::WeaponIcon, entry.BBox.x + entry.BBox.w / 2, entry.BBox.y + entry.BBox.h + append, last, FONT_CENTER, weapon->GetIcon( ).c_str( ) );
 
-		append += 14;
+		append += 12;
 	}
 
 	CheckIfPlayer( VisWeapIcon, entry.type ) {
@@ -213,50 +214,52 @@ void CPlayerESP::DrawFlags( VisualPlayerEntry& entry ) {
 	if ( entry.ent->Dormant( ) )
 		return;
 
-	std::vector<std::pair< std::string, bool>> flags{ };
-	CheckIfPlayer( VisFlagBLC, entry.type ) {
-		if ( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_bBrokeLC )
-			flags.push_back( std::make_pair( _( "LC" ), true ) );
-
-		//if ( !Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_pRecords.empty( ) )
-		//	flags.push_back( std::make_pair( std::to_string( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_pRecords.front( )->m_iNewCmds ), true ) );
-	}
-
+	std::vector<std::pair< std::string, Color>> flags{ };
 	CheckIfPlayer( VisFlagDefusing, entry.type ) {
 		if ( entry.ent->m_bIsDefusing( ) )
-			flags.push_back( std::make_pair( _( "DEFUSING" ), true ) );
+			flags.push_back( std::make_pair( _( "DEFUSING" ), Color( 255, 90, 71 ) ) );
+	}
+
+	CheckIfPlayer( VisFlagBLC, entry.type ) {
+		if ( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_bBrokeLC )
+			flags.push_back( std::make_pair( _( "LC" ), Color( 255, 132, 117 ) ) );
+	}
+
+	CheckIfPlayer( VisFlagBLC, entry.type ) {
+		if ( !Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_bRecordAdded )
+			flags.push_back( std::make_pair( _( "EXPLOIT" ), Color( 255, 158, 97 ) ) );
 	}
 
 	CheckIfPlayer( VisFlagC4, entry.type ) {
 		if ( entry.ent->Index( ) == ctx.m_iBombCarrier )
-			flags.push_back( std::make_pair( _( "C4" ), false ) );
+			flags.push_back( std::make_pair( _( "C4" ), Color( 255, 255, 255 ) ) );
 	}
 
 	CheckIfPlayer( VisFlagArmor, entry.type ) {
 		if ( entry.ent->m_ArmorValue( ) > 0 )
-			flags.push_back( std::make_pair( entry.ent->m_bHasHelmet( ) ? _( "HK" ) : _( "K" ), 0 ) );
+			flags.push_back( std::make_pair( entry.ent->m_bHasHelmet( ) ? _( "HK" ) : _( "K" ), Color( 255, 255, 255 ) ) );
 	}	
 	
 	CheckIfPlayer( VisFlagFlash, entry.type ) {
 		if ( entry.ent->m_flFlashDuration( ) > 1.f )
-			flags.push_back( std::make_pair( _( "FLASH" ), false ) );
+			flags.push_back( std::make_pair( _( "FLASH" ), Color( 255, 255, 255 ) ) );
 	}	
 	
 	CheckIfPlayer( VisFlagReload, entry.type ) {
 		const auto& layer{ entry.ent->m_AnimationLayers( )[ 1 ] };
 
 		if ( entry.ent->GetSequenceActivity( layer.nSequence ) == 967u && layer.flWeight != 0.f )
-			flags.push_back( std::make_pair( _( "RELOAD" ), false ) );
+			flags.push_back( std::make_pair( _( "RELOAD" ), Color( 255, 255, 255 ) ) );
 	}	
 	
 	CheckIfPlayer( VisFlagScoped, entry.type ) {
 		if ( entry.ent->m_bIsScoped( ) )
-			flags.push_back( std::make_pair( _( "SCOPED" ), false ) );
+			flags.push_back( std::make_pair( _( "SCOPED" ), Color( 255, 255, 255 ) ) );
 	}
 
 	int i{ };
 	for ( const auto& flag : flags ) {
-		Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 2, entry.BBox.y + 7 * i, flag.second ? Color( 250, 134, 92 ) : Color( 255, 255, 255, static_cast<int>( 255 * entry.Alpha ) ), 0, flag.first.c_str( ) );
+		Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 2, entry.BBox.y + 7 * i, flag.second.Set<COLOR_A>( static_cast< int >( 255 * entry.Alpha ) ), 0, flag.first.c_str( ) );
 
 		++i;
 	}
@@ -331,15 +334,8 @@ void CPlayerESP::DrawOOF( VisualPlayerEntry& entry ) {
 	if ( ctx.m_pLocal->IsDead( ) )
 		return;
 
-	auto isOnScreen = [ ]( Vector origin, Vector& screen ) -> bool {
-		if ( !Math::WorldToScreen( origin, screen ) )
-			return false;
-
-		return ( screen.x > 0 && screen.x < ctx.m_ve2ScreenSize.x ) && ( ctx.m_ve2ScreenSize.y > screen.y && screen.y > 0 );
-	};
-
 	Vector screenPos;
-	if ( isOnScreen( entry.ent->GetAbsOrigin( ), screenPos ) )
+	if ( Math::WorldToScreen( entry.ent->GetAbsOrigin( ), screenPos ) )
 		return;
 
 	QAngle viewAngles{ ctx.m_angOriginalViewangles };
@@ -372,6 +368,7 @@ void CPlayerESP::DrawOOF( VisualPlayerEntry& entry ) {
 }
 
 bool CPlayerESP::GetBBox( CBasePlayer* ent, rect& box ) {
+	// pasted i dont care about making this func myself
 	const auto min = ent->m_vecMins( );
 	const auto max = ent->m_vecMaxs( );
 

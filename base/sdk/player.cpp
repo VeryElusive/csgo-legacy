@@ -30,52 +30,46 @@ bool CBasePlayer::IsDead( ) {
 	if ( m_iHealth( ) <= 0 )
 		return true;
 
-	return ( m_lifeState( ) );
+	return m_lifeState( );
 }
 
 CWeaponCSBase* CBasePlayer::GetWeapon( ) {
 	return static_cast< CWeaponCSBase * >( Interfaces::ClientEntityList->GetClientEntityFromHandle( this->m_hActiveWeapon( ) ) );
 }
 
-Vector CBasePlayer::GetEyePosition( float pitch ) {
-	auto v12 = this->m_pAnimState( );
-	if ( !v12 )
-		return { };
+Vector CBasePlayer::GetEyePosition( float yaw, float pitch ) {
+	auto eyePos{ this->GetAbsOrigin( ) + this->m_vecViewOffset( ) };// should this just be uninterpolated origin?
 
-	auto eyePos{ this->m_vecOrigin( ) + this->m_vecViewOffset( ) };
+	const auto state{ this->m_pAnimState( ) };
+	if ( !state )
+		return eyePos;
 
-	if ( v12->pEntity && ( v12->bHitGroundAnimation || v12->flDuckAmount != 0.f || this->m_hGroundEntity( ) == -1 ) ) {
-		const auto backupPoseParam{ ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) };
-
+	if ( this == ctx.m_pLocal && state->m_pPlayer && ( state->m_bLanding || state->flDuckAmount || this->m_hGroundEntity( ) == -1 ) ) {
 		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
-			pitch
-			- ctx.m_pLocal->m_aimPunchAngle( ).x * Offsets::Cvars.weapon_recoil_scale->GetFloat( ), 360.f
+			pitch, 360.f
 		), -90.f, 90.f ) + 90.f ) / 180.f;
 
-		this->SetAbsAngles( { 0.f, v12->flAbsYaw, 0.f } );
 
-		Features::AnimSys.SetupBonesFixed( this, ctx.m_matRealLocalBones, BONE_USED_BY_HITBOX, Interfaces::Globals->flCurTime, USEALLSETUPBONESFLAGS );
+		const auto matrix{ new matrix3x4a_t[ 256 ] };
 
-		static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
-		const auto boneIndex{ lookupBone( v12->pEntity, _( "head_0" ) ) };
+		//this->SetAbsOrigin( this->m_vecOrigin( ) );
 
-		if ( boneIndex != -1 ) {
-			Vector headPos{
-				ctx.m_matRealLocalBones[ boneIndex ][ 0u ][ 3u ],
-				ctx.m_matRealLocalBones[ boneIndex ][ 1u ][ 3u ],
-				ctx.m_matRealLocalBones[ boneIndex ][ 2u ][ 3u ] + 1.7f
-			};
+		Features::AnimSys.SetupBonesRebuilt( this, matrix, BONE_USED_BY_HITBOX, ctx.m_flFixedCurtime, true );
 
-			if ( eyePos.z > headPos.z ) {
-				const auto v5{ std::abs( eyePos.z - headPos.z ) };
-				const auto v6{ std::max( ( v5 - 4.f ) / 6.f, 0.f ) };
-				const auto v7{ std::min( v6, 1.f ) };
+		//static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+		//const auto boneIndex{ lookupBone( v12->pEntity, _( "head_0" ) ) };
 
-				eyePos.z += ( ( ( v7 * v7 ) * 3.f ) - ( ( v7 + v7 ) * ( v7 * v7 ) ) ) * ( headPos.z - eyePos.z );
-			}
+		const auto headPosZ{ matrix[ 8 ].GetOrigin( ).z + 1.7f };
+
+		if ( eyePos.z > headPosZ ) {
+			const auto v8{ std::max( std::min( ( std::abs( eyePos.z - headPosZ ) - 4.f ) / 6.f, 1.f ), 0.f ) };
+
+			eyePos.z += ( headPosZ - eyePos.z )
+				* ( ( ( v8 * v8 ) * 3.f )
+					- ( ( ( v8 * v8 ) * 2.f ) * v8 ) );
 		}
 
-		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = backupPoseParam;
+		delete[ ] matrix;
 	}
 
 	return eyePos;
@@ -86,7 +80,16 @@ bool CBasePlayer::IsHostage( ) {
 	return client->nClassID == EClassIndex::CHostage;
 }
 
-bool CBasePlayer::CanShoot( ) {
+float CBasePlayer::m_flMaxSpeed( ) {
+	auto weap = this->GetWeapon( );
+	if ( !weap )
+		return 0.f;
+
+	auto weap_info = weap->GetCSWeaponData( );
+	return !weap_info ? 260.f : this->m_bIsScoped( ) ? weap_info->flMaxSpeedAlt : weap_info->flMaxSpeed;
+}
+
+bool CBasePlayer::CanShoot( bool secondary ) {
 	ctx.m_bRevolverCanCock = false;
 
 	if ( this->m_fFlags( ) & 0x40 )
@@ -107,27 +110,29 @@ bool CBasePlayer::CanShoot( ) {
 
 	if ( this->m_bIsDefusing( ) )
 		return false;	
+	
+	//if ( weapon->m_bReloading( ) )
+	//	return false;
 
-	// TODO: legacy! reloading
+	const auto& idx{ weapon->m_iItemDefinitionIndex( ) };
 
-	if ( TIME_TO_TICKS( ctx.m_iLastPacketTime ) <= TIME_TO_TICKS( ctx.m_iLastShotTime ) )
+	//if ( ctx.m_flLastPrimaryAttack == weapon->m_flNextPrimaryAttack( ) )
+	//	return false;
+
+	// ghetto af
+	//if ( ctx.m_flNewPacketTime <= ctx.m_iLastStopTime )
+	//	return false;
+
+	if ( ctx.m_flFixedCurtime < this->m_flNextAttack( ) )
 		return false;
 
-	auto tickbase = this->m_nTickBase( );
-	const bool properWeap{ ctx.m_pWeaponData->nWeaponType > WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 };
-	if ( properWeap )
-		tickbase -= ctx.m_iTicksAllowed;
-
-	const float curtime = TICKS_TO_TIME( tickbase );
-	if ( curtime < this->m_flNextAttack( ) )
-		return false;
-
-	if ( ( weapon->m_iItemDefinitionIndex( ) == WEAPON_GLOCK || weapon->m_iItemDefinitionIndex( ) == WEAPON_FAMAS ) && weapon->m_iBurstShotsRemaining( ) > 0 ) {
-		if ( curtime >= weapon->m_fNextBurstShot( ) )
+	if ( ( idx == WEAPON_GLOCK || idx == WEAPON_FAMAS )
+		&& weapon->m_iBurstShotsRemaining( ) > 0 ) {
+		if ( ctx.m_flFixedCurtime >= weapon->m_fNextBurstShot( ) )
 			return true;
 	}
 
-	if ( weapon->m_iItemDefinitionIndex( ) == WEAPON_C4 )
+	if ( idx == WEAPON_C4 )
 		return true;
 
 	const auto weaponData{ weapon->GetCSWeaponData( ) };
@@ -137,16 +142,107 @@ bool CBasePlayer::CanShoot( ) {
 	if ( weaponData->nWeaponType >= WEAPONTYPE_PISTOL && weaponData->nWeaponType <= WEAPONTYPE_MACHINEGUN && weapon->m_iClip1( ) < 1 )
 		return false;
 
-	if ( curtime < weapon->m_flNextPrimaryAttack( ) )
-		return false;
+	if ( idx != WEAPON_REVOLVER ) {
+		if ( ( !secondary && ctx.m_flFixedCurtime < weapon->m_flNextPrimaryAttack( ) )
+			|| ( secondary && ctx.m_flFixedCurtime < weapon->m_flNextSecondaryAttack( ) ) )
+			return false;
 
-	if ( weapon->m_iItemDefinitionIndex( ) != WEAPON_REVOLVER )
 		return true;
+	}
 
 	ctx.m_bRevolverCanCock = true;
 
 	if ( weapon->m_nSequence( ) != 5 )
 		return false;
 
-	return curtime >= weapon->m_flPostponeFireReadyTime( );
+	return weapon->m_flPostponeFireReadyTime( ) != FLT_MAX 
+		&& weapon->m_flPostponeFireReadyTime( ) < ctx.m_flFixedCurtime;
+}
+
+void CCSGOPlayerAnimState::SetLayerSequence( CAnimationLayer* layer, int32_t activity, bool reset ) {
+	int32_t iSequence{ this->SelectSequenceFromActMods( activity ) };
+	if ( iSequence < 2 )
+		return;
+
+	if ( reset ) {
+		layer->flCycle = 0.0f;
+		layer->flWeight = 0.0f;
+	}
+	layer->nSequence = iSequence;
+	layer->flPlaybackRate = this->m_pPlayer->GetLayerSequenceCycleRate( layer, iSequence );
+}
+
+int32_t CCSGOPlayerAnimState::SelectSequenceFromActMods( int32_t iActivity ) {
+	bool bIsPlayerDucked{ flDuckAmount > 0.55f };
+	bool bIsPlayerRunning{ flSpeedAsPortionOfWalkTopSpeed > 0.25f };
+
+	int32_t iLayerSequence = -1;
+	switch ( iActivity )
+	{
+	case ACT_CSGO_JUMP:
+	{
+		iLayerSequence = 15 + static_cast < int32_t >( bIsPlayerRunning );
+		if ( bIsPlayerDucked )
+			iLayerSequence = 17 + static_cast < int32_t >( bIsPlayerRunning );
+	}
+	break;
+
+	case ACT_CSGO_ALIVE_LOOP:
+	{
+		iLayerSequence = 8;
+		if ( pLastActiveWeapon != pActiveWeapon )
+			iLayerSequence = 9;
+	}
+	break;
+
+	case ACT_CSGO_IDLE_ADJUST_STOPPEDMOVING:
+	{
+		iLayerSequence = 6;
+	}
+	break;
+
+	case ACT_CSGO_FALL:
+	{
+		iLayerSequence = 14;
+	}
+	break;
+
+	case ACT_CSGO_IDLE_TURN_BALANCEADJUST:
+	{
+		iLayerSequence = 4;
+	}
+	break;
+
+	case ACT_CSGO_LAND_LIGHT:
+	{
+		iLayerSequence = 20;
+		if ( bIsPlayerRunning )
+			iLayerSequence = 22;
+
+		if ( bIsPlayerDucked )
+		{
+			iLayerSequence = 21;
+			if ( bIsPlayerRunning )
+				iLayerSequence = 19;
+		}
+	}
+	break;
+
+	case ACT_CSGO_LAND_HEAVY:
+	{
+		iLayerSequence = 23;
+		if ( bIsPlayerDucked )
+			iLayerSequence = 24;
+	}
+	break;
+
+	case ACT_CSGO_CLIMB_LADDER:
+	{
+		iLayerSequence = 13;
+	}
+	break;
+	default: break;
+	}
+
+	return iLayerSequence;
 }

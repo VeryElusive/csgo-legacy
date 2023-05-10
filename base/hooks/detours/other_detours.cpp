@@ -10,18 +10,15 @@ void FASTCALL Hooks::hkModifyEyePosition( CCSGOPlayerAnimState* ecx, void* edx, 
 	const auto BackupMoveWeightSmoothed = ecx->flMoveWeightSmoothed;
 	const auto BackupCameraSmoothHeight = ecx->flCameraSmoothHeight;
 
-	ecx->bSmoothHeightValid = false;
+	ecx->m_bJumping = false;
+
+	auto& viewOffset{ ecx->m_pPlayer->m_vecViewOffset( ) };
+	viewOffset.z -= viewOffset.z - std::floor( viewOffset.z );
 
 	oModifyEyePosition( ecx, edx, pos );
 
-	ecx->bSmoothHeightValid = BackupMoveWeightSmoothed;
+	ecx->flMoveWeightSmoothed = BackupMoveWeightSmoothed;
 	ecx->flCameraSmoothHeight = BackupCameraSmoothHeight;
-
-	const auto ent = static_cast<CBasePlayer*>( ecx->pEntity );
-	if ( !ent )
-		return;
-
-	pos.z -= ent->m_vecViewOffset( ).z - std::floor( ent->m_vecViewOffset( ).z );
 }
 
 void FASTCALL Hooks::hkCalcView( CBasePlayer* pPlayer, void* edx, Vector& vecEyeOrigin, QAngle& angEyeAngles, float& flZNear, float& flZFar, float& flFov ) {
@@ -49,11 +46,13 @@ float FASTCALL Hooks::hkCalcViewmodelBob( CWeaponCSBase* pWeapon, void* edx ) {
 	return 0.f;
 }
 
-void FASTCALL Hooks::hkCHudScopePaint( void* ecx, uint32_t edx ) {
+void** FASTCALL Hooks::hkCHudScopePaint( void* ecx, int edx ) {
 	static auto oCHudScopePaint = DTR::CHudScopePaint.GetOriginal<decltype( &hkCHudScopePaint )>( );
 
 	if ( !Config::Get<bool>( Vars.RemovalScope ) )
 		oCHudScopePaint( ecx, edx );
+
+	return nullptr;
 }
 
 bool FASTCALL Hooks::hkShouldInterpolate( CBasePlayer* ecx, const std::uintptr_t edx ) {
@@ -72,6 +71,7 @@ bool CDECL Hooks::hkGlowEffectSpectator( CBasePlayer* const player, CBasePlayer*
 	Vector& clr, float& alpha_from, float& alpha_to,
 	float& time_from, float& time_to, bool& animate ) {
 	static auto oGlowEffectSpectator = DTR::GlowEffectSpectator.GetOriginal<decltype( &hkGlowEffectSpectator )>( );
+
 	int type{ ENEMY };
 	if ( player == ctx.m_pLocal )
 		type = LOCAL;
@@ -81,7 +81,7 @@ bool CDECL Hooks::hkGlowEffectSpectator( CBasePlayer* const player, CBasePlayer*
 	Color col{ };
 	GetPlayerColorFig( type, VisGlowCol, col );
 
-	CheckIfPlayer( VisGlow, type ) { 
+	CheckIfPlayer( VisGlow, type ) {
 		style = 0;
 
 		clr.x = col.Get<COLOR_R>( ) / 255.f;
@@ -172,4 +172,102 @@ void FASTCALL Hooks::hkUpdatePostProcessingEffects( void* ecx, int edx ) {
 	oUpdatePostProcessingEffects( ecx, edx );
 
 	ctx.m_pLocal->m_bIsScoped( ) = backupScoped;
+}
+
+
+int FASTCALL Hooks::hkGetWeaponType( void* ecx, int edx ) {
+	static auto oGetWeaponType = DTR::GetWeaponType.GetOriginal<decltype( &hkGetWeaponType )>( );
+
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToWantReticleShown
+		|| reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToDrawCrosshair ) {
+		if ( Config::Get<bool>( Vars.MiscForceCrosshair ) && ctx.m_pLocal && !ctx.m_pLocal->m_bIsScoped( ) )
+			return 0xFADED;
+	}
+
+	return oGetWeaponType( ecx, edx );
+}
+
+// TODO: so basically, when we call readpackets before cl_move, the ping calc gets fucked since we dont call senddatagram in time
+int LastTickCount{ };
+
+void __vectorcall Hooks::hk_Host_RunFrame_Input( float accumulated_extra_samples, bool bFinalTick ) {
+	static auto o_Host_RunFrame_Input = DTR::_Host_RunFrame_Input.GetOriginal<decltype( &hk_Host_RunFrame_Input )>( );
+	static auto o_Host_RunFrame_Client = DTR::_Host_RunFrame_Client.GetOriginal<decltype( &hk_Host_RunFrame_Client )>( );
+
+	ctx.GetLocal( );
+
+	if ( !Config::Get<bool>( Vars.DBGLC1 ) )
+		return o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
+
+	int backupTickCount{ Interfaces::Globals->iTickCount };
+	int backupTickCountEnd{ };
+
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) && !Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) ) {
+		o_Host_RunFrame_Client( bFinalTick );
+		backupTickCountEnd = Interfaces::Globals->iTickCount;
+		Interfaces::Globals->iTickCount = backupTickCount;
+	}
+
+	o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
+
+	if ( backupTickCountEnd )
+		Interfaces::Globals->iTickCount = backupTickCountEnd;
+}
+
+void FASTCALL Hooks::hk_Host_RunFrame_Client( bool bFinalTick ) {
+	static auto o_Host_RunFrame_Client = DTR::_Host_RunFrame_Client.GetOriginal<decltype( &hk_Host_RunFrame_Client )>( );
+	if ( !Config::Get<bool>( Vars.DBGLC1 ) )
+		return o_Host_RunFrame_Client( bFinalTick );
+
+	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) || Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) )
+		o_Host_RunFrame_Client( bFinalTick );
+}
+
+/*void __vectorcall Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) {
+	static auto oCL_Move = DTR::CL_Move.GetOriginal<decltype( &hkCL_Move )>( );
+	accumulatedExtraSamples = accumulated_extra_samples;
+	static auto oCL_ReadPackets = DTR::CL_ReadPackets.GetOriginal<decltype( &hkCL_ReadPackets )>( );
+	
+	ctx.GetLocal( );
+
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) && !Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) )
+		oCL_ReadPackets( bFinalTick );
+
+	oCL_Move( accumulated_extra_samples, bFinalTick );
+}
+
+void FASTCALL Hooks::hkCL_ReadPackets( bool bFinalTick ) {
+	static auto oCL_ReadPackets = DTR::CL_ReadPackets.GetOriginal<decltype( &hkCL_ReadPackets )>( );
+	static auto oCL_Move = DTR::CL_Move.GetOriginal<decltype( &hkCL_Move )>( );
+
+	oCL_ReadPackets( bFinalTick );
+	oCL_Move( accumulatedExtraSamples, bFinalTick );
+}*/
+
+bool FASTCALL Hooks::hkisBoneAvailableForRead( void* ecx, int edx, int a2 ) {
+	static auto oisBoneAvailableForRead = DTR::isBoneAvailableForRead.GetOriginal<decltype( &hkisBoneAvailableForRead )>( );
+
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToProcessInputIsBoneAvailableForRead )
+		return false;
+	else
+		return oisBoneAvailableForRead( ecx, edx, a2 );
+}
+
+Vector temp{ 0, 0, 20 };
+Vector* FASTCALL Hooks::hkGetAbsOrigin( void* ecx, int edx ) {
+	static auto oGetAbsOrigin = DTR::GetAbsOrigin.GetOriginal<decltype( &hkGetAbsOrigin )>( );
+
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToProcessInputGetAbsOrigin )
+		return &temp;
+	else
+		return oGetAbsOrigin( ecx, edx );
+}
+
+void FASTCALL Hooks::hkGetExposureRange( float* pflAutoExposureMin, float* pflAutoExposureMax ) {
+	static auto ohkGetExposureRange = DTR::GetExposureRange.GetOriginal<decltype( &hkGetExposureRange )>( );
+
+	*pflAutoExposureMin = 1.f;
+	*pflAutoExposureMax = 1.f;
+
+	ohkGetExposureRange( pflAutoExposureMin, pflAutoExposureMax );
 }

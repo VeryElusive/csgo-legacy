@@ -2,79 +2,94 @@
 #include "../animations/animation.h"
 #include "../rage/exploits.h"
 
-void CAntiAim::Pitch( CUserCmd& cmd ) {
-	if ( Condition( cmd ) )
-		return;
+bool CAntiAim::Pitch( CUserCmd& cmd ) {
+	if ( Condition( cmd, true ) )
+		return false;
 
 	switch ( Config::Get<int>( Vars.AntiaimPitch ) ) {
 	case 1: cmd.viewAngles.x = -89.f; break;// up
-	case 2: cmd.viewAngles.x = 89.f; break;// down
-	case 3: cmd.viewAngles.x = 0.f;  break;// zero
+	case 2: cmd.viewAngles.x =  89.f; break;// down
+	case 3: cmd.viewAngles.x =  0.f;  break;// zero
+	case 4: cmd.viewAngles.x = Math::RandomFloat( -89.f, 89 );  break;// random
 	default: break;
 	}
+
+	return true;
 }
 
 void CAntiAim::PickYaw( float& yaw ) {
-	static bool Inverted{ };
+	static bool invert{ };
+	static int rotatedYaw{ };
 
-	if ( !Interfaces::ClientState->nChokedCommands )
-		ChokeCycleJitter = !ChokeCycleJitter;
+	const int& yawRange{ Config::Get<int>( Vars.AntiaimYawRange ) };
 
-	const int& YawRange{ Config::Get<int>( Vars.AntiaimYawRange ) };
-
-	if ( !ManualSide ) {
-		switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
-		case 0: yaw += 0.f; break;// forward
-		case 1: yaw += 180.f; break;// backward
-		case 2: yaw -= 90.f; break;// Left
-		case 3: yaw += 90.f; break;// Right
-		}
+	switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
+	case 0: yaw += 0.f; break;// forward
+	case 1: yaw += 180.f; break;// backward
+	case 2: yaw += 90.f; break;// left
+	case 3: yaw -= 90.f; break;// right
 	}
 
 	switch ( Config::Get<int>( Vars.AntiaimYawAdd ) ) {
-	case 0:break;// none
-	case 1: {// jitter 
-		yaw += YawRange * ( ChokeCycleJitter ? 0.5f : -0.5f );
+	case 1:// jitter 
+		yaw += yawRange * ( ChokeCycleJitter ? 0.5f : -0.5f );
+		break;
+	case 2: {// rotate
+		//if ( Interfaces::ClientState->nChokedCommands )
+		//	break;
+
+		rotatedYaw -= invert ? Config::Get<int>( Vars.AntiaimYawSpeed ) : -Config::Get<int>( Vars.AntiaimYawSpeed );
+
+		if ( rotatedYaw < yawRange * -0.5f )
+			invert = false;
+		else if ( rotatedYaw > yawRange * 0.5f )
+			invert = true;
+
+		rotatedYaw = std::clamp<int>( rotatedYaw, yawRange * -0.5f, yawRange * 0.5f );
+		
+		yaw += rotatedYaw;
 	}break;
+	case 3: {// spin
+		rotatedYaw += Config::Get<int>( Vars.AntiaimYawSpeed );
+		rotatedYaw = std::remainderf( rotatedYaw, 360.f );
+		yaw = rotatedYaw;
+		break;
+	}
+	case 4: {// random
+		yaw += Math::RandomFloat( -yawRange / 2.f, yawRange / 2.f );
+		break;
+	}
 	default: break;
 	}
 }
 
-FORCEINLINE float NormaliseYaw( float yaw ) {
-	return std::clamp( std::remainderf( yaw, 360.f ), -180.f, 180.f );
-}
-
-void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
-	if ( Condition( cmd ) )
-		return;
-
-	cmd.viewAngles.y = NormaliseYaw( BaseYaw( cmd ) );
+void CAntiAim::Yaw( CUserCmd& cmd, bool& sendPacket ) {
+	cmd.viewAngles.y = BaseYaw( cmd );
 
 	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
 
-	if ( !sendPacket ) {
-		//cmd.viewAngles.y += 180.f;
-
-		if ( m_flVelocityLengthXY <= 0.1f ) {
-			if ( !Interfaces::ClientState->nChokedCommands && Interfaces::Globals->flCurTime >= m_flLowerBodyRealignTimer ) {
-
-			}
-			else {
-				if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
-					switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
-					case 0:// opposite
-						cmd.viewAngles.y += 180.f;
-						break;
-					case 1:// back
-						cmd.viewAngles.y = ctx.m_angOriginalViewangles.y + 180.f;
-						break;
-					default: break;
-					}
-				}
+	if ( m_flVelocityLengthXY <= 0.1f ) {
+		if ( !sendPacket ) {
+			if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
+				switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
+				case 0:// opposite
+					cmd.viewAngles.y += 180.f;
+					break;
+				case 1:// back
+					cmd.viewAngles.y = ctx.m_angOriginalViewangles.y + 180.f;
+					break;
+				default: break;
+				}	
 			}
 		}
+
+		if ( ctx.m_flFixedCurtime > m_flLowerBodyRealignTimer ) {
+			cmd.viewAngles.y -= 90.f;
+			sendPacket = false;
+		}
 	}
-	else if ( m_flVelocityLengthXY <= 0.1f ) {
+	
+	if ( m_flVelocityLengthXY <= 0.1f ) {
 		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
 			static bool reRoll{ };
 			static float random{ };
@@ -99,21 +114,31 @@ void CAntiAim::Yaw( CUserCmd& cmd, bool sendPacket ) {
 			}
 		}
 	}
-
-	cmd.viewAngles.Normalize( );
 }
 
 float CAntiAim::BaseYaw( CUserCmd& cmd ) {
-	auto yaw = NormaliseYaw( cmd.viewAngles.y );
+	m_bAntiBackstab = false;
+	//if ( !Interfaces::ClientState->nChokedCommands )
+	ChokeCycleJitter = !ChokeCycleJitter;
+
+	auto yaw = cmd.viewAngles.y;
 
 	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
-		if ( ManualSide == 1 )
+		if ( ManualSide == 1 ) {
 			yaw += 90.f;
-		else if ( ManualSide == 2 )
+			return yaw;
+		}
+		else if ( ManualSide == 2 ) {
 			yaw -= 90.f;
+			return yaw;
+		}
 	}
 
 	AtTarget( yaw );
+
+	if ( m_bAntiBackstab )
+		return yaw;
+
 	PickYaw( yaw );
 	//AutoDirection( yaw );
 
@@ -121,9 +146,6 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 }
 
 void CAntiAim::AtTarget( float& yaw ) {
-	if ( ManualSide )
-		return;
-
 	CBasePlayer* bestPlayer{ nullptr };
 	auto bestValue = INT_MAX;
 
@@ -144,6 +166,7 @@ void CAntiAim::AtTarget( float& yaw ) {
 			if ( player->GetWeapon( )->IsKnife( ) ) {
 				if ( dist < 250 ) {
 					bestPlayer = player;
+					m_bAntiBackstab = true;
 					break;
 				}
 			}
@@ -178,11 +201,11 @@ void CAntiAim::AtTarget( float& yaw ) {
 	yaw = x == 0.f && y == 0.f ? 0.f : RAD2DEG( std::atan2( y, x ) );
 }
 
-bool CAntiAim::Condition( CUserCmd& cmd ) {
-	if ( ctx.m_pLocal->m_MoveType( ) == MOVETYPE_NOCLIP || ctx.m_pLocal->m_MoveType( ) == MOVETYPE_LADDER )
+bool CAntiAim::Condition( CUserCmd& cmd, bool checkCmd ) {
+	if ( !Config::Get<bool>( Vars.AntiaimEnable ) )
 		return true;
 
-	if ( !Config::Get<bool>( Vars.AntiaimEnable ) )
+	if ( ctx.m_pLocal->m_MoveType( ) == MOVETYPE_NOCLIP || ctx.m_pLocal->m_MoveType( ) == MOVETYPE_LADDER )
 		return true;
 
 	if ( !ctx.m_pWeapon )
@@ -191,10 +214,14 @@ bool CAntiAim::Condition( CUserCmd& cmd ) {
 	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
 		return true;
 
-	if ( cmd.iButtons & IN_ATTACK && !ctx.m_pWeapon->IsGrenade( ) )
+	if ( ctx.m_pWeapon->IsGrenade( ) && ctx.m_pWeapon->m_fThrowTime( ) )
 		return true;
 
-	if ( ctx.m_pWeapon->IsGrenade( ) && ctx.m_pWeapon->m_fThrowTime( ) )
+	if ( !checkCmd )
+		return false;
+
+	if ( cmd.iButtons & IN_ATTACK && !ctx.m_pWeapon->IsGrenade( )
+		&& ( ctx.m_pWeapon->m_iItemDefinitionIndex( ) != WEAPON_REVOLVER || ctx.m_bRevolverCanShoot ) )
 		return true;
 
 	// e
@@ -208,19 +235,11 @@ bool CAntiAim::Condition( CUserCmd& cmd ) {
 	return false;
 }
 
-void CAntiAim::FakeLag( ) {
-	//m_bCanBreakLBY = false;
-
-	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > Config::Get<bool>( Vars.RagebotLagcompensation ) ? 0 : 1;
-
-	if ( !Config::Get<int>( Vars.AntiaimFakeLagLimit ) && !Config::Get<bool>( Vars.AntiaimEnable ) )
+void CAntiAim::FakeLag( int cmdNum ) {
+	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) ) {
+		ctx.m_bSendPacket = true;
 		return;
-
-	if ( Interfaces::GameRules && Interfaces::GameRules->IsFreezeTime( ) )
-		return;
-
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f )
-		return;
+	}
 
 	static int maxChoke = Config::Get<int>( Vars.AntiaimFakeLagLimit );
 
@@ -229,16 +248,67 @@ void CAntiAim::FakeLag( ) {
 	if ( !Interfaces::ClientState->nChokedCommands )
 		maxChoke = Math::RandomInt( static_cast< int >( max * ( 1.f - ( static_cast< float >( Config::Get<int>( Vars.AntiaimFakeLagVariance ) ) / 100.f ) ) ), max );
 
-	if ( Interfaces::Engine->IsVoiceRecording( ) )
-		maxChoke = 1;
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f
+		|| Interfaces::Engine->IsVoiceRecording( ) ) {
+		ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 1;
+		return;
+	}
 
 	const auto& localData = ctx.m_cLocalData.at( Interfaces::ClientState->iLastOutgoingCommand % 150 );
 
-	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands >= maxChoke;
+	if ( Interfaces::ClientState->nChokedCommands >= maxChoke )
+		ctx.m_bSendPacket = true;
 
 	if ( Config::Get<bool>( Vars.AntiaimFakeLagBreakLC )
 		&& ( ctx.m_pLocal->m_vecOrigin( ) - localData.PredictedNetvars.m_vecOrigin ).LengthSqr( ) > 4096.f )
 		ctx.m_bSendPacket = true;
+
+	if ( Config::Get<bool>( Vars.AntiaimFakeLagInPeek ) ) {
+		if ( ctx.m_bInPeek )
+			ctx.m_bSendPacket = true;
+		else if ( cmdNum - ctx.m_iLastPeekCmdNum < 15 )
+			ctx.m_bSendPacket = false;
+	}
+}
+
+void CAntiAim::RunLocalModifications( CUserCmd& cmd, bool& sendPacket ) {
+	const auto animstate{ ctx.m_pLocal->m_pAnimState( ) };
+
+	if ( !Condition( cmd, true ) )
+		Yaw( cmd, sendPacket );
+
+	Features::Misc.NormalizeMovement( cmd );
+	Features::Misc.MoveMINTFix( cmd, ctx.m_angOriginalViewangles, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
+	Features::AnimSys.UpdateLocal( cmd.viewAngles, true, cmd );
+	std::memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
+
+	// we landed.
+	if ( animstate->bOnGround ) {
+		// walking, delay lby update by .22.
+		if ( animstate->flVelocityLength2D > 0.1f )
+			Features::Antiaim.m_flLowerBodyRealignTimer = ctx.m_flFixedCurtime + .22;
+		// standing update every 1.1s
+		else if ( ctx.m_flFixedCurtime > Features::Antiaim.m_flLowerBodyRealignTimer )
+			Features::Antiaim.m_flLowerBodyRealignTimer = ctx.m_flFixedCurtime + 1.1f;
+	}
+
+	if ( !sendPacket )
+		return;
+
+	ctx.m_pLocal->SetAbsAngles( { 0.f, animstate->flAbsYaw, 0.f } );
+
+	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+	const auto boneIndex{ lookupBone( ctx.m_pLocal, _( "lean_root" ) ) };
+
+	if ( !( ctx.m_pLocal->m_pStudioHdr( )->vecBoneFlags[ boneIndex ] & BONE_USED_BY_SERVER ) )
+		ctx.m_pLocal->m_pStudioHdr( )->vecBoneFlags[ boneIndex ] = BONE_USED_BY_SERVER;
+
+	ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight *= 2.f;
+	Features::AnimSys.SetupBonesRebuilt( ctx.m_pLocal, ctx.m_matRealLocalBones, BONE_USED_BY_SERVER,
+		Interfaces::Globals->flCurTime, true );
+	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+
+	ctx.m_vecSetupBonesOrigin = ctx.m_pLocal->GetAbsOrigin( );
 }
 
 // pasta reis courtesy of slazy

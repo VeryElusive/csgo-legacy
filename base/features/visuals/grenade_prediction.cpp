@@ -92,7 +92,7 @@ void CGrenadePrediction::Paint( ) {
 				const auto d = ( delta.Length( ) - 25.f ) / 140.f;
 				auto damage = 105.f * std::exp( -d * d );
 
-				Features::Autowall.ScaleDamage( player, damage, 1.f, HITGROUP_CHEST );
+				Features::Autowall.ScaleDamage( player, damage, 1.f, HITGROUP_CHEST, 0 );
 
 				// clamp max damage
 				damage = std::floorf( std::min( damage, ( player->m_ArmorValue( ) > 0 ) ? 57.f : 98.f ) );
@@ -131,8 +131,10 @@ void CGrenadePrediction::Paint( ) {
 			Vector screen;
 
 			if ( Math::WorldToScreen( bounce, screen ) ) {
-				Render::FilledRectangle( screen.x - 2, screen.y - 2, 4, 4, Menu::Accent2Col.Set<COLOR_A>( 100 ) );
-				Render::Rectangle( screen.x - 3, screen.y - 3, 6, 6, Menu::AccentCol );
+				//Render::FilledRectangle( screen.x - 2, screen.y - 2, 4, 4, Menu::Accent2Col.Set<COLOR_A>( 100 ) );
+				//Render::Rectangle( screen.x - 3, screen.y - 3, 6, 6, Menu::AccentCol );
+
+				Render::Circle( screen.x, screen.y, 3, 10, Menu::AccentCol );
 			}
 		}
 
@@ -266,8 +268,8 @@ void CGrenadePrediction::Setup( Vector& vecSrc, Vector& vecThrow, const QAngle& 
 	vecSrc = tr.vecEnd;
 	vecSrc -= vecBack;
 
-	auto velocity = ctx.m_pLocal->m_vecVelocity( );
-	if ( velocity.Length2D( ) > 3.4f )
+	auto velocity = ctx.m_pLocal->m_vecAbsVelocity( );
+	if ( velocity.Length2D( ) > 1.2f )
 		vecThrow = velocity;
 	else
 		vecThrow = { 0,0,0 };
@@ -376,9 +378,9 @@ void CGrenadePrediction::ResolveFlyCollisionCustom( CGameTrace& tr, Vector& vecV
 };
 
 int CGrenadePrediction::Step( Vector& vecSrc, Vector& vecThrow, int tick, float interval ) {
-	auto AddGravityMove = [ ]( Vector& move, Vector& vel, float frametime, bool onground ) {
+	auto AddGravityMove = [ ]( Vector& move, Vector& vel ) {
 		// gravity for grenades.
-		float gravity = Offsets::Cvars.sv_gravity->GetFloat( ) * 0.4f;
+		float gravity{ Offsets::Cvars.sv_gravity->GetFloat( ) * 0.4f };
 
 		// move one tick using current velocity.
 		move.x = vel.x * Interfaces::Globals->flIntervalPerTick;
@@ -428,7 +430,7 @@ int CGrenadePrediction::Step( Vector& vecSrc, Vector& vecThrow, int tick, float 
 
 	// Apply gravity
 	Vector move;
-	AddGravityMove( move, vecThrow, interval, false );
+	AddGravityMove( move, vecThrow );
 
 	// Push entity
 	CGameTrace tr;
@@ -440,14 +442,14 @@ int CGrenadePrediction::Step( Vector& vecSrc, Vector& vecThrow, int tick, float 
 		result |= 1;
 	}
 
+	if ( ( result & 1 ) || vecThrow == Vector( 0, 0, 0 ) || tr.flFraction != 1.0f )
+		vecBounces.push_back( tr.vecEnd );
+
 	// Resolve collisions
 	if ( tr.flFraction != 1.0f && !tr.plane.vecNormal.IsZero( ) ) {
 		result |= 2; // Collision!
 		ResolveFlyCollisionCustom( tr, vecThrow, interval );
 	}
-
-	if ( ( result & 1 ) || vecThrow == Vector( 0, 0, 0 ) || tr.flFraction != 1.0f )
-		vecBounces.push_back( tr.vecEnd );
 
 
 	// Set new position

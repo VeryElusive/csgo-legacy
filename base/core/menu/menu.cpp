@@ -66,7 +66,7 @@ void Menu::render( ) {
 
 	Render::Text( Fonts::Menu, Pos + Vector2D( 20, Size.y - 22 ), AccentCol, 0, _( "Havoc" ) );
 	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x - 125, Size.y - 22 ), Color( 50, 50, 50 ), 0, _( "Developed by" ) );
-	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x - 56, Size.y - 22 ), AccentCol, 0, _( "Elusive" ) );
+	Render::Text( Fonts::Menu, Pos + Vector2D( Size.x - 56, Size.y - 22 ), AccentCol, 0, _( "Artie" ) );
 
 	Menu::CursorPos = Pos + Vector2D( 20, 100 );
 }

@@ -200,7 +200,7 @@ private:
 	ETraceType iTraceType = TRACE_EVERYTHING;
 };
 
-class CTraceFilterSkipTwoEntities : public ITraceFilter
+/*class CTraceFilterSkipTwoEntities : public ITraceFilter
 {
 	using FilterCallbackFn = std::function<bool( IHandleEntity*, int )>;
 
@@ -231,7 +231,7 @@ public:
 	FilterCallbackFn checkCallback{ };
 	ETraceType iTraceType = TRACE_EVERYTHING;
 	const IHandleEntity* pSkip2 = nullptr;
-};
+};*/
 
 class ITraceListData
 {

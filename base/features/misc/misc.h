@@ -28,14 +28,17 @@ public:
 	void NormalizeMovement( CUserCmd& cmd );
 	void AutoPeek( CUserCmd& cmd );
 	bool AutoStop( CUserCmd& cmd );
-	bool InPeek( );
+	bool InPeek( CUserCmd& cmd );
+	bool IsDefensivePositionHittable( );
 	void PlayerMove( ExtrapolationData_t& data );
+	void SlowWalk( CUserCmd& cmd );
+	void AutoStrafer( CUserCmd& cmd );
 
 	// FAKE PING
 	void UpdateIncomingSequences( INetChannel* pNetChannel );
 	void ClearIncomingSequences( );
 	void AddLatencyToNetChannel( INetChannel* pNetChannel, float flLatency );
-
+	
 	float TPFrac{ };
 	Vector OldOrigin{ };
 	bool AutoPeeking{ };
@@ -50,11 +53,9 @@ private:
 	bool ShouldRetract{ };
 
 	void QuickStop( CUserCmd& cmd );
-	void SlowWalk( CUserCmd& cmd );
-	void AutoStrafer( CUserCmd& cmd );
 	void FakeDuck( CUserCmd& cmd );
+	bool MicroMove( CUserCmd& cmd );
 	void LimitSpeed( CUserCmd& cmd, float speed );
-
 
 	// FAKE PING
 	// Values

@@ -1,5 +1,8 @@
 #include "event_listener.h"
 
+// sequence:
+// weapon_fire -> bullet_impact -> player_hurt
+
 void CEventListener::Setup( const std::deque<const char*>& arrEvents ) {
 	if ( arrEvents.empty( ) )
 		return;
@@ -20,24 +23,30 @@ void BulletImpact( IGameEvent* pEvent ) {
 	Vector pos{ pEvent->GetFloat( _( "x" ) ), pEvent->GetFloat( _( "y" ) ), pEvent->GetFloat( _( "z" ) ) };
 	auto ent{ static_cast<CBasePlayer*>( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) ) ) };
 
-	if ( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) != ctx.m_pLocal->Index( ) ) {
+	if ( ent != ctx.m_pLocal ) {
+		if ( ent->IsTeammate( ) )
+			return;
+
 		const auto& col = Config::Get<Color>( Vars.VisServerBulletImpactsCol );
 		if ( Config::Get<bool>( Vars.VisServerBulletImpacts ) ) {
 			Interfaces::DebugOverlay->AddBoxOverlay( pos, Vector( -2.0f, -2.0f, -2.0f ), Vector( 2.0f, 2.0f, 2.0f ), QAngle( 0.f, -0.f, 0.f ),
 				col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), col.Get<COLOR_A>( ), 4.0f );
 		}
 
-		/*if ( Config::Get<bool>( Vars.VisOtherBulletTracers ) )
-			Features::Visuals.BulletTracers.AddBeamInfo( { Interfaces::Globals->flCurTime, ent->GetEyePosition( ), Vector( pos.x, pos.y, pos.z ), Color( ), ent->Index( ), -1 } );
-			*/
+		if ( Config::Get<bool>( Vars.VisOtherBulletTracers ) )
+			Features::Visuals.BulletTracers.AddTracer( ent->GetEyePosition( ent->m_angEyeAngles( ).y , ent->m_angEyeAngles( ).x ), pos, ent );
+			
 		return;
 	}
 
-	/*if ( Config::Get<bool>( Vars.VisLocalBulletTracers ) )
-		Features::Visuals.BulletTracers.AddBeamInfo( { Interfaces::Globals->flCurTime, ent->GetEyePosition( ), Vector( pos.x, pos.y, pos.z ), Color( ), ent->Index( ), -1 } );
-		*/
-	if ( const auto shot = Features::Shots.LastUnprocessed( ) )
-		shot->m_server_info.m_impact_pos = pos;
+	if ( const auto shot = Features::Shots.LastUnprocessed( ) ) {
+		shot->m_vecServerEnd = pos;
+
+		if ( Config::Get<bool>( Vars.VisLocalBulletTracers ) )
+			Features::Visuals.BulletTracers.AddTracer( shot->m_vecStart, pos, ent );
+	}
+	else 	if ( Config::Get<bool>( Vars.VisLocalBulletTracers ) )
+		Features::Visuals.BulletTracers.AddTracer( ctx.m_vecEyePos, pos, ent );
 
 	const auto col = Config::Get<Color>( Vars.VisLocalBulletImpactsCol );
 
@@ -52,15 +61,13 @@ void RoundStart( IGameEvent* pEvent ) {
 
 	ctx.m_bClearKillfeed = true;
 	ctx.m_iBombCarrier = -1;
-	ctx.m_bFilledAnims = false;
 	ctx.m_iLastShotNumber = 0;
-	ctx.m_iLastShotTime = 0;
 
 	for ( int i{ }; i < 64; i++ ) {
 		Features::Visuals.DormantESP.m_cSoundPlayers[ i ].valid = false;
 		Features::Visuals.PlayerESP.Entries.at( i ).Alpha = 0;
 		Features::Visuals.PlayerESP.Entries.at( i ).health = 100;
-		Features::AnimSys.m_arrEntries.at( i ).m_iMissedShots = 0;
+		Features::AnimSys.m_arrEntries.at( i ).OnNewRound( );
 	}
 
 	if ( Config::Get<bool>( Vars.MiscBuyBot ) ) {
@@ -134,25 +141,28 @@ void WeaponFire( IGameEvent* pEvent ) {
 	if ( !pEvent || !ctx.m_pLocal )
 		return;
 
-	if ( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) != ctx.m_pLocal->Index( ) )
+	if ( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) ) != ctx.m_pLocal )
 		return;
 
-	if ( Features::Shots.m_elements.empty( ) )
+	if ( Features::Shots.m_vecShots.empty( ) )
 		return;
 
-	const auto shot = std::find_if(
-		Features::Shots.m_elements.begin( ), Features::Shots.m_elements.end( ),
-		[ ]( const shot_t& shot ) {
-			return shot.m_cmd_number != -1 && !shot.m_server_info.m_fire_tick
-				&& std::abs( Interfaces::ClientState->iCommandAck - shot.m_cmd_number ) <= 17;
+	const auto shot{ std::find_if(
+		Features::Shots.m_vecShots.begin( ), Features::Shots.m_vecShots.end( ),
+		[ ]( const Shot_t& shot ) {
+			return !shot.m_iServerProcessTick;
 		}
-	);
+	) };
 
-	if ( shot == Features::Shots.m_elements.end( ) )
+	if ( shot == Features::Shots.m_vecShots.end( ) )
 		return;
 
-	shot->m_process_tick = Interfaces::Globals->iTickCount + 1;
-	shot->m_server_info.m_fire_tick = Interfaces::ClientState->iServerTick;
+	shot->m_iServerProcessTick = Interfaces::ClientState->iServerTick;
+}
+
+void PlayerDeath( IGameEvent* pEvent ) {
+	const auto user{ pEvent->GetInt( _( "userid" ) ) };
+	ctx.m_iLastID = Interfaces::Engine->GetPlayerForUserID( user );
 }
 void PlayerHurt( IGameEvent* pEvent ) {
 	static auto GetHitboxByHitGroup = [ ]( int hitgroup ) -> int
@@ -211,7 +221,7 @@ void PlayerHurt( IGameEvent* pEvent ) {
 	const auto shot = Features::Shots.LastUnprocessed( );
 
 	if ( !shot
-		|| ( shot->m_target != victim ) ) {
+		|| ( shot->m_pPlayer != victim ) ) {
 		if ( victim ) {
 			const auto hdr = Interfaces::ModelInfo->GetStudioModel( victim->GetModel( ) );
 			if ( !hdr )
@@ -230,16 +240,16 @@ void PlayerHurt( IGameEvent* pEvent ) {
 
 			const auto point = ( min + max ) * 0.5f;
 
-			Features::Visuals.AddHit( { point, damage, Interfaces::Globals->flCurTime } );
+			Features::Visuals.AddHit( { point, damage, Interfaces::Globals->flRealTime } );
 		}
 		return;
 	}
 
-	Features::Visuals.AddHit( { shot->m_shot_pos, damage, Interfaces::Globals->flCurTime } );
+	Features::Visuals.AddHit( { shot->m_vecPredEnd, damage, Interfaces::Globals->flRealTime } );
 
-	shot->m_server_info.m_hitgroup = hitgroup;
-	shot->m_server_info.m_damage = damage;
-	shot->m_server_info.m_hurt_tick = Interfaces::ClientState->iServerTick;
+	shot->m_iServerHitgroup = hitgroup;
+	shot->m_iServerDamage = damage;
+	shot->m_bHitPlayer = true;
 }
 
 void CEventListener::FireGameEvent( IGameEvent* pEvent ) {
@@ -252,6 +262,7 @@ void CEventListener::FireGameEvent( IGameEvent* pEvent ) {
 	case FNV1A::HashConst( _( "bullet_impact" ) ): BulletImpact( pEvent ); break;
 	case FNV1A::HashConst( _( "round_start" ) ): RoundStart( pEvent ); break;
 	case FNV1A::HashConst( _( "player_hurt" ) ): PlayerHurt( pEvent ); break;
+	case FNV1A::HashConst( _( "player_death" ) ): PlayerDeath( pEvent ); break;
 	case FNV1A::HashConst( _( "weapon_fire" ) ): WeaponFire( pEvent ); break;
 	default: break;
 	}

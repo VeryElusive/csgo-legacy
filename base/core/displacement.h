@@ -3,9 +3,13 @@
 
 struct signatures {
 	uintptr_t LocalPlayer;
+	uintptr_t CBaseEntity__PrecacheModel;
 
 	uintptr_t uPredictionRandomSeed;
 	uintptr_t pPredictionPlayer;
+
+	uintptr_t ReInitPredictables;
+	uintptr_t ShutDownPredictables;
 
 	uintptr_t InitKeyValues;
 	uintptr_t DestructKeyValues;
@@ -19,6 +23,12 @@ struct signatures {
 	uintptr_t oCreateAnimationState;
 	uintptr_t oUpdateAnimationState;
 	uintptr_t oResetAnimationState;
+
+	uintptr_t ClipRayToHitbox;
+	uintptr_t CalcShotgunSpread;
+
+	uintptr_t FindMapping;
+	uintptr_t SelectWeightedSequenceFromModifiers;
 
 	uintptr_t uDisableRenderTargetAllocationForever;
 
@@ -55,6 +65,8 @@ struct signatures {
 
 	uintptr_t uCAM_ThinkReturn;
 
+	uintptr_t ReturnToEyePosAndVectors;
+
 	uintptr_t InvalidateBoneCache;
 
 	uintptr_t SetCollisionBounds;
@@ -65,14 +77,21 @@ struct signatures {
 
 	uintptr_t AddBoxOverlayReturn;
 
+	uintptr_t IsBreakable;
+
 	uintptr_t CL_SendMove;
 
 	uintptr_t GetSequenceActivity;
 
-	//uintptr_t SetupBones_AttachmentHelper;
+	uintptr_t SetupBones_AttachmentHelper;
 
+	uintptr_t ReturnToProcessInputIsBoneAvailableForRead;
+	uintptr_t ReturnToProcessInputGetAbsOrigin;
+
+	uintptr_t ReturnToClampBonesInBBox;
 	uintptr_t ClampBonesInBBox;
 	uintptr_t C_BaseAnimating__BuildTransformations;
+	uintptr_t StandardBlendingRules;
 
 	uintptr_t CL_FireEvents;
 	uintptr_t NET_ProcessSocket;
@@ -82,29 +101,31 @@ struct signatures {
 
 	uintptr_t ReturnToPerformPrediction;
 	uintptr_t ReturnToInterpolateServerEntities;
+	uintptr_t ReturnToInterpolateServerEntitiesExtrap;
+
+	uintptr_t ReturnToDrawCrosshair;
+	uintptr_t ReturnToWantReticleShown;
 
 	uintptr_t current_tickcount;
 	uintptr_t host_currentframetick;
 
 
-	uintptr_t IK_Context_Construct;
-	uintptr_t IK_Context_Init;
-	uintptr_t IK_Context_UpdateTargets;
-	uintptr_t IK_Context_SolveDependencies;
-	uintptr_t IK_Context_AddDependencies;
-	uintptr_t IK_Context_CopyTo;
+	uintptr_t CIKContext__Construct;
+	uintptr_t CIKContext__Init;
+	uintptr_t CIKContext__UpdateTargets;
+	uintptr_t CIKContext__SolveDependencies;
+	uintptr_t CIKContext__AddDependencies;
+	uintptr_t CIKContext__CopyTo;
 
+	uintptr_t CBoneMergeCache__Init;
+	uintptr_t CBoneMergeCache__Construct;
+	uintptr_t CBoneMergeCache__MergeMatchingPoseParams;
+	uintptr_t CBoneMergeCache__CopyFromFollow;
+	uintptr_t CBoneMergeCache__CopyToFollow;
 
-	uintptr_t BoneMergeCache_Delete;
-	uintptr_t BoneMergeCache_Construct;
-	uintptr_t BoneMergeCache_Init;
-	uintptr_t BoneMergeCache_MergeMatchingPoseParams;
-	uintptr_t BoneMergeCache_CopyFromFollow;
-	uintptr_t BoneMergeCache_CopyToFollow;
-
-	uintptr_t BoneSetup_AccumulatePose;
-	uintptr_t BoneSetup_CalcAutoplaySequences;
-	uintptr_t BoneSetup_CalcBoneAdj;
+	uintptr_t CBoneSetup__AccumulatePose;
+	uintptr_t CBoneSetup__CalcAutoplaySequences;
+	uintptr_t CBoneSetup__CalcBoneAdj;
 };
 
 #include "../sdk/convar.h"
@@ -144,6 +165,28 @@ struct cvars {
 	CConVar* cl_ignorepackets;
 	CConVar* sv_enablebunnyhopping;
 	CConVar* sv_jump_impulse;
+	CConVar* mp_damage_scale_ct_head;
+	CConVar* mp_damage_scale_t_head;
+	CConVar* mp_damage_scale_ct_body;
+	CConVar* mp_damage_scale_t_body;
+	CConVar* sv_client_min_interp_ratio;
+	CConVar* sv_client_max_interp_ratio;
+	CConVar* sv_minupdaterate;
+	CConVar* sv_maxupdaterate;
+	CConVar* r_3dsky;
+	CConVar* sv_skyname;
+	CConVar* weapon_accuracy_shotgun_spread_patterns;
+	CConVar* sv_penetration_type;
+	CConVar* sv_showimpacts_time;
+	CConVar* cl_predict;
+
+
+	CConVar* fog_override;
+	CConVar* fog_start;
+	CConVar* fog_end;
+	CConVar* fog_maxdensity;
+	CConVar* fog_hdrcolorscale;
+	CConVar* fog_color;
 };
 
 namespace Offsets {
@@ -167,6 +210,7 @@ namespace Offsets {
 	inline int m_CollisionGroup;
 	inline int m_nRenderMode;
 	inline int m_flSimulationTime;
+	inline int m_flAnimTime;
 	inline int m_lifeState;
 	inline int m_iHealth;
 	inline int m_fFlags;
@@ -186,11 +230,13 @@ namespace Offsets {
 	inline int m_zoomLevel;
 	inline int m_iBurstShotsRemaining;
 	inline int m_fNextBurstShot;
+	inline int m_fLastShotTime;
 	inline int m_fAccuracyPenalty;
 	inline int m_flRecoilIndex;
 	inline int m_flPostponeFireReadyTime;
 	inline int m_bIsBroken;
 	inline int m_nSequence;
+	inline int m_flPlaybackRate;
 	inline int m_nHitboxSet;
 	inline int m_bClientSideAnimation;
 	inline int m_flCycle;
@@ -211,6 +257,7 @@ namespace Offsets {
 	inline int m_bGunGameImmunity;
 	inline int m_flThirdpersonRecoil;
 	inline int m_bIsWalking;
+	inline int m_bIsPlayerGhost;
 	inline int deadflag;
 	inline int m_flDuckSpeed;
 	inline int m_flMaxSpeed;
@@ -234,6 +281,7 @@ namespace Offsets {
 	inline int m_hWeapon;
 	inline int m_nAnimationParity;
 	inline int m_nModelIndex;
+	inline int m_hCombatWeaponParent;
 
 	inline signatures Sigs;
 	inline cvars Cvars;

@@ -1,10 +1,8 @@
-#include "misc.h"
+﻿#include "misc.h"
 #include "../rage/ragebot.h"
+#include "../../utils/threading/thread_pool.hpp"
 
 void CMisc::Movement( CUserCmd& cmd ) {
-	if ( ctx.m_pLocal->IsDead( ) )
-		return;
-
 	if ( ctx.m_pLocal->m_MoveType( ) != MOVETYPE_WALK )
 		return;
 
@@ -18,25 +16,27 @@ void CMisc::Movement( CUserCmd& cmd ) {
 
 	m_bWasJumping = cmd.iButtons & IN_JUMP;
 
-	m_ve2OldMovement = { cmd.flForwardMove, cmd.flSideMove };
-
-	if ( Config::Get<bool>(Vars.MiscInfiniteStamina ) )
+	if ( Config::Get<bool>( Vars.MiscInfiniteStamina ) )
 		cmd.iButtons |= IN_BULLRUSH;
+
+	m_ve2OldMovement = { cmd.flForwardMove, cmd.flSideMove };
 
 	FakeDuck( cmd );
 
 	if ( !AutoStop( cmd ) ) {
-		QuickStop( cmd );
+		/*if ( !MicroMove( cmd ) )*/ {
+			QuickStop( cmd );
 
-		if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
-			if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
-				cmd.iButtons |= IN_JUMP;
-			else
-				cmd.iButtons &= ~IN_JUMP;
+			if ( Config::Get<bool>( Vars.MiscBunnyhop ) && m_bWasJumping ) {
+				if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
+					cmd.iButtons |= IN_JUMP;
+				else
+					cmd.iButtons &= ~IN_JUMP;
+			}
+
+			SlowWalk( cmd );
+			AutoStrafer( cmd );
 		}
-
-		SlowWalk( cmd );
-		AutoStrafer( cmd );
 	}
 
 	cmd.flForwardMove = std::clamp<float>( cmd.flForwardMove, -450.f, 450.f );
@@ -47,6 +47,8 @@ void CMisc::Movement( CUserCmd& cmd ) {
 bool CMisc::AutoStop( CUserCmd& cmd ) {
 	if ( !Features::Ragebot.m_bShouldStop )
 		return false;
+
+	ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
 
 	if ( !Features::Ragebot.RagebotAutoStop )
 		return false;
@@ -65,58 +67,45 @@ bool CMisc::AutoStop( CUserCmd& cmd ) {
 		return false;
 
 	const auto maxWeaponSpeed{ ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) };
-	const auto optSpeed{ maxWeaponSpeed / 3.f };
+	const auto optSpeed{ maxWeaponSpeed * 0.25f };
 
-	const auto& velocity{ ctx.m_pLocal->m_vecVelocity( ) };
-	const auto speed{ velocity.Length2D( ) };
-
-	if ( speed <= optSpeed )
-		LimitSpeed( cmd, optSpeed );
-	else {
-		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
-
-		QAngle dir;
-		Math::VectorAngles( velocity * -1, dir );
-
-		dir.y = cmd.viewAngles.y - dir.y;
-
-		Vector move;
-		Math::AngleVectors( dir, &move );
-
-		cmd.flForwardMove = move.x;
-		cmd.flSideMove = move.y;
-
-		/*// determine amount of acceleration
-		const auto accelspeed{ Offsets::Cvars.sv_accelerate->GetFloat( ) * Interfaces::Globals->flIntervalPerTick * ctx.m_pLocal->m_surfaceFriction( ) };
-
-		// dont need to compensate for addspeed
-
-		if ( std::abs( velocity.x + cmd.flForwardMove * accelspeed ) > optSpeed )
-			cmd.flForwardMove	= std::copysign( ( std::abs( velocity.x ) - optSpeed ) / accelspeed + 1.f, move.x );
-
-		if ( std::abs( velocity.x + cmd.flSideMove * accelspeed ) > optSpeed )
-			cmd.flSideMove		= std::copysign( ( std::abs( velocity.y ) - optSpeed ) / accelspeed + 1.f, move.y );*/
-	}
+	LimitSpeed( cmd, optSpeed );
 
 	return true;
 }
 
 void CMisc::LimitSpeed( CUserCmd& cmd, float maxSpeed ) {
-	const auto cmdSpeed{ std::sqrt( ( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) + ( cmd.flUpMove * cmd.flUpMove ) ) };
+	const auto& velocity{ ctx.m_pLocal->m_vecVelocity( ) };
+	const auto speed{ velocity.Length2D( ) };
 
-	Vector fwd{ }, right{ };
+	Vector forward{ }, right{ };
+	Math::AngleVectors( cmd.viewAngles, &forward, &right );
 
-	Math::AngleVectors( cmd.viewAngles, &fwd, &right );
+	auto wishSpeed{ maxSpeed / ctx.m_pLocal->m_surfaceFriction( ) };// good idea?
+	Vector velDir{ forward.x * cmd.flForwardMove + right.x * cmd.flSideMove,
+		forward.y * cmd.flForwardMove + right.y * cmd.flSideMove };
 
-	if ( cmdSpeed > maxSpeed ) {
-		const auto accelspeed{ Offsets::Cvars.sv_accelerate->GetFloat( ) * Interfaces::Globals->flIntervalPerTick * ctx.m_pLocal->m_surfaceFriction( ) };
-
-		cmd.flSideMove *= maxSpeed / cmdSpeed;
-		cmd.flForwardMove *= maxSpeed / cmdSpeed;
-		cmd.flUpMove *= maxSpeed / cmdSpeed;
+	if ( !cmd.flForwardMove && !cmd.flSideMove ) {
+		velDir = { cmd.viewAngles.x, cmd.viewAngles.y, 0.f };
+		wishSpeed = 0;
 	}
 
-	//FullWalkMoveRebuild( cmd, fwd, right, ctx.m_pLocal->m_vecVelocity( ), maxSpeed );
+	if ( speed > maxSpeed + 1.f ) {
+		wishSpeed = ( speed - maxSpeed ) / ctx.m_pLocal->m_surfaceFriction( );// good idea?
+		if ( wishSpeed > 45 )
+			wishSpeed = 450.f;
+
+		velDir = velocity;
+	}
+
+	cmd.flForwardMove = wishSpeed;
+	cmd.flSideMove = 0;
+
+	auto moveDir{ cmd.viewAngles };
+
+	const auto direction{ std::atan2( velDir.y, velDir.x ) };
+	moveDir.y = std::remainderf( RAD2DEG( direction ) + ( speed > maxSpeed + 1.f ? 180.f : 0.f ), 360.f );
+	MoveMINTFix( cmd, moveDir, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 }
 
 void CMisc::QuickStop( CUserCmd& cmd ) {
@@ -124,26 +113,13 @@ void CMisc::QuickStop( CUserCmd& cmd ) {
 		&& !cmd.flForwardMove && !cmd.flSideMove 
 		&& !( cmd.iButtons & IN_JUMP ) 
 		&& ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) {
-		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
 
-		if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 20.f ) {
-			QAngle direction;
-			Math::VectorAngles( ctx.m_pLocal->m_vecVelocity( ), direction );
-			direction.y = ctx.m_angOriginalViewangles.y - direction.y;
-
-			Vector forward;
-			Math::AngleVectors( direction, &forward );
-
-			const Vector negated_direction = forward * -ctx.m_pLocal->m_vecVelocity( ).Length2D( );
-
-			cmd.flForwardMove = negated_direction.x;
-			cmd.flSideMove = negated_direction.y;
-		}
-		else
-			cmd.flForwardMove = cmd.flSideMove = 0;
+		if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) > 20 )
+			LimitSpeed( cmd, 0 );
 	}
 }
 
+//0x224
 void CMisc::NormalizeMovement( CUserCmd& cmd ) {
 	cmd.viewAngles.Normalize( );
 	cmd.viewAngles.Clamp( );
@@ -171,7 +147,7 @@ void CMisc::NormalizeMovement( CUserCmd& cmd ) {
 }
 
 void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_type ) {
-	if ( cmd.viewAngles.x == wish_angles.x && cmd.viewAngles.y == wish_angles.y && cmd.viewAngles.z == wish_angles.z )
+	if ( cmd.viewAngles == wish_angles )
 		return;
 
 	if ( cmd.viewAngles.z != 0.f
@@ -219,121 +195,111 @@ void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_
 
 	cmd.flForwardMove = move_2d.x;
 	cmd.flSideMove = move_2d.y;
+}
 
-	cmd.iButtons &= ~( IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT );
+bool CMisc::MicroMove( CUserCmd& cmd ) {
+	if ( !Config::Get<bool>( Vars.AntiaimEnable )
+		|| !Config::Get<bool>( Vars.AntiaimDesync )
+		|| cmd.iButtons & IN_JUMP
+		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
+		return false;
 
-	if ( move_type == MOVETYPE_LADDER ) {
-		if ( std::abs( cmd.flForwardMove ) > 200.f )
-			cmd.iButtons |=
-			cmd.flForwardMove > 0.f
-			? IN_FORWARD : IN_BACK;
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length2DSqr( ) > 2.f )
+		return false;
 
-		if ( std::abs( cmd.flSideMove ) <= 200.f )
-			return;
+	float duck_amount{ };
+	if ( cmd.iButtons & IN_DUCK )
+		duck_amount = std::min(
+			1.f,
+			ctx.m_pLocal->m_flDuckAmount( )
+			+ ( Interfaces::Globals->flIntervalPerTick * 0.8f ) * ctx.m_pLocal->m_flDuckSpeed( )
+		);
+	else
+		duck_amount =
+		ctx.m_pLocal->m_flDuckAmount( )
+		- std::max( 1.5f, ctx.m_pLocal->m_flDuckSpeed( ) ) * Interfaces::Globals->flIntervalPerTick;
 
-		cmd.iButtons |=
-			cmd.flSideMove > 0.f
-			? IN_MOVERIGHT : IN_MOVELEFT;
+	float move{ };
+	if ( cmd.iButtons & IN_DUCK
+		|| ctx.m_pLocal->m_flDuckAmount( )
+		|| ctx.m_pLocal->m_fFlags( ) & FL_DUCKING )
+		move = 1.1f / ( ( ( duck_amount * 0.34f ) + 1.f ) - duck_amount );
+	else
+		move = 1.1f;
 
-		return;
-	}
+	if ( std::abs( cmd.flForwardMove ) > move
+		|| std::abs( cmd.flSideMove ) > move )
+		return false;
 
-	if ( Config::Get<bool>( Vars.MiscSlideWalk )
-		&& move_type == MOVETYPE_WALK ) {
-		if ( cmd.flForwardMove != 0.f )
-			cmd.iButtons |=
-			cmd.flForwardMove < 0.f
-			? IN_FORWARD : IN_BACK;
+	static bool sw = false;
+	sw = !sw;
 
-		if ( cmd.flSideMove == 0.f )
-			return;
+	if ( !sw )
+		move *= -1.f;
 
-		cmd.iButtons |=
-			cmd.flSideMove < 0.f
-			? IN_MOVERIGHT : IN_MOVELEFT;
+	cmd.flSideMove = move;
 
-		return;
-	}
-
-	if ( cmd.flForwardMove != 0.f )
-		cmd.iButtons |=
-		cmd.flForwardMove > 0.f
-		? IN_FORWARD : IN_BACK;
-
-	if ( cmd.flSideMove == 0.f )
-		return;
-
-	cmd.iButtons |=
-		cmd.flSideMove > 0.f
-		? IN_MOVERIGHT : IN_MOVELEFT;
+	return true;
 }
 
 void CMisc::AutoStrafer( CUserCmd& cmd ) {
 	if ( !Config::Get<bool>( Vars.MiscAutostrafe ) )
-
 		return;
+
 	if ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND )
 		return;
 
-	const auto& velocity = ctx.m_pLocal->m_vecVelocity( );
+	auto vel = ctx.m_pLocal->m_vecVelocity( );
 
-	if ( velocity.Length2D( ) < 2.f
+	if ( vel.Length2D( ) < 2.f
 		&& !cmd.flForwardMove && !cmd.flSideMove )
 		return;
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		return;
 
-	if ( cmd.flForwardMove != 0.f || cmd.flSideMove != 0.f )
-		MovementAngle.y = std::remainder(
-			MovementAngle.y
-			+ std::remainder(
-				RAD2DEG(
-					std::atan2( cmd.flForwardMove, cmd.flSideMove )
-				) - 90.f, 360.f
-			), 360.f
-		);
+	auto speed2d = vel.Length2D( );
+	auto ideal_rot = std::min( RAD2DEG( std::asinf( 15.f / speed2d ) ), 90.f );
+	auto sign = cmd.iCommandNumber % 2 ? 1.f : -1.f;
 
-	cmd.flForwardMove = cmd.flSideMove = 0.f;
+	bool move_forward = cmd.iButtons & IN_FORWARD, move_backward = cmd.iButtons & IN_BACK;
+	bool move_left = cmd.iButtons & IN_MOVELEFT, move_right = cmd.iButtons & IN_MOVERIGHT;
 
-	const auto speed_2d = velocity.Length2D( );
+	cmd.flForwardMove = speed2d > 0.1f ? 0.f : 450.f;
 
-	const auto ideal_strafe = std::min( 90.f, RAD2DEG( std::asin( 15.f / speed_2d ) ) );
+	if ( move_forward )
+		MovementAngle.y += move_left ? 45.f : move_right ? -45.f : 0.f;
+	else if ( move_backward )
+		MovementAngle.y += move_left ? 135.f : move_right ? -135.f : 180.f;
+	else if ( move_left || move_right )
+		MovementAngle.y += move_left ? 90.f : -90.f;
 
-	static bool m_strafe_switch = false;
+	static auto old_yaw = 0.f;
+	auto yaw_delta = std::remainder( MovementAngle.y - old_yaw, 360.f ), abs_yaw_delta = std::abs( yaw_delta );
+	old_yaw = MovementAngle.y;
 
-	const auto mult = m_strafe_switch ? 1.f : -1.f;
+	if ( yaw_delta > 0.f ) cmd.flSideMove = -450.f;
+	else if ( yaw_delta < 0.f ) cmd.flSideMove = 450.f;
 
-	m_strafe_switch = !m_strafe_switch;
+	if ( abs_yaw_delta <= ideal_rot || abs_yaw_delta >= 30.f ) {
+		const auto vel_ang = RAD2DEG( std::atan2( vel.y, vel.x ) );
+		const auto vel_delta = std::remainder( MovementAngle.y - vel_ang, 360.f );
 
-	auto delta = std::remainder( MovementAngle.y - OldYaw, 360.f );
-	if ( delta )
-		cmd.flSideMove = delta < 0.f ? 450.f : -450.f;
+		auto retrack_speed = ideal_rot * ( ( Config::Get<int>( Vars.MiscAutostrafeSpeed ) / 100.f ) * 3 );
 
-	OldYaw = MovementAngle.y;
-
-	delta = std::abs( delta );
-
-	if ( delta >= 30.f
-		|| ideal_strafe >= delta ) {
-		const auto vel_angle = RAD2DEG( std::atan2( velocity.y, velocity.x ) );
-		const auto vel_delta = std::remainder( MovementAngle.y - vel_angle, 360.f );
-
-		if ( speed_2d <= 15.f
-			|| ideal_strafe >= vel_delta ) {
-			if ( speed_2d <= 15.f
-				|| vel_delta >= -ideal_strafe ) {
-				cmd.flSideMove = 450.f * mult;
-				MovementAngle.y += ideal_strafe * mult;
+		if ( vel_delta <= retrack_speed || speed2d <= 15.f ) {
+			if ( -retrack_speed <= vel_delta || speed2d <= 15.f ) {
+				MovementAngle.y += ideal_rot * sign;
+				cmd.flSideMove = sign * 450.f;
 			}
 			else {
+				MovementAngle.y = vel_ang - retrack_speed;
 				cmd.flSideMove = 450.f;
-				MovementAngle.y = vel_angle - ideal_strafe;
 			}
 		}
 		else {
+			MovementAngle.y = vel_ang + retrack_speed;
 			cmd.flSideMove = -450.f;
-			MovementAngle.y = vel_angle + ideal_strafe;
 		}
 	}
 
@@ -344,50 +310,14 @@ void CMisc::SlowWalk( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeaponData )
 		return;
 
-	if ( !ctx.m_pLocal->m_hGroundEntity( ) )
-		return;
-
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) {
-		cmd.iButtons &= ~( IN_SPEED | IN_WALK );
+		cmd.iButtons &= ~IN_WALK;
 
-		// reference:
-		// https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/game/shared/gamemovement.cpp#L1612
+		const float opt_speed = ( ctx.m_pLocal->m_bIsScoped( ) ? ctx.m_pWeaponData->flMaxSpeedAlt : ctx.m_pWeaponData->flMaxSpeed ) / 3.f;
+		const float movement_speed = std::sqrtf( cmd.flSideMove * cmd.flSideMove ) + ( cmd.flForwardMove * cmd.flForwardMove ) + ( cmd.flUpMove * cmd.flUpMove );
+		float speed = ctx.m_pLocal->m_vecVelocity( ).Length2D( );
 
-		// calculate friction.
-		const auto friction{ Offsets::Cvars.sv_friction->GetFloat( ) * ctx.m_pLocal->m_surfaceFriction( ) };
-
-		const auto maxLag{ ( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) ? 16 : 15 };
-		int ticks{ };
-
-		for ( ; ticks < maxLag; ++ticks ) {
-			// calculate speed.
-			const auto speed{ ctx.m_pLocal->m_vecVelocity( ).Length( ) };
-
-			// if too slow return.
-			if ( speed <= 0.1f )
-				break;
-
-			// bleed off some speed, but if we have less than the bleed, threshold, bleed the threshold amount.
-			const auto control{ std::max( speed, Offsets::Cvars.sv_stopspeed->GetFloat( ) ) };
-
-			// calculate the drop amount.
-			const auto drop{ control * friction * Interfaces::Globals->flIntervalPerTick };
-
-			// scale the velocity.
-			float newspeed{ std::max( 0.f, speed - drop ) };
-
-			if ( newspeed != speed ) {
-				// determine proportion of old speed we are using.
-				newspeed /= speed;
-
-				// adjust velocity according to proportion.
-				ctx.m_pLocal->m_vecVelocity( ) *= newspeed;
-			}
-		}
-
-		// zero forwardmove and sidemove.
-		if ( ticks > ( ( 15 ) - Interfaces::ClientState->nChokedCommands ) || !Interfaces::ClientState->nChokedCommands )
-			cmd.flForwardMove = cmd.flSideMove = 0.f;
+		LimitSpeed( cmd, opt_speed );
 	}
 }
 
@@ -395,29 +325,27 @@ void CMisc::FakeDuck( CUserCmd& cmd ) {
 	const auto Prev = ctx.m_bFakeDucking;
 
 	ctx.m_bFakeDucking = Config::Get<bool>( Vars.MiscFakeDuck ) && Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).enabled && ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND && int( 1.0f / Interfaces::Globals->flIntervalPerTick ) == 64;
+	if ( ctx.m_bFakeDucking )
+		cmd.iButtons |= IN_BULLRUSH;
 
 	if ( !Prev ) {
 		if ( !ctx.m_bFakeDucking )
 			return;
 
-		if ( ctx.m_bSendPacket ) {
-			cmd.iButtons |= IN_BULLRUSH;
+		if ( ctx.m_bSendPacket )
 			cmd.iButtons &= ~IN_DUCK;
-		}
 		else
 			ctx.m_bSendPacket = true;
 
 		return;
 	}
-	if ( !( cmd.iButtons & IN_BULLRUSH ) )
-		cmd.iButtons | IN_BULLRUSH;
 
-	if ( Interfaces::ClientState->nChokedCommands <= 6u )
-		cmd.iButtons &= ~IN_DUCK;
-	else
+	if ( Interfaces::ClientState->nChokedCommands >= 8 )
 		cmd.iButtons |= IN_DUCK;
+	else
+		cmd.iButtons &= ~IN_DUCK;
 
-	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands >= 14u;
+	ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands >= 15;
 }
 
 void CMisc::AutoPeek( CUserCmd& cmd ) {
@@ -427,15 +355,15 @@ void CMisc::AutoPeek( CUserCmd& cmd ) {
 		|| ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_REVOLVER )
 		return;
 
-	const auto origin = ctx.m_pLocal->GetAbsOrigin( );
+	const auto origin = ctx.m_pLocal->m_vecOrigin( );
 
 	if ( Config::Get<keybind_t>( Vars.MiscAutoPeekKey ).enabled ) {
 		if ( !AutoPeeking ) {
 			ShouldRetract = false;
-			OldOrigin = ctx.m_pLocal->GetAbsOrigin( );
+			OldOrigin = ctx.m_pLocal->m_vecOrigin( );
 
 			Ray_t ray{ OldOrigin, OldOrigin - Vector( 0.0f, 0.0f, 1000.0f ) };
-			CTraceFilter filter{ ctx.m_pLocal, TRACE_WORLD_ONLY };
+			CTraceFilter filter{ ctx.m_pLocal, TRACE_EVERYTHING };
 			CGameTrace trace;
 
 			Interfaces::EngineTrace->TraceRay( ray, MASK_SOLID, &filter, &trace );
@@ -444,17 +372,21 @@ void CMisc::AutoPeek( CUserCmd& cmd ) {
 				OldOrigin = trace.vecEnd + Vector( 0.0f, 0.0f, 2.0f );
 		}
 		if ( ShouldRetract ) {
-			const auto angle = Math::CalcAngle( ctx.m_pLocal->GetAbsOrigin( ), OldOrigin );
+			const auto angle{ Math::CalcAngle( ctx.m_pLocal->m_vecOrigin( ), OldOrigin ) };
 			MovementAngle.y = angle.y;
 
 			cmd.flForwardMove = 450.f;
+
+			if ( origin.DistTo( OldOrigin ) < 5.f && ctx.m_bCanShoot )
+				ShouldRetract = false;
+
 			cmd.flSideMove = 0.f;
 
-			MoveMINTFix( cmd, MovementAngle, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
-
-			const auto distance = origin.DistTo( OldOrigin );
-			if ( distance <= 10.0 )
-				ShouldRetract = false;
+			// think of a better way to fix overshooting this is ass
+			if ( origin.DistTo2D( OldOrigin ) < ctx.m_pLocal->m_vecVelocity( ).Length2D( ) / 7.66666666667f )
+				cmd.flForwardMove = 0;
+			else
+				MoveMINTFix( cmd, MovementAngle, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 		}
 		if ( cmd.iButtons & IN_ATTACK )
 			ShouldRetract = true;
@@ -468,34 +400,32 @@ void CMisc::AutoPeek( CUserCmd& cmd ) {
 }
 
 void CMisc::Thirdperson( ) {
-	if ( !Interfaces::Input->CAM_IsThirdPerson( ) )
-		Interfaces::Input->CAM_ToThirdPerson( );
+	if ( !Interfaces::Input->bCameraInThirdPerson )
+		Interfaces::Input->bCameraInThirdPerson = true;
+
+	//if ( ctx.m_pLocal->IsDead( ) )
+	//	ctx.m_pLocal->m_iObserverMode( ) = 5;
 
 	Vector camForward;
+
 	QAngle camAngles;
-
-	QAngle angles;
-	Interfaces::Engine->GetViewAngles( angles );
-
-	camAngles.x = angles.x;
-	camAngles.y = angles.y;
-	camAngles.z = 0;
+	Interfaces::Engine->GetViewAngles( camAngles );
 
 	Math::AngleVectors( camAngles, &camForward, 0, 0 );
 
 	camAngles.z = Config::Get<int>( Vars.VisThirdPersonDistance );
 
-	const auto eyeorigin = ctx.m_pLocal->GetAbsOrigin( ) + ( ctx.m_bFakeDucking ? Vector( 0, 0, Interfaces::GameMovement->GetPlayerViewOffset( false ).z ) : ctx.m_pLocal->m_vecViewOffset( ) );
+	const auto eyeorigin{ ctx.m_pLocal->GetAbsOrigin( ) + ( ctx.m_bFakeDucking ? Vector( 0, 0, Interfaces::GameMovement->GetPlayerViewOffset( false ).z ) : ctx.m_pLocal->m_vecViewOffset( ) ) };
 
-	Vector vecCamOffset( eyeorigin - ( camForward * camAngles.z ) );
+	const auto vecCamOffset( eyeorigin - ( camForward * camAngles.z ) );
 
-	Ray_t ray{ eyeorigin, vecCamOffset, Vector( -16, -16, -16 ), Vector( 16, 16, 16 ) };
+	const Ray_t ray{ eyeorigin, vecCamOffset, Vector( -16, -16, -16 ), Vector( 16, 16, 16 ) };
 	CGameTrace tr;
 	CTraceFilter filter{ ctx.m_pLocal, TRACE_WORLD_ONLY };
 
 	Interfaces::EngineTrace->TraceRay( ray, MASK_NPCWORLDSTATIC, &filter, &tr );
 
-	TPFrac = Math::Interpolate( TPFrac, tr.flFraction, Interfaces::Globals->flFrameTime * 10.f );
+	TPFrac = std::max( Math::Interpolate( TPFrac, tr.flFraction, Interfaces::Globals->flFrameTime * 10.f ), 0.125f );
 
 	camAngles.z *= TPFrac;
 
@@ -574,94 +504,172 @@ void CMisc::PlayerMove( ExtrapolationData_t& data ) {
 		data.m_iFlags |= FL_ONGROUND;
 }
 
-bool CMisc::InPeek( ) {
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 0.2f ) {
+bool CMisc::InPeek( CUserCmd& cmd ) {
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.2f ) {
 		Features::Exploits.m_bAlreadyPeeked = false;
 		return false;
 	}
 
 	matrix3x4_t backupMatrix[ 256 ];
-	memcpy( backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
-	const auto backupOrigin{ ctx.m_pLocal->m_vecOrigin( ) };
 	const auto backupAbsOrigin{ ctx.m_pLocal->GetAbsOrigin( ) };
 
+	const auto backupState{ *ctx.m_pLocal->m_pAnimState( ) };
+	CAnimationLayer backupLayers[ 13 ]{ };
+	std::memcpy( backupLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
+	const auto backupPose{ ctx.m_pLocal->m_flPoseParameter( ) };
+
+	const auto backupTickbase{ ctx.m_pLocal->m_nTickBase( ) };
+	const auto backupFlags{ ctx.m_pLocal->m_fFlags( ) };
+	const auto backupVel{ ctx.m_pLocal->m_vecAbsVelocity( ) };
+
+	const auto backupJumping{ Features::AnimSys.m_bJumping };
+	const auto backupLowerBodyRealignTimer{ Features::AnimSys.m_flLowerBodyRealignTimer };
+
 	ExtrapolationData_t extrapolated{ ctx.m_pLocal };
-	for ( int i{ }; i < 3; ++i )
+	for ( int i{ }; i < 2; ++i ) {
 		PlayerMove( extrapolated );
 
-	const auto delta{ extrapolated.m_vecOrigin - backupOrigin };
+		ctx.m_pLocal->m_fFlags( ) = extrapolated.m_iFlags;
+		ctx.m_pLocal->m_vecAbsVelocity( ) = extrapolated.m_vecVelocity;
 
-	for ( std::size_t i{ }; i < ctx.m_pLocal->m_CachedBoneData( ).Count( ); ++i ) {
-		auto& bone{ ctx.m_pLocal->m_CachedBoneData( ).Base( )[ i ] };
+		ctx.m_pLocal->m_nTickBase( )++;
 
-		bone[ 0 ][ 3 ] += delta.x;
-		bone[ 1 ][ 3 ] += delta.y;
-		bone[ 2 ][ 3 ] += delta.z;
+		Features::AnimSys.UpdateLocal( cmd.viewAngles, true, cmd );
 	}
 
-	ctx.m_pLocal->m_vecOrigin( ) += delta;
-	ctx.m_pLocal->SetAbsOrigin( ctx.m_pLocal->m_vecOrigin( ) );
+	ctx.m_pLocal->m_nTickBase( ) = backupTickbase;
+	ctx.m_pLocal->m_fFlags( ) = backupFlags;
+	ctx.m_pLocal->m_vecAbsVelocity( ) = backupVel;
+
+	Features::AnimSys.m_bJumping = backupJumping;
+	Features::AnimSys.m_flLowerBodyRealignTimer = backupLowerBodyRealignTimer;
+
+	ctx.m_pLocal->SetAbsOrigin( extrapolated.m_vecOrigin );
+
+	Features::AnimSys.SetupBonesRebuilt( ctx.m_pLocal, ( matrix3x4a_t* )( ctx.m_pLocal->m_CachedBoneData( ).Base( ) ), 
+		BONE_USED_BY_HITBOX, ctx.m_flFixedCurtime, true );
+
+	*ctx.m_pLocal->m_pAnimState( ) = backupState;
+	std::memcpy( ctx.m_pLocal->m_AnimationLayers( ), backupLayers, 13 * sizeof CAnimationLayer );
+	ctx.m_pLocal->m_flPoseParameter( ) = backupPose;
 
 	const auto hitboxSet{ ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) ) };
 	if ( !hitboxSet )
 		return false;
 
-	auto bestFOV{ INT_MAX };
-	CBasePlayer* bestPlayer{ nullptr };
+	bool damageable{ };
+
+	std::vector<CBasePlayer*> enemies{ };
+
 	for ( auto i = 1; i <= 64; ++i ) {
 		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 		if ( !player
 			|| !player->IsPlayer( )
 			|| player->Dormant( )
 			|| player->IsDead( )
-			|| player->IsTeammate( ) )
+			|| player->IsTeammate( )
+			|| !player->GetWeapon( )
+			|| !player->GetWeapon( )->GetCSWeaponData( ) )
 			continue;
 
-		const auto fov = Math::GetFov( ctx.m_angOriginalViewangles, Math::CalcAngle( ctx.m_vecEyePos, player->GetAbsOrigin( ) ) );
-		if ( fov > bestFOV )
-			continue;
-
-		bestPlayer = player;
+		enemies.push_back( player );
 	}
 
-	if ( !bestPlayer ) {
-		ctx.m_pLocal->m_vecOrigin( ) = backupOrigin;
-		ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
-		memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	auto orig = ctx.m_pLocal->GetAbsOrigin( );
+	std::sort( enemies.begin( ), enemies.end( ), [ orig ]( CBasePlayer* pl, CBasePlayer* pl0 ) { return orig.DistTo( pl->m_vecOrigin( ) ) < orig.DistTo( pl0->m_vecOrigin( ) ); } );
+
+	for ( auto& player : enemies ) {
+		auto enemyShootPos{ player->m_vecOrigin( ) };
+		enemyShootPos.z += ( player->m_fFlags( ) & FL_DUCKING ) ? 46.f : 64.f;
+
+		for ( const auto& hb : { HITBOX_CHEST, HITBOX_RIGHT_UPPER_ARM, HITBOX_LEFT_UPPER_ARM, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT } ) {//HITBOX_RIGHT_THIGH, HITBOX_LEFT_THIGH
+			const auto hitbox{ hitboxSet->GetHitbox( hb ) };
+			if ( !hitbox )
+				continue;
+
+			const auto center{ Math::VectorTransform( ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f,
+				ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] ) };
+
+			const auto data{ Features::Autowall.FireBullet( player, ctx.m_pLocal, player->GetWeapon( )->GetCSWeaponData( ),
+				player->GetWeapon( )->m_iItemDefinitionIndex( ) == WEAPON_TASER, enemyShootPos, center, true ) };
+
+			if ( data.dmg > 0 ) {
+				damageable = true;
+				break;
+			}
+		}
+
+		if ( damageable )
+			break;
+	}
+
+	ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
+	memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+
+	if ( !damageable )
+		Features::Exploits.m_bAlreadyPeeked = false;
+
+	return damageable;
+}
+
+bool CMisc::IsDefensivePositionHittable( ) {
+	const auto backupOrigin{ ctx.m_pLocal->GetAbsOrigin( ) };
+	ctx.m_pLocal->SetAbsOrigin( ctx.m_vecSetupBonesOrigin );
+	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+
+	const auto hitboxSet{ ctx.m_pLocal->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( ctx.m_pLocal->m_nHitboxSet( ) ) };
+	if ( !hitboxSet )
 		return false;
-	}
-
-	auto enemyShootPos{ bestPlayer->m_vecOrigin( ) };
-	enemyShootPos.z += bestPlayer->m_flDuckAmount( ) ? 46.f : 64.f;
 
 	bool damageable{ };
 
-	for ( const auto& hb : { HITBOX_CHEST, HITBOX_RIGHT_THIGH, HITBOX_LEFT_THIGH, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT } ) {
-		const auto hitbox{ hitboxSet->GetHitbox( hb ) };
-		if ( !hitbox )
-			return false;
+	std::vector<CBasePlayer*> enemies{ };
 
-		const auto center{ Math::VectorTransform( ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f, 
-			ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] ) };
+	for ( auto i = 1; i <= 64; ++i ) {
+		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
+		if ( !player
+			|| !player->IsPlayer( )
+			|| player->Dormant( )
+			|| player->IsDead( )
+			|| player->IsTeammate( )
+			|| !player->GetWeapon( )
+			|| !player->GetWeapon( )->GetCSWeaponData( ) )
+			continue;
 
-		const auto data{ Features::Autowall.FireEmulated( bestPlayer, ctx.m_pLocal, 
-			enemyShootPos, center ) };
-
-		if ( data.dmg > 0 ) {
-			damageable = true;
-			break;
-		}
+		enemies.push_back( player );
 	}
 
-	ctx.m_pLocal->m_vecOrigin( ) = backupOrigin;
-	ctx.m_pLocal->SetAbsOrigin( backupAbsOrigin );
-	memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), backupMatrix, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
-	if ( damageable )
-		return true;
+	auto orig = ctx.m_pLocal->GetAbsOrigin( );
+	std::sort( enemies.begin( ), enemies.end( ), [ orig ]( CBasePlayer* pl, CBasePlayer* pl0 ) { return orig.DistTo( pl->m_vecOrigin( ) ) < orig.DistTo( pl0->m_vecOrigin( ) ); } );
 
-	Features::Exploits.m_bAlreadyPeeked = false;
-	return false;
+	for ( auto& player : enemies ) {
+		auto enemyShootPos{ player->m_vecOrigin( ) };
+		enemyShootPos.z += ( player->m_fFlags( ) & FL_DUCKING ) ? 46.f : 64.f;
+
+		for ( const auto& hb : { HITBOX_CHEST, HITBOX_RIGHT_UPPER_ARM, HITBOX_LEFT_UPPER_ARM, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT } ) {//HITBOX_RIGHT_THIGH, HITBOX_LEFT_THIGH
+			const auto hitbox{ hitboxSet->GetHitbox( hb ) };
+
+			const auto center{ Math::VectorTransform( ( hitbox->vecBBMax + hitbox->vecBBMin ) * 0.5f,
+				ctx.m_pLocal->m_CachedBoneData( ).Base( )[ hitbox->iBone ] ) };
+
+			const auto data{ Features::Autowall.FireBullet( player, ctx.m_pLocal, player->GetWeapon( )->GetCSWeaponData( ),
+				player->GetWeapon( )->m_iItemDefinitionIndex( ) == WEAPON_TASER, enemyShootPos, center, true ) };
+
+			if ( data.dmg > 0 ) {
+				damageable = true;
+				break;
+			}
+		}
+
+		if ( damageable )
+			break;
+	}
+
+	return damageable;
+
+	ctx.m_pLocal->SetAbsOrigin( backupOrigin );
 }
 
 void CMisc::UpdateIncomingSequences( INetChannel* pNetChannel ) {

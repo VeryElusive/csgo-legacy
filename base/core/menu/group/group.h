@@ -9,7 +9,7 @@ public:
 	int x1, y1, x2, y2;
 
 	void Begin( const char* name, Vector2D size );
-	void End( );
+	void End( bool x = true );
 
 	void ListBox( const char* name, std::deque<std::string> options, int& Opt, Vector2D Size );
 	void TextInput( std::string& val );

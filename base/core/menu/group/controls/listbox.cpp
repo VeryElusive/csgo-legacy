@@ -23,12 +23,12 @@ void MenuGroup::ListBox( const char* name, std::deque<std::string> options, int&
 
 	int i{ };
 	for ( auto o : options ) {
-		if ( Inputsys::hovered( Menu::CursorPos + Vector2D( 10, 15 + 15 * i - scroll ), Vector2D( Size.x, 15 ) ) ) {
+		if ( Hovered && Inputsys::hovered( Menu::CursorPos + Vector2D( 10, 15 + 15 * i + scroll ), Vector2D( Size.x, 15 ) ) ) {
 			if ( Inputsys::down( VK_LBUTTON ) )
 				Opt = i;
 		}
 
-		Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( 10, 15 + 15 * i - scroll ), Opt == i ? Color( 255, 255, 255 ) : Color( 100, 100, 100 ), 0, o.c_str( ) );
+		Render::Text( Fonts::Menu, Menu::CursorPos + Vector2D( 10, 15 + 15 * i + scroll ), Opt == i ? Color( 255, 255, 255 ) : Color( 100, 100, 100 ), 0, o.c_str( ) );
 
 		i++;
 	}

@@ -131,7 +131,7 @@ enum EWeaponType : int
 	WEAPONTYPE_SUBMACHINEGUN,
 	WEAPONTYPE_RIFLE,
 	WEAPONTYPE_SHOTGUN,
-	WEAPONTYPE_SNIPER_RIFLE,
+	WEAPONTYPE_SNIPER,
 	WEAPONTYPE_MACHINEGUN,
 	WEAPONTYPE_C4,
 	WEAPONTYPE_TASER,
@@ -418,8 +418,61 @@ public:
 
 class CIKContext
 {
-	// Not sure of the correct size, also don't care
-	uint8_t pad[ 0x1050 ];
+public:
+	uint8_t pad[ 0x1070 ];
+
+	void* operator new( size_t size );
+	void operator delete( void* ptr );
+
+	static void Construct( CIKContext* ik ) {
+		//55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D 8F
+		reinterpret_cast< void( __fastcall* )( void* ) >( Offsets::Sigs.CIKContext__Construct )( ik );
+	}
+
+	void Init( const CStudioHdr* hdr, const QAngle& angles, const Vector& origin, float time, int framecount, int bonemask ) {
+		//55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D 8F
+		reinterpret_cast< void( __thiscall* )( void*, const CStudioHdr*, const QAngle&, const Vector&, float, int, int ) >
+			( Offsets::Sigs.CIKContext__Init )( this, hdr, angles, origin, time, framecount, bonemask );
+	}
+
+	void UpdateTargets( Vector* pos, Quaternion* q, matrix3x4_t* bones, void* computed ) {
+		// 55 8B EC 83 E4 F0 81 EC ? ? ? ? 33 D2 89 4C
+		reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, matrix3x4_t*, void* ) >
+			( Offsets::Sigs.CIKContext__UpdateTargets )( this, pos, q, bones, computed );
+	}
+
+	void SolveDependencies( Vector* pos, Quaternion* q, matrix3x4_t* bones, void* computed ) {
+		// 55 8B EC 83 E4 F0 81 EC ? ? ? ? 8B 81
+		reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, matrix3x4_t*, void* ) >
+			( Offsets::Sigs.CIKContext__SolveDependencies )( this, pos, q, bones, computed );
+	}
+
+	void AddDependencies( mstudioseqdesc_t& seqdesc, int iSequence, float flCycle, const float poseParameters[ ], float flWeight ) {
+		// 55 8B EC 81 EC ? ? ? ? 53 56 57 8B F9 0F 28 CB F3 0F 11 4D
+		const auto fn{ reinterpret_cast< void( __thiscall* )( void*, mstudioseqdesc_t&, int, float, const float[ ], float ) >( Offsets::Sigs.CIKContext__AddDependencies ) };
+
+		__asm
+		{
+			mov ecx, this
+			movss xmm3, flCycle
+			push flWeight
+			push poseParameters
+			push iSequence
+			push seqdesc
+			call fn
+		}
+	}
+
+	void CopyTo( CIKContext* other, const unsigned short* iRemapping ) {
+		// 55 8B EC 83 EC 24 8B 45 08 57 8B F9 89 7D F4 85 C0
+		reinterpret_cast< void( __thiscall* )( void*, CIKContext*, const unsigned short* ) >
+			( Offsets::Sigs.CIKContext__CopyTo )( this, other, iRemapping );
+	}
+};
+
+struct IInterpolatedVar {
+	uint8_t pad[ 0x24 ];
+	float m_InterpolationAmount;
 };
 
 struct VarMapping_t {
@@ -427,7 +480,7 @@ struct VarMapping_t {
 		std::uint16_t    type{ };
 		std::uint16_t    m_bNeedsToInterpolate{ };
 		void* data{ };
-		void* watcher{ };
+		IInterpolatedVar* watcher{ };
 	};
 
 	CUtlVector< entry_t >    m_Entries{ };
@@ -467,7 +520,6 @@ public:
 	OFFSET( Vector, m_aimPunchAngleVel( ), Offsets::m_aimPunchAngleVel );
 	OFFSET( float, m_flDuckSpeed( ), Offsets::m_flDuckSpeed );
 	OFFSET( float, m_flDuckAmount( ), Offsets::m_flDuckAmount );
-	OFFSET( float, m_flMaxSpeed( ), Offsets::m_flMaxSpeed );
 	OFFSET( float, m_flLowerBodyYawTarget( ), Offsets::m_flLowerBodyYawTarget );
 	OFFSET( float, m_flSpawnTime( ), Offsets::m_iAddonBits - 0x4 );
 	OFFSET( QAngle, m_vecRenderAngles( ), Offsets::deadflag + 0x4 );
@@ -488,11 +540,11 @@ public:
 	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2970 );
 	OFFSET( CCommandContext, m_CmdContext( ), 0x258u );
 	OFFSET( int, m_nSimulationTick( ), 0x2a8u );
-	OFFSET( unsigned long, g_iModelBoneCounter( ), 0x2680u );// havent tested but - 0x10
+	OFFSET( unsigned long, g_iModelBoneCounter( ), Offsets::Sigs.InvalidateBoneCache + 0x1B );// havent tested but - 0x10
 	OFFSET( int, m_iOcclusionFrame( ), 0xa30u );
 	OFFSET( std::uint32_t, m_iOcclusionFlags( ), 0xa28u );
 	OFFSET( std::uint8_t, m_iEntClientFlags( ), 0x68u );
-	OFFSET( CIKContext*, m_IkContext( ), 0x2660 ); // havent tested but - 0x10
+	OFFSET( CIKContext*, m_pIk( ), 0x2660 ); // havent tested but - 0x10
 	OFFSET( int, m_iLastSetupBonesFrame( ), 0xa68u );
 	OFFSET( float, m_flLastSetupBonesTime( ), 0x2914u );// - 0x14
 	OFFSET( CBoneAccessor, m_BoneAccessor( ), 0x2694 );// - 0x10
@@ -539,9 +591,17 @@ public:
 		reinterpret_cast< void( __thiscall* )( void*, int ) >( Offsets::Sigs.InvalidatePhysicsRecursive )( this, change );
 	}
 
+	void SetupBonesAttachmentHelper( ) {
+		reinterpret_cast< void( __thiscall* )( void*, CStudioHdr* ) >( Offsets::Sigs.SetupBones_AttachmentHelper )( this, this->m_pStudioHdr( ) );
+	}
+
 	void UpdateClientsideAnimations( ) {
 		return MEM::CallVFunc<void>( this, 218 );
 	}	
+
+	float GetLayerSequenceCycleRate( CAnimationLayer* layer, int32_t sequence ) {
+		return MEM::CallVFunc<float>( this, 217, layer, sequence );
+	}
 	
 	void UpdateDispatchLayer( CAnimationLayer* layer, CStudioHdr* hdr, int seq ) {
 		return MEM::CallVFunc<void>( this, 247, layer, hdr, seq );
@@ -551,6 +611,16 @@ public:
 		return MEM::CallVFunc<void>( this, 193, simtime );
 	}
 
+	void StandardBlendingRules( CStudioHdr* hdr, Vector* pos, Quaternion* q, float time, int mask ) {
+		using StandardBlendingRules_t = void( __thiscall* )( decltype( this ), CStudioHdr*, Vector*, Quaternion*, float, int );
+		return MEM::GetVFunc< StandardBlendingRules_t >( this, 200 )( this, hdr, pos, q, time, mask );
+	}
+
+	__forceinline void BuildTransformations( CStudioHdr* hdr, Vector* pos, Quaternion* q, const matrix3x4_t& transform, int mask, uint8_t* computed ) {
+		using BuildTransformations_t = void( __thiscall* )( decltype( this ), CStudioHdr*, Vector*, Quaternion*, matrix3x4_t const&, int, uint8_t* );
+		return MEM::GetVFunc< BuildTransformations_t >( this, 184 )( this, hdr, pos, q, transform, mask, computed );
+	}
+
 	std::array<float, MAXSTUDIOPOSEPARAM>& m_flPoseParameter( ) {
 		return *reinterpret_cast< std::array<float, MAXSTUDIOPOSEPARAM>* >( reinterpret_cast< std::uintptr_t >( this ) + Offsets::m_flPoseParameter );
 	}
@@ -558,10 +628,10 @@ public:
 	bool IsTeammate( CBasePlayer* Player = nullptr );
 	bool IsDead( );
 	CWeaponCSBase* GetWeapon( );
-	Vector GetEyePosition( float pitch );
-	bool CanShoot( );
+	Vector GetEyePosition( float yaw, float pitch );
+	bool CanShoot( bool secondary = false );
 	bool IsHostage( );
-
+	float m_flMaxSpeed( );
 	int GetSequenceActivity( int );
 };
 
@@ -685,7 +755,7 @@ public:
 		case WEAPONTYPE_SUBMACHINEGUN:
 		case WEAPONTYPE_RIFLE:
 		case WEAPONTYPE_SHOTGUN:
-		case WEAPONTYPE_SNIPER_RIFLE:
+		case WEAPONTYPE_SNIPER:
 		case WEAPONTYPE_MACHINEGUN:
 			return true;
 		}

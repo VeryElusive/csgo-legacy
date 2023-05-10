@@ -1,7 +1,7 @@
 #pragma once
 #include "../context.h"
 #include "../features/visuals/visuals.h"
-#include "../features/misc/shot_info.h"
+#include "../features/misc/shots.h"
 
 class CEventListener : public IGameEventListener2
 {

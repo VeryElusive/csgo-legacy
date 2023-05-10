@@ -9,36 +9,25 @@ struct PredictedNetvars_t {
 	int m_iFlags{ };
 	Vector m_vecOrigin{ };
 	Vector m_vecVelocity{ };
-	Vector m_vecAbsVelocity{ };
+	float m_flDuckAmount{ };
 	int m_nTickBase{ };
 };
 
 struct FakeAnimData_t {
-	float m_flSpawnTime{ };
-	float m_flAbsYaw{ };
-	CCSGOPlayerAnimState m_AnimState{ };
-	std::array<float, MAXSTUDIOPOSEPARAM> m_flPoseParameter{ };
-
-	matrix3x4_t m_matMatrix[ 256 ];
-	CAnimationLayer m_pAnimLayers[ 13 ];
+	CCSGOPlayerAnimState m_sState{ };
+	bool init{ };
+	matrix3x4a_t m_matMatrix[ 256 ];
 };
-
 
 struct LocalData_t {
 	int m_iCommandNumber{ };
 
 	int m_MoveType{ };
-
 	int m_iTickbase{ };
-	int m_iShiftAmount{ };
 	int m_iAdjustedTickbase{ };
 	bool m_bOverrideTickbase{ };
-	bool m_bRestoreTickbase{ };
 
-	bool m_bThrowingNade{ };
-	bool m_bRevolverCock{ };
-
-	QAngle m_angViewAngles{ };
+	bool m_bCanAA{ };
 
 	float m_flSpawnTime{ };
 
@@ -48,13 +37,9 @@ struct LocalData_t {
 	FORCEINLINE void Reset( ) {
 		m_iTickbase = 0;
 		m_iCommandNumber = 0;
-		m_iShiftAmount = 0;
 
 		m_iAdjustedTickbase = 0;
 		m_bOverrideTickbase = 0;
-		m_bRestoreTickbase = 0;
-
-		m_angViewAngles = { };
 
 		m_flSpawnTime = 0;
 
@@ -64,17 +49,10 @@ struct LocalData_t {
 	FORCEINLINE void Save( CBasePlayer* local, CUserCmd& cmd, CWeaponCSBase* weapon ) {
 		this->m_flSpawnTime = local->m_flSpawnTime( );
 		this->m_bOverrideTickbase = false;
-		this->m_bRestoreTickbase = false;
-		this->m_iShiftAmount = 0;
 		this->m_iCommandNumber = cmd.iCommandNumber;
 		this->m_iTickbase = local->m_nTickBase( );
-		if ( this->m_iTickbase - this->m_iAdjustedTickbase < 18 )
-			this->m_iAdjustedTickbase = 0;
+		this->m_iAdjustedTickbase = 0;
 		this->m_MoveType = local->m_MoveType( );
-		if ( !weapon )
-			return;
-
-		this->m_bThrowingNade = weapon->IsGrenade( ) && weapon->m_fThrowTime( );;
 	}
 
 	FORCEINLINE void SavePredVars( CBasePlayer* local, CUserCmd& cmd ) {
@@ -83,9 +61,7 @@ struct LocalData_t {
 		this->PredictedNetvars.m_nTickBase = local->m_nTickBase( );
 		this->PredictedNetvars.m_vecOrigin = local->m_vecOrigin( );
 		this->PredictedNetvars.m_vecVelocity = local->m_vecVelocity( );
-		this->PredictedNetvars.m_vecAbsVelocity = local->m_vecAbsVelocity( );
-
-		this->m_angViewAngles = cmd.viewAngles;
+		this->PredictedNetvars.m_flDuckAmount = local->m_flDuckAmount( );
 	}
 };
 
@@ -108,9 +84,9 @@ struct HAVOCCTX {
 	CWeaponCSBase* m_pWeapon{ };
 	CCSWeaponData* m_pWeaponData{ };
 
-	EClientFrameStage m_iLastFSNStage{ };
+	//EClientFrameStage m_iLastFSNStage{ };
 
-	matrix3x4_t m_matRealLocalBones[ 256 ];
+	matrix3x4a_t m_matRealLocalBones[ 256 ];
 
 	FakeAnimData_t m_cFakeData{ };
 
@@ -118,49 +94,59 @@ struct HAVOCCTX {
 
 	Vector m_vecEyePos{ };
 
+	Vector m_vecSetupBonesOrigin{ };
+
 	std::array< LocalData_t, MULTIPLAYER_BACKUP > m_cLocalData{ };
 
 	std::vector<int> m_iSentCmds{ };
-	//std::vector<std::string> m_strDbgLogs{ };
+	std::vector<std::shared_ptr< std::string > > m_strDbgLogs{ };
 
 	//std::vector<std::pair<QAngle, int>> m_pQueuedCommands{ };
-	bool m_bFilledAnims{ };
 
-	float m_flAbsYaw{ };
 	CAnimationLayer m_pAnimationLayers[ 13 ];
-	std::array<float, 24> m_flPoseParameter{ };
-	CCSGOPlayerAnimState m_cAnimstate{ };
 
 	bool m_bCanShoot{ };
 	bool m_bCanPenetrate{ };
-	bool m_bSetupBones{ };
-	bool m_bClampbones{ };
-	bool m_bUpdatingAnimations{ };
-	bool m_bServerSetupbones{ };
+	//bool m_bSetupBones{ };
 	bool m_bFakeDucking{ };
 	bool m_bSendPacket{ };
+	//bool m_bNewPacket{ };
 	bool m_bClearKillfeed{ };
 	bool m_bExploitsEnabled{ };
 	bool m_bRevolverCanShoot{ };
 	bool m_bRevolverCanCock{ };
-	bool m_bDontSavePredVars{ };
+	bool m_bInCreatemove{ };
+	bool m_bInPeek{ };
+	bool m_bSafeFromDefensive{ };
+	bool m_bUpdatingAnimations{ };
+	//bool m_bSpawningCmds{ };
+	//bool m_bReadPackets{ };
+	//bool m_bRepredict{ };
 	//bool m_bCollisionForced{ };
 
-	int m_iNextTickbase{ };
+	int m_iLastPeekCmdNum{ };
 	int m_iTicksAllowed{ };
-	int m_iLastSentCmdNumber{ };
+	//int m_iLastSentCmdNumber{ };
 	int m_iLastShotNumber{ };
 	int m_iPenetrationDamage{ };
 	int m_iBombCarrier{ };
+	int m_iHighestTickbase{ };
 
-	float m_iLastShotTime{ };
-	float m_iLastPacketTime{ };
+	int m_iRageRecordPerfTimer{ };
+	//int m_iRageScanTargetsPerfTimer{ };
+	int m_iAnimsysPerfTimer{ };
+
+	uint8_t m_iLastID{ };
+
+	float m_iLastStopTime{ };
 	float m_flRealOutLatency{ };
+	float m_flServerLatency{ };
 	float m_flInLatency{ };
 	float m_flLerpTime{ };
+	float m_flFixedCurtime{ };
 
 	FORCEINLINE void GetLocal( ) {
-		if ( !Interfaces::Engine->IsInGame( ) ) {
+		if ( !Interfaces::Engine->IsInGame( ) || !Interfaces::Engine->IsConnected( ) ) {
 			m_pLocal = nullptr;
 			return;
 		}
@@ -171,7 +157,7 @@ struct HAVOCCTX {
 	};
 
 	FORCEINLINE int CalcCorrectionTicks( ) {
-		return Interfaces::Globals->nMaxClients <= 1
+		return Interfaces::Globals->nMaxClients == 1
 			? -1 : TIME_TO_TICKS( std::clamp<float>( Offsets::Cvars.sv_clockcorrection_msecs->GetFloat( ) / 1000.f, 0.f, 1.f ) );
 	}
 };
