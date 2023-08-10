@@ -75,30 +75,17 @@ void CVisuals::Main( ) {
 	GrenadePrediction.Paint( );
 }
 
-const char* models_to_change[ ] = {
-	_( "models/player/custom_player/legacy/tm_phoenix.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_sas.mdl" ),
-	_( "models/player/custom_player/legacy/tm_balkan_variantj.mdl" ),
-	_( "models/player/custom_player/legacy/tm_balkan_variantg.mdl" ),
-	_( "models/player/custom_player/legacy/tm_balkan_varianti.mdl" ),
-	_( "models/player/custom_player/legacy/tm_balkan_variantf.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_st6_varianti.mdl" ),
+const char* modelsForChange[ ] = {
+	_( "models/player/custom_player/legacy/tm_jumpsuit_varianta.mdl" ),
+	_( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" ),
+	_( "models/player/custom_player/legacy/tm_jumpsuit_variantc.mdl" ),
 	_( "models/player/custom_player/legacy/ctm_st6_variantm.mdl" ),
 	_( "models/player/custom_player/legacy/ctm_st6_variantg.mdl" ),
 	_( "models/player/custom_player/legacy/ctm_st6_variante.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_st6_variantk.mdl" ),
 	_( "models/player/custom_player/legacy/tm_balkan_varianth.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_fbi_varianth.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_fbi_variantg.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_fbi_variantf.mdl" ),
-	_( "models/player/custom_player/legacy/tm_phoenix_variantg.mdl" ),
-	_( "models/player/custom_player/legacy/tm_phoenix_variantf.mdl" ),
 	_( "models/player/custom_player/legacy/tm_phoenix_varianth.mdl" ),
 	_( "models/player/custom_player/legacy/tm_leet_variantf.mdl" ),
-	_( "models/player/custom_player/legacy/tm_leet_varianti.mdl" ),
-	_( "models/player/custom_player/legacy/tm_leet_varianth.mdl" ),
 	_( "models/player/custom_player/legacy/tm_leet_variantg.mdl" ),
-	_( "models/player/custom_player/legacy/ctm_fbi_variantb.mdl" ),
 	_( "models/player/custom_player/legacy/ctm_sas_variantf.mdl" ),
 	_( "models/player/custom_player/legacy/tm_anarchist.mdl" ),
 	_( "models/player/custom_player/legacy/tm_anarchist_varianta.mdl" ),
@@ -118,24 +105,39 @@ void CVisuals::ModelChanger( ) {
 		return;
 	}
 
-	int iTeam = ctx.m_pLocal->m_iTeamNum( );
+	if ( ctx.m_pLocal->m_nModelIndex( ) != lastModelIndex ) {
+		lastModelIndex = 0;
+	}
 
-	int iModelIndex = 0;
-	if ( iTeam == TEAM_TT && Config::Get<int>( Vars.MiscPlayerModelT ) != 0 )
-		iModelIndex = Interfaces::ModelInfo->GetModelIndex( models_to_change[ std::max( 0, Config::Get<int>( Vars.MiscPlayerModelT ) - 1 ) ] );
 
-	else if ( iTeam == TEAM_CT && Config::Get<int>( Vars.MiscPlayerModelCT ) != 0 )
-		iModelIndex = Interfaces::ModelInfo->GetModelIndex( models_to_change[ std::max( 0, Config::Get<int>( Vars.MiscPlayerModelCT ) - 1 ) ] );
+	const auto team{ ctx.m_pLocal->m_iTeamNum( ) };
 
-	if ( iModelIndex != 0
-		&& lastModelIndex != iModelIndex )
-		ctx.m_pLocal->SetModelIndex( iModelIndex );
+	int modelIndex{ };
+	if ( team == TEAM_TT )
+		modelIndex = Interfaces::ModelInfo->GetModelIndex( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelT ) ] );
+	else if ( team == TEAM_CT )
+		modelIndex = Interfaces::ModelInfo->GetModelIndex( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelCT ) ] );
 
-	lastModelIndex = iModelIndex;
+	if ( modelIndex == -1 ) {
+		if ( team == TEAM_TT ) {
+			PrecacheModel( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelT ) ] );
+			modelIndex = Interfaces::ModelInfo->GetModelIndex( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelT ) ] );
+		}
+		else if ( team == TEAM_CT ) {
+			PrecacheModel( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelCT ) ] );
+			modelIndex = Interfaces::ModelInfo->GetModelIndex( modelsForChange[ Config::Get<int>( Vars.MiscPlayerModelCT ) ] );
+		}
+	}
+
+	if ( modelIndex != -1
+		&& lastModelIndex != modelIndex ) {
+		ctx.m_pLocal->SetModelIndex( modelIndex );
+		lastModelIndex = modelIndex;
+	}
 }
 
 void CVisuals::SkyboxChanger( ) {
-	std::string sv_skyname{ Offsets::Cvars.sv_skyname->GetString( ) };
+	std::string sv_skyname{ Displacement::Cvars.sv_skyname->GetString( ) };
 
 	switch ( Config::Get<int>( Vars.VisWorldSkybox ) )
 	{
@@ -211,20 +213,20 @@ void CVisuals::SkyboxChanger( ) {
 	last = sv_skyname;
 
 	if ( Config::Get<int>( Vars.VisWorldSkybox ) <= 0 ) {
-		if ( !Offsets::Cvars.r_3dsky->GetBool( ) )
-			Offsets::Cvars.r_3dsky->SetValue( true );
+		if ( !Displacement::Cvars.r_3dsky->GetBool( ) )
+			Displacement::Cvars.r_3dsky->SetValue( true );
 	}
-	else if ( Offsets::Cvars.r_3dsky->GetBool( ) )
-		Offsets::Cvars.r_3dsky->SetValue( false );
+	else if ( Displacement::Cvars.r_3dsky->GetBool( ) )
+		Displacement::Cvars.r_3dsky->SetValue( false );
 
-	static auto fnLoadNamedSkys{ ( void( __fastcall* )( const char* ) )Offsets::Sigs.LoadNamedSkys };
+	static auto fnLoadNamedSkys{ ( void( __fastcall* )( const char* ) )Displacement::Sigs.LoadNamedSkys };
 
 	return fnLoadNamedSkys( sv_skyname.c_str( ) );
 }
 
 void CVisuals::Watermark( ) {
 	const auto name = _( "Havoc [beta] " );
-	const auto pstr = _( "Version: legacy 0.0.1" );
+	const auto pstr = _( "Version: 0.3.7" );
 
 	const auto name_size = Render::GetTextSize( name, Fonts::Menu );
 	const auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );
@@ -232,43 +234,39 @@ void CVisuals::Watermark( ) {
 	const auto size = Vector2D( name_size.x + ping_size.x + 37, 20 );
 	const auto pos = Vector2D( ctx.m_ve2ScreenSize.x - size.x - 20, 15 );
 
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
+		int i{ 1 };
+		for ( auto& dbg : ctx.m_strDbgLogs ) {
+			Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, dbg->c_str( ) );
+			++i;
+		}
+
+		if ( ctx.m_bSafeFromDefensive )
+			Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, "SAFE" );
+	}
+
 	if ( !Config::Get<bool>( Vars.MiscWatermark ) )
 		return;
 
 	Render::FilledRoundedBox( pos - Vector2D( 1, 1 ), size + 2, 5, 5, Color( 10, 10, 10 ) );
-	Render::FilledRoundedBox( pos, size, 90, 5, Menu::OutlineLight );
+	Render::FilledRoundedBox( pos, size, 5, 5, OUTLINE_LIGHT );
 	Render::FilledRoundedBox( pos + 1, size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10 ) );
-	Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, Menu::BackgroundCol );
+	Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, BACKGROUND );
 
 	for ( int i{ }; i < 3; ++i ) {
-		Render::Line( pos + Vector2D( name_size.x + 8 + 19 + i, 2 ), pos + Vector2D( name_size.x + 8 + 4 + i, 17 ), Menu::Accent2Col );
-		Render::Line( pos + Vector2D( name_size.x + 8 + 12 + i, 2 ), pos + Vector2D( name_size.x + 8 - 3 + i, 17 ), Menu::AccentCol );
+		Render::Line( pos + Vector2D( name_size.x + 8 + 19 + i, 2 ), pos + Vector2D( name_size.x + 8 + 4 + i, 17 ), ACCENT2 );
+		Render::Line( pos + Vector2D( name_size.x + 8 + 12 + i, 2 ), pos + Vector2D( name_size.x + 8 - 3 + i, 17 ), ACCENT );
 	}
 
-	Render::Text( Fonts::Menu, pos + Vector2D( 6, 3 ), Menu::AccentCol, 0, name );
-	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 33, 3 ), Menu::Accent2Col, 0, pstr );
-
-	/*if ( ctx.m_pWeapon ) {
-		Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pWeapon->m_flNextPrimaryAttack( ) ).c_str( ) );
-		Render::Text( Fonts::Menu, pos + Vector2D( 0, 30 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_flLastPrimaryAttack ).c_str( ) );
+	Render::Text( Fonts::Menu, pos + Vector2D( 6, 3 ), ACCENT, 0, name );
+	Render::Text( Fonts::Menu, pos + Vector2D( name_size.x + 33, 3 ), ACCENT2, 0, pstr );
+	/*if ( ctx.m_pLocal ) {
+		Render::Text( Fonts::Menu, pos + Vector2D( 0, 30 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_pAnimState( )->flMaxBodyYaw ).c_str( ) );
+		Render::Text( Fonts::Menu, pos + Vector2D( 0, 40 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight ).c_str( ) );
+		Render::Text( Fonts::Menu, pos + Vector2D( 0, 50 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle ).c_str( ) );
 	}*/
 
-	if ( ctx.m_pLocal ) {
-		if ( !ctx.m_pLocal->IsDead( ) ) {
-			int i{ 1 };
-			for ( auto& dbg : ctx.m_strDbgLogs ) {
-				Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, dbg->c_str( ) );
-				++i;
-			}
-
-			if ( ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick )
-				Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 ), Color( 255, 255, 255 ), 0, std::string( "SAFE" ).c_str( ) );
-			Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 10 ), Color( 255, 255, 255 ), 0, std::string( "AS: " + std::to_string( ctx.m_iAnimsysPerfTimer ) ).c_str( ) );
-			Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 20 ), Color( 255, 255, 255 ), 0, std::string( "RS: " + std::to_string( ctx.m_iRageRecordPerfTimer ) ).c_str( ) );
-		}
-
-		//Render::Text( Fonts::Menu, pos + Vector2D( 0, ctx.m_ve2ScreenSize.y / 2 + 20 ), Color( 255, 255, 255 ), 0, std::string( "AS: " + std::to_string( ctx.m_iAnimsysPerfTimer ) ).c_str( ) );
-	}
+	//Render::Text( Fonts::Menu, pos + Vector2D( 0, 30 ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_iRealOutLatencyTicks ).c_str( ) );
 }
 
 void CVisuals::OtherEntities( CBaseEntity* ent ) {
@@ -504,27 +502,27 @@ void CVisuals::EntModulate( CBaseEntity* ent ) {
 	// bloom
 	if ( client_class->nClassID == EClassIndex::CEnvTonemapController ) {
 		if ( Config::Get<bool>( Vars.VisWorldBloom ) ) {
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomAutoExposureMin ) = true;
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomAutoExposureMax ) = true;
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomBloomScale ) = true;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomAutoExposureMin ) = true;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomAutoExposureMax ) = true;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomBloomScale ) = true;
 
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomAutoExposureMin ) = float( Config::Get<int>( Vars.VisWorldBloomExposure ) ) / 50.f;
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomAutoExposureMax ) = float( Config::Get<int>( Vars.VisWorldBloomExposure ) ) / 50.f;
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomBloomScale ) = float( Config::Get<int>( Vars.VisWorldBloomScale ) ) / 50.f;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomAutoExposureMin ) = float( Config::Get<int>( Vars.VisWorldBloomExposure ) ) / 50.f;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomAutoExposureMax ) = float( Config::Get<int>( Vars.VisWorldBloomExposure ) ) / 50.f;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomBloomScale ) = float( Config::Get<int>( Vars.VisWorldBloomScale ) ) / 50.f;
 		}
 		else {
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomAutoExposureMin ) = true;
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomAutoExposureMax ) = true;
-			*( bool* )( uintptr_t( ent ) + Offsets::m_bUseCustomBloomScale ) = true;
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomAutoExposureMin ) = 0.f;
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomAutoExposureMax ) = 0.f;
-			*( float* )( uintptr_t( ent ) + Offsets::m_flCustomBloomScale ) = 0.f;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomAutoExposureMin ) = true;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomAutoExposureMax ) = true;
+			*( bool* )( uintptr_t( ent ) + Displacement::Netvars->m_bUseCustomBloomScale ) = true;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomAutoExposureMin ) = 0.f;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomAutoExposureMax ) = 0.f;
+			*( float* )( uintptr_t( ent ) + Displacement::Netvars->m_flCustomBloomScale ) = 0.f;
 		}
 	}
 
 	// fog
 	/*if ( client_class->nClassID == EClassIndex::CFogController ) {
-		*( byte* )( ( uintptr_t )ent + Offsets::m_fog_enable ) = Config::Get<bool>( Vars.VisWorldFog );				// m_fog.enable
+		*( byte* )( ( uintptr_t )ent + Displacement::Netvars->m_fog_enable ) = Config::Get<bool>( Vars.VisWorldFog );				// m_fog.enable
 
 		*( bool* )( uintptr_t( ent ) + 0xA1D ) = Config::Get<bool>( Vars.VisWorldFog );					// m_fog.blend
 		*( float* )( uintptr_t( ent ) + 0x9F8 ) = 0;
@@ -581,6 +579,12 @@ void CVisuals::KeybindsList( ) {
 
 	if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled )
 		addBind( _( "Force safe yaw" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).mode );
+	
+	if ( !Config::Get<bool>( Vars.AntiaimConstantInvertFlick ) && Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).enabled )
+		addBind( _( "Flick invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).mode );
+
+	if ( !Config::Get<bool>( Vars.AntiaimConstantInvert ) && Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
+		addBind( _( "Invert desync" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvert ).mode );
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		addBind( _( "Slow walk" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).mode );
@@ -588,13 +592,16 @@ void CVisuals::KeybindsList( ) {
 	if ( Config::Get<bool>( Vars.MiscAutoPeek ) && Config::Get<keybind_t>( Vars.MiscAutoPeekKey ).enabled )
 		addBind( _( "Auto peek" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscAutoPeekKey ).mode );
 
+	if ( Config::Get<int>( Vars.AntiaimFreestanding ) && Config::Get<keybind_t>( Vars.AntiaimFreestandingKey ).enabled )
+		addBind( _( "Freestanding" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimFreestandingKey ).mode );
+
 	if ( Config::Get<bool>( Vars.MiscFakeDuck ) && Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).enabled )
 		addBind( _( "Fake duck" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscFakeDuckKey ).mode );	
 
 	constexpr auto appendLength{ 17 };
 
 	// gimme extra room
-	if ( !binds.empty( ) || Menu::MenuAlpha )
+	if ( !binds.empty( ) || Menu::m_flAlpha )
 		keyBindSize.y += 9 + binds.size( ) * appendLength;
 
 	// gimme that lerped size
@@ -603,14 +610,14 @@ void CVisuals::KeybindsList( ) {
 
 	// gimme alpha
 	auto alpha_mod = 1.f;
-	if ( ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) ) && Menu::MenuAlpha < 1.f )
-		alpha_mod = Menu::MenuAlpha;
+	if ( ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) ) && Menu::m_flAlpha < 1.f )
+		alpha_mod = Menu::m_flAlpha;
 
 	if ( alpha_mod < 0.001f )
 		return;
 
 	// gimme drag
-	if ( !m_bKeybindDragging && Inputsys::pressed( VK_LBUTTON ) && topBarHovered && Menu::MenuAlpha )
+	if ( !m_bKeybindDragging && Inputsys::pressed( VK_LBUTTON ) && topBarHovered && Menu::m_flAlpha )
 		m_bKeybindDragging = true;
 	else if ( m_bKeybindDragging && Inputsys::down( VK_LBUTTON ) ) {
 		Config::Get<int>( Vars.MiscKeybindPosX ) -= Inputsys::MouseDelta.x;
@@ -628,24 +635,23 @@ void CVisuals::KeybindsList( ) {
 	auto& size = m_vec2KeyBindAbsSize;
 
 
-	Interfaces::Surface->SetClipRect( pos.x - 1, pos.y - 1, size.x + 1, size.y + 1 );
 	{
 		Render::FilledRoundedBox( pos - Vector2D( 1, 1 ), size + 2, 5, 5, Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
-		Render::FilledRoundedBox( pos, size, 90, 5, Menu::OutlineLight.Set<COLOR_A>( 255 * alpha_mod ) );
+		Render::FilledRoundedBox( pos, size, 5, 5, OUTLINE_LIGHT.Set<COLOR_A>( 255 * alpha_mod ) );
 		Render::FilledRoundedBox( pos + 1, size - Vector2D( 2, 2 ), 5, 5, Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
-		Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, Menu::BackgroundCol.Set<COLOR_A>( 255 * alpha_mod ) );
+		Render::FilledRoundedBox( pos + 2, size - Vector2D( 4, 4 ), 5, 5, BACKGROUND.Set<COLOR_A>( 255 * alpha_mod ) );
 
 		for ( int i{ }; i < 3; ++i ) {
-			Render::Line( pos + Vector2D( size.x - 19 - i, 2 ), pos + Vector2D( size.x - 4 - i, 17 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
-			Render::Line( pos + Vector2D( size.x - 12 - i, 2 ), pos + Vector2D( size.x - 2, 12 + i ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( size.x - 19 - i, 2 ), pos + Vector2D( size.x - 4 - i, 17 ), ACCENT.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( size.x - 12 - i, 2 ), pos + Vector2D( size.x - 2, 12 + i ), ACCENT2.Set<COLOR_A>( 255 * alpha_mod ) );
 
-			Render::Line( pos + Vector2D( 19 + i, 2 ), pos + Vector2D( 4 + i, 17 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ) );
-			Render::Line( pos + Vector2D( 11 + i, 2 ), pos + Vector2D( 1, 12 + i ), Menu::Accent2Col.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 19 + i, 2 ), pos + Vector2D( 4 + i, 17 ), ACCENT.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 11 + i, 2 ), pos + Vector2D( 1, 12 + i ), ACCENT2.Set<COLOR_A>( 255 * alpha_mod ) );
 		}
 
 		if ( size.y > 20 ) {
 			Render::Line( pos + Vector2D( 1, 17 ), pos + Vector2D( size.x - 2, 17 ), Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
-			Render::Line( pos + Vector2D( 1, 18 ), pos + Vector2D( size.x - 2, 18 ), Menu::OutlineLight.Set<COLOR_A>( 255 * alpha_mod ) );
+			Render::Line( pos + Vector2D( 1, 18 ), pos + Vector2D( size.x - 2, 18 ), OUTLINE_LIGHT.Set<COLOR_A>( 255 * alpha_mod ) );
 			Render::Line( pos + Vector2D( 1, 19 ), pos + Vector2D( size.x - 2, 19 ), Color( 10, 10, 10, static_cast< int >( 255 * alpha_mod ) ) );
 		}
 
@@ -653,14 +659,16 @@ void CVisuals::KeybindsList( ) {
 		25.0000000 binds*/
 
 		Render::Text( Fonts::Menu, pos + Vector2D( size.x / 2 - 21, 3 ), Color( 255, 255, 255, static_cast< int >( 255 * alpha_mod ) ), FONT_LEFT, _( "Key" ) );
-		Render::Text( Fonts::Menu, pos + Vector2D( size.x / 2 - 3, 3 ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ), FONT_LEFT, _( "binds" ) );
+		Render::Text( Fonts::Menu, pos + Vector2D( size.x / 2 - 3, 3 ), ACCENT.Set<COLOR_A>( 255 * alpha_mod ), FONT_LEFT, _( "binds" ) );
+
+		Interfaces::Surface->SetClipRect( pos.x + 2, pos.y + 2, size.x - 4, size.y - 4 );
 
 		// gimme text
 		for ( auto i{ 0 }; i < binds.size( ); i++ ) {
 			const auto& bind = binds.at( i );
 			Render::Text( Fonts::Menu, pos + Vector2D( 20, 25 + appendLength * i + 1 ), Color( 255, 255, 255, static_cast< int >( 255 * alpha_mod ) ), FONT_LEFT, bind.m_szName );
 
-			Render::Text( Fonts::Menu, pos + Vector2D( size.x - 20, 25 + appendLength * i ), Menu::AccentCol.Set<COLOR_A>( 255 * alpha_mod ), FONT_RIGHT, bind.m_szMode );
+			Render::Text( Fonts::Menu, pos + Vector2D( size.x - 20, 25 + appendLength * i ), ACCENT.Set<COLOR_A>( 255 * alpha_mod ), FONT_RIGHT, bind.m_szMode );
 		}
 	}
 	Interfaces::Surface->SetClipRect( 0, 0, ctx.m_ve2ScreenSize.x, ctx.m_ve2ScreenSize.y );

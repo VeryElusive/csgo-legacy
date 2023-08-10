@@ -4,7 +4,7 @@
 // used: angle
 #include "datatypes/qangle.h"
 
-#include "../../core/displacement.h"
+#include "../core/displacement.h"
 
 /* max animation layers */
 #define MAXOVERLAYS 15
@@ -48,37 +48,45 @@ enum ESequenceActivity : int
 	ACT_CSGO_EXIT_LADDER_BOTTOM
 };
 
+class matrix3x4_t;
 class matrix3x4a_t;
 class CBaseAnimating;
 class CBoneAccessor
 {
 public:
-	const CBaseAnimating* pAnimating;		//0x00
-	matrix3x4a_t* matBones;		//0x04
+	const CBaseAnimating*	pAnimating;		//0x00
+	matrix3x4a_t*			matBones;		//0x04
 	int						nReadableBones;	//0x08
 	int						nWritableBones;	//0x0C
-}; // Size: 0x10 (not same aynore)
+}; // Size: 0x10
 
 class CAnimationLayer
 {
 public:
+	bool IsActive( ) {
+		if ( !pOwner || flPlaybackRate <= 0.0f )
+			return false;
+
+		return flCycle < 0.999f;
+	}
+
 	float			flAnimationTime;		//0x00
 	float			flFadeOut;				//0x04
 	void*			pStudioHdr;				//0x08
 	int				nDispatchedSrc;			//0x0C
 	int				nDispatchedDst;			//0x10
 	int				iOrder;					//0x14
-	std::uintptr_t  nSequence;				//0x18
+	int				nSequence;				//0x18
 	float			flPrevCycle;			//0x1C
 	float			flWeight;				//0x20
 	float			flWeightDeltaRate;		//0x24
 	float			flPlaybackRate;			//0x28
 	float			flCycle;				//0x2C
-	void*			pOwner;					//0x30
+	CBasePlayer*			pOwner;					//0x30
 	int				nInvalidatePhysicsBits;	//0x34
 }; // Size: 0x38
 
-class CBaseEntity; 
+class CBaseEntity;
 class CBasePlayer;
 class CBaseCombatWeapon;
 class CCSGOPlayerAnimState
@@ -87,7 +95,7 @@ public:
 	void Create(CBaseEntity* pEntity)
 	{
 		using CreateAnimationStateFn = void(__thiscall*)(void*, CBaseEntity*);
-		static auto oCreateAnimationState = reinterpret_cast<CreateAnimationStateFn>( Offsets::Sigs.oCreateAnimationState );
+		static auto oCreateAnimationState = reinterpret_cast<CreateAnimationStateFn>( Displacement::Sigs.oCreateAnimationState );
 
 		if (oCreateAnimationState == nullptr)
 			return;
@@ -98,7 +106,7 @@ public:
 	void Update(QAngle angView)
 	{
 		using UpdateAnimationStateFn = void(__vectorcall*)(void*, void*, float, float, float, void*);
-		static auto oUpdateAnimationState = reinterpret_cast<UpdateAnimationStateFn>( Offsets::Sigs.oUpdateAnimationState ); // @xref: "%s_aim"
+		static auto oUpdateAnimationState = reinterpret_cast<UpdateAnimationStateFn>( Displacement::Sigs.oUpdateAnimationState ); // @xref: "%s_aim"
 
 		if (oUpdateAnimationState == nullptr)
 			return;
@@ -109,7 +117,7 @@ public:
 	void Reset()
 	{
 		using ResetAnimationStateFn = void(__thiscall*)(void*);
-		static auto oResetAnimationState = reinterpret_cast<ResetAnimationStateFn>( Offsets::Sigs.oResetAnimationState ); // @xref: "player_spawn"
+		static auto oResetAnimationState = reinterpret_cast<ResetAnimationStateFn>( Displacement::Sigs.oResetAnimationState ); // @xref: "player_spawn"
 
 		if (oResetAnimationState == nullptr)
 			return;
@@ -117,7 +125,7 @@ public:
 		oResetAnimationState(this);
 	}
 
-	void SetLayerSequence( CAnimationLayer* layer, int32_t activity, bool reset = true );
+	void SetLayerSequence( CAnimationLayer* pAnimationLayer, int32_t iActivity, bool reset = true );
 	int32_t SelectSequenceFromActMods( int32_t iActivity );
 
 	std::byte	pad0[0x4]; // 0x00
@@ -165,8 +173,10 @@ public:
 	float		flLeftGroundHeight; // 0x114
 	float		flHitGroundWeight; // 0x118 // from 0 to 1, is 1 when standing
 	float		flWalkToRunTransition; // 0x11C // from 0 to 1, doesnt change when walking or crouching, only running
-	std::byte	pad4[0x4]; // 0x120
-	float		flInAirSmoothValue;//0x0131
+	bool		m_bLandedOnGroundThisFrame; // 0x120
+	bool		m_bLeftTheGroundThisFrame; // 0x121
+	std::byte	pad4[0x2]; // 0x122
+	float		flInAirSmoothValue;//0x0124
 	bool		bOnLadder;//0x0135
 	float		m_flLadderWeight;//0x0137
 	char		pad8[ 43u ];

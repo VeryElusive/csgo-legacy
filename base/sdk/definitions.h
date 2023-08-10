@@ -216,6 +216,7 @@ enum ECollisionGroup : int
 #pragma region valve_shareddefs
 #define TICK_INTERVAL			( Interfaces::Globals->flIntervalPerTick )
 #define TIME_TO_TICKS( t )		( static_cast<int>( 0.5f + static_cast<float>( t ) / TICK_INTERVAL ) )
+#define ROUND_DOWN_TO_TICKS( t )( static_cast<int>( static_cast<float>( t ) / TICK_INTERVAL ) )
 #define TICKS_TO_TIME( t )		( TICK_INTERVAL * static_cast<float>( t ) )
 #define ROUND_TO_TICKS( t )		( TICK_INTERVAL * TIME_TO_TICKS( t ) )
 #define TICK_NEVER_THINK		( -1 )

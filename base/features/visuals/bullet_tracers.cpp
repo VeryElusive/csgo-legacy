@@ -1,17 +1,5 @@
 #include "visuals.h"
 
-bool PrecacheModel( const char* szModelName ) {
-	INetworkStringTable* m_pModelPrecacheTable = Interfaces::NetworkContainer->FindTable( _( "modelprecache" ) );
-
-	if ( m_pModelPrecacheTable ) {
-		Interfaces::ModelInfo->FindOrLoadModel( szModelName );
-		int idx = m_pModelPrecacheTable->AddString( false, szModelName );
-		if ( idx == INVALID_STRING_INDEX )
-			return false;
-	}
-	return true;
-}
-
 void CBulletTracers::Draw( ) {
 	if ( m_vecTracers.empty( ) )
 		return;

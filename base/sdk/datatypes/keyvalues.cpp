@@ -2,18 +2,18 @@
 #include "../../core/interfaces.h"
 
 #include <assert.h>
-/*
+
 CKeyValues::CKeyValues( const char* szKeyName, void* pUnknown1, HKeySymbol hCaseInsensitiveKeyName )
 {
 	using CKeyValuesConstructorFn = void( __thiscall* )( void*, const char*, void*, HKeySymbol );
-	static CKeyValuesConstructorFn oConstructor = reinterpret_cast< CKeyValuesConstructorFn >( Offsets::Sigs.InitKeyValues ); // @xref: client.dll -> "OldParticleSystem_Destroy"
+	static CKeyValuesConstructorFn oConstructor = reinterpret_cast< CKeyValuesConstructorFn >( Displacement::Sigs.InitKeyValues ); // @xref: client.dll -> "OldParticleSystem_Destroy"
 	oConstructor( this, szKeyName, pUnknown1, hCaseInsensitiveKeyName );
 }
 
 CKeyValues::~CKeyValues( )
 {
 	using CKeyValuesDestructorFn = void( __thiscall* )( void*, int );
-	static CKeyValuesDestructorFn oDestructor = reinterpret_cast< CKeyValuesDestructorFn >( Offsets::Sigs.DestructKeyValues );
+	static CKeyValuesDestructorFn oDestructor = reinterpret_cast< CKeyValuesDestructorFn >( Displacement::Sigs.DestructKeyValues );
 	oDestructor( this, 1 );
 }
 
@@ -44,7 +44,7 @@ CKeyValues* CKeyValues::FromString(const char* szName, const char* szValue)
 		push 0
 		mov edx, szValue
 		mov ecx, szName
-		call Offsets::Sigs.oFromString
+		call Displacement::Sigs.oFromString
 		add esp, 4
 		mov pKeyValues, eax
 	}
@@ -55,7 +55,7 @@ CKeyValues* CKeyValues::FromString(const char* szName, const char* szValue)
 void CKeyValues::LoadFromBuffer(char const* szResourceName, const char* szBuffer, void* pFileSystem, const char* szPathID, GetSymbolProcFn pfnEvaluateSymbolProc)
 {
 	using LoadFromBufferFn = void(__thiscall*)(void*, const char*, const char*, void*, const char*, void*, void*);
-	static auto oLoadFromBuffer = reinterpret_cast<LoadFromBufferFn>( Offsets::Sigs.oLoadFromBuffer );
+	static auto oLoadFromBuffer = reinterpret_cast<LoadFromBufferFn>( Displacement::Sigs.oLoadFromBuffer );
 	assert(oLoadFromBuffer != nullptr);
 
 	oLoadFromBuffer(this, szResourceName, szBuffer, pFileSystem, szPathID, pfnEvaluateSymbolProc, nullptr);
@@ -64,7 +64,7 @@ void CKeyValues::LoadFromBuffer(char const* szResourceName, const char* szBuffer
 bool CKeyValues::LoadFromFile(void* pFileSystem, const char* szResourceName, const char* szPathID, GetSymbolProcFn pfnEvaluateSymbolProc)
 {
 	using LoadFromFileFn = bool(__thiscall*)(void*, void*, const char*, const char*, void*);
-	static auto oLoadFromFile = reinterpret_cast<LoadFromFileFn>( Offsets::Sigs.oLoadFromFile );
+	static auto oLoadFromFile = reinterpret_cast<LoadFromFileFn>( Displacement::Sigs.oLoadFromFile );
 	assert(oLoadFromFile != nullptr);
 
 	return oLoadFromFile(this, pFileSystem, szResourceName, szPathID, pfnEvaluateSymbolProc);
@@ -73,7 +73,7 @@ bool CKeyValues::LoadFromFile(void* pFileSystem, const char* szResourceName, con
 CKeyValues* CKeyValues::FindKey(const char* szKeyName, const bool bCreate)
 {
 	using FindKeyFn = CKeyValues * (__thiscall*)(void*, const char*, bool);
-	static auto oFindKey = reinterpret_cast<FindKeyFn>( Offsets::Sigs.oFindKey );
+	static auto oFindKey = reinterpret_cast<FindKeyFn>( Displacement::Sigs.oFindKey );
 	assert(oFindKey != nullptr);
 
 	return oFindKey(this, szKeyName, bCreate);
@@ -133,7 +133,7 @@ float CKeyValues::GetFloat( const char* szKeyName, const float flDefaultValue )
 const char* CKeyValues::GetString( const char* szKeyName, const char* szDefaultValue )
 {
 	using GetStringFn = const char* ( __thiscall* )( void*, const char*, const char* );
-	static auto oGetString = reinterpret_cast< GetStringFn >( Offsets::Sigs.oGetString );
+	static auto oGetString = reinterpret_cast< GetStringFn >( Displacement::Sigs.oGetString );
 	assert( oGetString != nullptr );
 
 	return oGetString( this, szKeyName, szDefaultValue );
@@ -147,7 +147,7 @@ void CKeyValues::SetString( const char* szKeyName, const char* szStringValue )
 		return;
 
 	using SetStringFn = void( __thiscall* )( void*, const char* );
-	static auto oSetString = reinterpret_cast< SetStringFn >( Offsets::Sigs.oSetString );
+	static auto oSetString = reinterpret_cast< SetStringFn >( Displacement::Sigs.oSetString );
 	assert( oSetString != nullptr );
 
 	oSetString( pSubKey, szStringValue );
@@ -181,4 +181,4 @@ void CKeyValues::SetUint64( const char* szKeyName, const int nLowValue, const in
 	pSubKey->szValue = new char[ sizeof( std::uint64_t ) ];
 	*reinterpret_cast< std::uint64_t* >( pSubKey->szValue ) = static_cast< std::uint64_t >( nHighValue ) << 32ULL | nLowValue;
 	pSubKey->iDataType = TYPE_UINT64;
-}*/
+}

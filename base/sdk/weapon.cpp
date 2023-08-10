@@ -46,7 +46,7 @@ std::string CBaseCombatWeapon::GetIcon( )
 	if ( !this )
 		return "";
 
-	if ( ( ( CWeaponCSBase* )this )->IsKnife( ) )
+	if ( ( ( CWeaponCSBase* ) this )->IsKnife( ) )
 		return _( "]" );
 
 	switch ( this->m_iItemDefinitionIndex( ) )
@@ -146,7 +146,7 @@ std::string CBaseCombatWeapon::GetGunName( ) {
 	if ( !this )
 		return "";
 
-	if ( ( ( CWeaponCSBase* )this )->IsKnife( ) )
+	if ( ( ( CWeaponCSBase* ) this )->IsKnife( ) )
 		return _( "KNIFE" );
 
 	switch ( m_iItemDefinitionIndex( ) )

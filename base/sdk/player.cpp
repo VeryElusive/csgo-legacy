@@ -9,8 +9,8 @@ bool CBasePlayer::IsTeammate( CBasePlayer* player ) {
 	if ( !player )
 		return false;
 
-	if ( Offsets::Cvars.mp_teammates_are_enemies != nullptr
-		&& Offsets::Cvars.mp_teammates_are_enemies->GetBool( ) && this != ctx.m_pLocal ) // you see that guy over there? yeah. he's not ur friend
+	if ( Displacement::Cvars.mp_teammates_are_enemies != nullptr
+		&& Displacement::Cvars.mp_teammates_are_enemies->GetBool( ) && this != ctx.m_pLocal ) // you see that guy over there? yeah. he's not ur friend
 		return false;
 
 	return ( this->m_iTeamNum( ) == player->m_iTeamNum( ) );
@@ -22,7 +22,7 @@ int CBasePlayer::GetSequenceActivity( int sequence ) {
 		return -1;
 
 	using GetSequenceActivityFn = int( __fastcall* )( void*, void*, int );
-	static auto oGetSequenceActivity = ( GetSequenceActivityFn )Offsets::Sigs.GetSequenceActivity;
+	static auto oGetSequenceActivity = ( GetSequenceActivityFn )Displacement::Sigs.GetSequenceActivity;
 	return oGetSequenceActivity( this, pStudioHdr, sequence );
 }
 
@@ -44,8 +44,49 @@ Vector CBasePlayer::GetEyePosition( float yaw, float pitch ) {
 	if ( !state )
 		return eyePos;
 
-	if ( this == ctx.m_pLocal && state->m_pPlayer && ( state->m_bLanding || state->flDuckAmount || this->m_hGroundEntity( ) == -1 ) ) {
-		ctx.m_pLocal->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
+	if ( this == ctx.m_pLocal && state->m_pPlayer && ( state->m_bLanding || this->m_flDuckAmount( ) || this->m_hGroundEntity( ) == -1 ) ) {
+		const auto backupState{ *state };
+		CAnimationLayer backupLayers[ 13 ]{ };
+		std::memcpy( backupLayers, this->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
+		const auto backupPoseParam{ this->m_flPoseParameter( ) };
+
+		const auto backupTickbase{ this->m_nTickBase( ) };
+		const auto backupFlags{ this->m_fFlags( ) };
+		const auto backupVel{ this->m_vecAbsVelocity( ) };
+		const auto backupDuckAmount{ this->m_flDuckAmount( ) };
+
+		const auto backupJumping{ Features::AnimSys.m_bJumping };
+		const auto backupLowerBodyRealignTimer{ Features::AnimSys.m_flLowerBodyRealignTimer };
+
+		for ( auto i{ 1 }; i <= Interfaces::ClientState->nChokedCommands; ++i ) {
+			const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
+
+			auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+			auto& curLocalData{ ctx.m_cLocalData.at( j ) };
+
+			if ( curLocalData.m_flSpawnTime != this->m_flSpawnTime( ) )
+				continue;
+
+			if ( curUserCmd.iTickCount == INT_MAX )
+				continue;
+
+			this->m_nTickBase( ) = curLocalData.PredictedNetvars.m_nTickBase;
+			this->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+			this->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+			this->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
+
+			Features::AnimSys.UpdateLocal( { pitch, yaw, 0.f }, true, curUserCmd );
+		}
+
+		this->m_nTickBase( ) = backupTickbase;
+		this->m_fFlags( ) = backupFlags;
+		this->m_vecAbsVelocity( ) = backupVel;
+		this->m_flDuckAmount( ) = backupDuckAmount;
+
+		Features::AnimSys.m_bJumping = backupJumping;
+		Features::AnimSys.m_flLowerBodyRealignTimer = backupLowerBodyRealignTimer;
+
+		this->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
 			pitch, 360.f
 		), -90.f, 90.f ) + 90.f ) / 180.f;
 
@@ -56,7 +97,11 @@ Vector CBasePlayer::GetEyePosition( float yaw, float pitch ) {
 
 		Features::AnimSys.SetupBonesRebuilt( this, matrix, BONE_USED_BY_HITBOX, ctx.m_flFixedCurtime, true );
 
-		//static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+		this->m_flPoseParameter( ) = backupPoseParam;
+		*state = backupState;
+		std::memcpy( this->m_AnimationLayers( ), backupLayers, 13 * sizeof CAnimationLayer );
+
+		//static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Displacement::Sigs.LookupBone ) };
 		//const auto boneIndex{ lookupBone( v12->pEntity, _( "head_0" ) ) };
 
 		const auto headPosZ{ matrix[ 8 ].GetOrigin( ).z + 1.7f };
@@ -81,12 +126,15 @@ bool CBasePlayer::IsHostage( ) {
 }
 
 float CBasePlayer::m_flMaxSpeed( ) {
-	auto weap = this->GetWeapon( );
-	if ( !weap )
-		return 0.f;
+	const auto weapon{ this->GetWeapon( ) };
+	if ( !weapon )
+		return 260.f;
 
-	auto weap_info = weap->GetCSWeaponData( );
-	return !weap_info ? 260.f : this->m_bIsScoped( ) ? weap_info->flMaxSpeedAlt : weap_info->flMaxSpeed;
+	const auto weaponData{ weapon->GetCSWeaponData( ) };
+	if ( !weaponData )
+		return 260.f;
+
+	return this->m_bIsScoped( ) ? weaponData->flMaxSpeedAlt : weaponData->flMaxSpeed;
 }
 
 bool CBasePlayer::CanShoot( bool secondary ) {

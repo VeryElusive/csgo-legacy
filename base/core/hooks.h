@@ -139,6 +139,7 @@ namespace DTR
 	inline CDetourHook Paint;
 	inline CDetourHook EmitSound;
 	inline CDetourHook ProcessMovement;
+	inline CDetourHook InterpolatedVarArrayBase_Reset;
 	inline CDetourHook DoExtraBonesProcessing;
 	inline CDetourHook StandardBlendingRules;
 	inline CDetourHook UpdateClientsideAnimation;
@@ -188,6 +189,8 @@ namespace DTR
 	inline CDetourHook C_BaseViewModel__Interpolate;
 	inline CDetourHook GetExposureRange;
 	inline CDetourHook AnimStateUpdate;
+	inline CDetourHook ResetLatched;
+	inline CDetourHook PRECACHE_REGISTER_BEGIN__PrecachePrecipitation;
 
 #ifdef SERVER_DBGING
 	inline CDetourHook ServerSetupBones;
@@ -208,6 +211,7 @@ namespace Hooks
 	inline RecvVarProxyFn m_hWeapon;
 	inline RecvVarProxyFn m_flCycle;
 	inline RecvVarProxyFn m_flAnimTime;
+	inline RecvVarProxyFn m_nSequence;
 
 	// Get
 	bool	Setup();
@@ -249,7 +253,6 @@ namespace Hooks
 	bool	FASTCALL	hkIsBoneAvailable( void* ecx, uint32_t, int a1 );
 	void	FASTCALL	hkPhysicsSimulate( CBasePlayer* player, int time );
 	CUserCmd* FASTCALL	hkGetUserCmd( uint8_t* ecx, uint8_t* edx, int slot, int seqnr );
-	void	FASTCALL	hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper );
 	void	FASTCALL	hkModifyEyePosition( CCSGOPlayerAnimState* ecx, void* edx, Vector& pos );
 	void	FASTCALL	hkCalcView( CBasePlayer* pPlayer, void* edx, Vector& vecEyeOrigin, QAngle& angEyeAngles, float& flZNear, float& flZFar, float& flFov );
 	float	FASTCALL	hkCalcViewmodelBob( CWeaponCSBase* pWeapon, void* EDX );
@@ -287,6 +290,9 @@ namespace Hooks
 	void	FASTCALL	hkSceneEnd( void* ecx, int edx );
 	bool	FASTCALL	hkisBoneAvailableForRead( void* ecx, int edx, int a2 );
 	void	FASTCALL	hkGetExposureRange( float* pflAutoExposureMin, float* pflAutoExposureMax );
+	void	FASTCALL	hkInterpolatedVarArrayBase_Reset( void* ecx, int edx, float a2 );
+	void	FASTCALL	hkResetLatched( void* ecx, int edx );
+	int __stdcall		hkPRECACHE_REGISTER_BEGIN__PrecachePrecipitation( void( __thiscall*** a1 )( DWORD, int, const char*, int, int, DWORD ), int a2, int a3, int a4 );
 
 	void	CDECL		m_bClientSideAnimationHook( const CRecvProxyData* data, void* entity, void* output );
 	void	CDECL		m_flSimulationTimeHook( const CRecvProxyData* data, void* entity, void* output );

@@ -15,8 +15,8 @@
 #include "../sdk/hash/fnv1a.h"
 
 #pragma region config_definitions
-#define C_ADD_VARIABLE( Type, szName, pDefault ) const std::uint32_t szName = Config::AddVariable<Type>(FNV1A::HashConst(_(#szName)), FNV1A::HashConst(#Type), pDefault);
-#define C_ADD_VARIABLE_VECTOR( Type, uSize, szName, pDefault ) const std::uint32_t szName = Config::AddVariable<std::vector<Type>>(FNV1A::HashConst(_(#szName)), FNV1A::HashConst("std::vector<" #Type ">"), MEM::GetFilledVector<Type, uSize>(pDefault));
+#define C_ADD_VARIABLE( Type, szName, pDefault ) const std::uint32_t szName = Config::AddVariable<Type>(FNV1A::HashConst(#szName), FNV1A::HashConst(#Type), pDefault);
+#define C_ADD_VARIABLE_VECTOR( Type, uSize, szName, pDefault ) const std::uint32_t szName = Config::AddVariable<std::vector<Type>>(FNV1A::HashConst(#szName), FNV1A::HashConst("std::vector<" #Type ">"), MEM::GetFilledVector<Type, uSize>(pDefault));
 #define C_INVALID_VARIABLE (std::size_t)(-1)
 #pragma endregion
 
@@ -63,6 +63,7 @@ namespace Config // @credits: ducarii
 	void Remove(const std::size_t nIndex);
 	/* loop through directory content and push config filenames to vector */
 	void Refresh();
+	inline bool m_bDueRefresh{ };
 
 	// Get
 	/* return variable index by hashed name */
@@ -72,7 +73,7 @@ namespace Config // @credits: ducarii
 
 	// Values
 	/* default configs path */
-	const std::filesystem::path fsPath = GetWorkingPath() / _("Config");
+	const std::filesystem::path fsPath = GetWorkingPath() / ("Config");
 	/* all user config filenames */
 	inline std::deque<std::string> vecFileNames = { };
 	/* configuration variables */

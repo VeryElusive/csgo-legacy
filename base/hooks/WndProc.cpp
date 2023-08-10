@@ -1,20 +1,24 @@
 #include "../core/hooks.h"
 #include "../utils/render.h"
-#include "../core/menu/menu.h"
+#include "../core/menu rework/menu.h"
+#include "../core/framework/framework.h"
 #include "../context.h"
 #include <intrin.h>
 
 LRESULT CALLBACK Hooks::hkWndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
 	if ( uMsg == WM_KEYDOWN && wParam == VK_INSERT )
-		Menu::Opened = !Menu::Opened;
+	{
+		Menu::m_bOpened = !Menu::m_bOpened;
+		MenuFramework::m_bOpen = !MenuFramework::m_bOpen;
+	}
 
 	
 
 	//if ( Menu::Opened && ( uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONUP || uMsg == WM_MOUSEMOVE ) )
 	//	return false;
 
-	if ( Menu::Opened ) {
+	if ( Menu::m_bOpened ) {
 		if ( uMsg == WM_MOUSEWHEEL || uMsg == WM_MOUSEHWHEEL )
 			Inputsys::scroll += ( float )GET_WHEEL_DELTA_WPARAM( wParam ) / ( float )WHEEL_DELTA;
 

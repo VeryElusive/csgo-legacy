@@ -119,11 +119,10 @@ void CChams::InitMaterials( ) {
 IMaterial* CChams::CreateMaterial( 
 	const std::string_view name, const std::string_view shader, const std::string_view material 
 ) const {
-	//CKeyValues* pKeyValues = new CKeyValues( shader.data( ) );
-	//pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
+	CKeyValues* pKeyValues = new CKeyValues( shader.data( ) );
+	pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
 
-	//return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
-	return 00;
+	return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
 }
 
 void CChams::OverrideMaterial(
@@ -328,7 +327,7 @@ void CChams::RenderShotChams( ) {
 		float* pFlexWeights = NULL;
 		float* pFlexDelayedWeights = NULL;
 
-		int overlayVal = Offsets::Cvars.r_drawmodelstatsoverlay->GetInt( );
+		int overlayVal = Displacement::Cvars.r_drawmodelstatsoverlay->GetInt( );
 		int drawFlags = it.state.iDrawFlags;
 
 		if ( bShadowDepth ) {
@@ -441,7 +440,7 @@ void CChams::OnSceneEnd( ) {
 	RenderShotChams( );
 
 	std::vector<CBasePlayer*> queue;
-	for ( int i{ 1 }; i <= 64; ++i ) {
+	for ( int i{ 1 }; i < 64; ++i ) {
 		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 		if ( !player || !player->IsPlayer( ) )
 			continue;
@@ -476,22 +475,28 @@ void CChams::OnSceneEnd( ) {
 			auto matrix{ new matrix3x4_t[ 256 ] };
 			bool valid{ };
 			if ( !records.empty( ) ) {
-				for ( auto it = records.rbegin( ); it != records.rend( ); it = std::next( it ) ) {
+				for ( auto it{ records.rbegin( ) }; it != records.rend( ); it = std::next( it ) ) {
 					const auto& record{ *it };
-					if ( !record )
-						continue;
 
 					if ( record->m_bBrokeLC )
 						break;
 
-					if ( !record->Validity( ) )
+					if ( record->m_bFirst )
+						continue;
+
+					const auto validity{ record->Validity( ) };
+					if ( !validity )// **( int** ) Displacement::Sigs.numticks * 2 )
+						continue;
+
+					if ( validity < 3
+						&& ctx.m_iTicksAllowed )
 						continue;
 
 					if ( ( record->m_cAnimData.m_vecOrigin - player->GetAbsOrigin( ) ).Length( ) < 2.f )
 						continue;
 
 					std::memcpy(
-						matrix, record->m_pMatrix,
+						matrix, record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix,
 						player->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t )
 					);
 
@@ -511,6 +516,7 @@ void CChams::OnSceneEnd( ) {
 						backupBones, player->m_CachedBoneData( ).Base( ),
 						player->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t )
 					);
+					// should do cbb... idc tho.
 
 					std::memcpy(
 						player->m_CachedBoneData( ).Base( ), matrix,

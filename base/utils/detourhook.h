@@ -3,7 +3,7 @@
 #include <format>
 
 // used: minhook hooking library
-#include "../../dependencies/minhook/minhook.h"
+#include "../dependencies/minhook/minhook.h"
 
 /*
  * detour hooking implementation using minhook

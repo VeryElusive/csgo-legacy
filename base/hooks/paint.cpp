@@ -1,15 +1,16 @@
 #include "../core/hooks.h"
-#include "../core/menu/menu.h"
+#include "../core/menu rework/menu.h"
 #include "../utils/render.h"
 #include "../features/visuals/visuals.h"
 #include "../features/misc/logger.h"
 #include "../context.h"
+#include "../core/framework/framework.h"
 
 void FASTCALL Hooks::hkLockCursor( ISurface* thisptr, int edx )
 {
 	static auto oLockCursor = DTR::LockCursor.GetOriginal<decltype( &hkLockCursor )>( );
 
-	if ( Menu::Opened ) {
+	if ( Menu::m_bOpened ) {
 		Interfaces::Surface->UnLockCursor( );
 		return;
 	}
@@ -24,7 +25,7 @@ void FASTCALL Hooks::hkPaintTraverse( ISurface* thisptr, int edx, unsigned int u
 
 	
 
-	if ( Config::Get<bool>( Vars.RemovalScope ) && uPanelHash == FNV1A::HashConst( _( "HudZoom" ) ) )
+	if ( Config::Get<bool>( Vars.RemovalScope ) && uPanelHash == FNV1A::HashConst( ( "HudZoom" ) ) )
 		return;
 
 	oPaintTraverse( thisptr, edx, uPanel, bForceRepaint, bForce );
@@ -40,8 +41,8 @@ void FASTCALL Hooks::HkPaint( const std::uintptr_t ecx, const std::uintptr_t edx
 	typedef void( __thiscall* start_drawing_t )( void* );
 	typedef void( __thiscall* finish_drawing_t )( void* );
 
-	static auto StartDraw = ( start_drawing_t )Offsets::Sigs.StartDrawing;
-	static auto Finishdrawing = ( start_drawing_t )Offsets::Sigs.FinishDrawing;
+	static auto StartDraw = ( start_drawing_t )Displacement::Sigs.StartDrawing;
+	static auto Finishdrawing = ( start_drawing_t )Displacement::Sigs.FinishDrawing;
 
 	// ik nem did 2 aswell as 1 weird huh
 	if ( mode & 1 /* || mode & 2*/ ) {
@@ -56,16 +57,20 @@ void FASTCALL Hooks::HkPaint( const std::uintptr_t ecx, const std::uintptr_t edx
 		Inputsys::updateNeededKeys( );
 		Inputsys::update( );
 
-		if ( Menu::MenuAlpha >= 0 && !Menu::Opened )
+		/*if ( Menu::MenuAlpha >= 0 && !Menu::Opened )
 			Menu::MenuAlpha -= 5.f * Interfaces::Globals->flFrameTime;
 		else if ( Menu::MenuAlpha <= 1 && Menu::Opened )
 			Menu::MenuAlpha += 5.f * Interfaces::Globals->flFrameTime;
 
-		Menu::MenuAlpha = std::clamp( Menu::MenuAlpha, 0.f, 1.f );
-		Render::GlobalAlpha = Menu::MenuAlpha;
+		Menu::MenuAlpha = std::clamp( Menu::MenuAlpha, 0.f, 1.f );*/
+		Render::GlobalAlpha = Menu::m_flAlpha;
 
-		Menu::render( );
-		Menu::GetElements( );
+		Menu::Render( );
+
+		//Menu::render( );
+		//Menu::GetElements( );
+
+		//MenuFramework::Main( );
 
 		Inputsys::scroll = 0;
 

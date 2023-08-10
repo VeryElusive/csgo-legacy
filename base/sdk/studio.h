@@ -53,10 +53,18 @@ public:
 #define BONE_HAS_SAVEFRAME_ROT32	0x00800000
 
 
-#define BONE_USED_BY_SERVER BONE_USED_BY_HITBOX | BONE_USED_BY_ATTACHMENT | BONE_USED_BY_VERTEX_MASK
+#define BONE_USED_BY_SERVER ( BONE_USED_BY_HITBOX | BONE_USED_BY_ATTACHMENT | BONE_USED_BY_VERTEX_MASK )// server does not do BONE_ALWAYS_SETUP however i need some shit for it eg the player tags 
 #pragma endregion
 
-struct vcollide_t;
+struct vcollide_t
+{
+	unsigned short solidCount : 15;
+	unsigned short isPacked : 1;
+	unsigned short descSize;
+	// VPhysicsSolids
+	void** solids;//type: CPhysCollide
+	char* pKeyValues;
+};
 struct virtualmodel_t;
 struct vertexfileheader_t;
 

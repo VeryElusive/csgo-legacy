@@ -259,7 +259,7 @@ public:
 	bool& DisableRenderTargetAllocationForever()
 	{
 		// @xref: "Tried BeginRenderTargetAllocation after game startup. If I let you do this, all users would suffer.\n"
-		static auto uDisableRenderTargetAllocationForever = *reinterpret_cast<std::uintptr_t*>(Offsets::Sigs.uDisableRenderTargetAllocationForever + 0x2);
+		static auto uDisableRenderTargetAllocationForever = *reinterpret_cast<std::uintptr_t*>(Displacement::Sigs.uDisableRenderTargetAllocationForever + 0x2);
 		return *reinterpret_cast<bool*>(reinterpret_cast<std::uintptr_t>(this) + uDisableRenderTargetAllocationForever);
 	}
 };

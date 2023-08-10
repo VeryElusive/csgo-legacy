@@ -1,27 +1,34 @@
 #include "displacement.h"
 #include "../core/interfaces.h"
+#include "../utils/networking/networking.h"
+#include <shlobj.h>
 
 #define DEFCVAR( VAR ) Cvars.##VAR = Interfaces::ConVar->FindVar( _( #VAR ) );
 
-#define DT_BaseEntity( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseEntity" ), _( #VAR ) );
-#define DT_BasePlayer( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( #VAR ) );
-#define DT_CSPlayer( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_CSPlayer" ), _( #VAR ) );
-#define DT_BaseCombatCharacter( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCombatCharacter" ), _( #VAR ) );
-#define DT_BaseCombatWeapon( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCombatWeapon" ), _( #VAR ) );
-#define DT_BaseWeaponWorldModel( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseWeaponWorldModel" ), _( #VAR ) );
-#define DT_WeaponCSBaseGun( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_WeaponCSBaseGun" ), _( #VAR ) );
-#define DT_WeaponCSBase( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_WeaponCSBase" ), _( #VAR ) );
-#define DT_BreakableSurface( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BreakableSurface" ), _( #VAR ) );
-#define DT_BaseCSGrenadeProjectile( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenadeProjectile" ), _( #VAR ) );
-#define DT_SmokeGrenadeProjectile( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_SmokeGrenadeProjectile" ), _( #VAR ) );
-#define DT_BaseAnimating( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseAnimating" ), _( #VAR ) );
-#define DT_EnvTonemapController( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_EnvTonemapController" ), _( #VAR ) );
-#define DT_BaseCSGrenade( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenade" ), _( #VAR ) );
-#define DT_BaseViewModel( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_BaseViewModel" ), _( #VAR ) );
-#define DT_CSPlayerResource( VAR ) VAR = PropManager::Get( ).GetOffset( _( "DT_CSPlayerResource" ), _( #VAR ) );
+#define DT_BaseEntity( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseEntity" ), _( #VAR ) );
+#define DT_BasePlayer( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( #VAR ) );
+#define DT_CSPlayer( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_CSPlayer" ), _( #VAR ) );
+#define DT_BaseCombatCharacter( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCombatCharacter" ), _( #VAR ) );
+#define DT_BaseCombatWeapon( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCombatWeapon" ), _( #VAR ) );
+#define DT_BaseWeaponWorldModel( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseWeaponWorldModel" ), _( #VAR ) );
+#define DT_WeaponCSBaseGun( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_WeaponCSBaseGun" ), _( #VAR ) );
+#define DT_WeaponCSBase( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_WeaponCSBase" ), _( #VAR ) );
+#define DT_BreakableSurface( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BreakableSurface" ), _( #VAR ) );
+#define DT_BaseCSGrenadeProjectile( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenadeProjectile" ), _( #VAR ) );
+#define DT_SmokeGrenadeProjectile( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_SmokeGrenadeProjectile" ), _( #VAR ) );
+#define DT_BaseAnimating( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseAnimating" ), _( #VAR ) );
+#define DT_EnvTonemapController( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_EnvTonemapController" ), _( #VAR ) );
+#define DT_BaseCSGrenade( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenade" ), _( #VAR ) );
+#define DT_BaseViewModel( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_BaseViewModel" ), _( #VAR ) );
+#define DT_CSPlayerResource( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_CSPlayerResource" ), _( #VAR ) );
+#define DT_Precipitation( VAR ) Netvars->##VAR = PropManager::Get( ).GetOffset( _( "DT_Precipitation" ), _( #VAR ) );
 
-void Offsets::Init( ) {
+void Displacement::Init( void* netvarsPTR ) {
 	/* offsets */
+#ifdef _RELEASE
+	Netvars = reinterpret_cast< netvars* >( netvarsPTR );
+#else
+	Netvars = new netvars;
 	DT_BaseEntity( m_vecMins );
 	DT_BaseEntity( m_vecMaxs );
 	DT_BaseEntity( m_vecOrigin );
@@ -30,16 +37,16 @@ void Offsets::Init( ) {
 	DT_BaseEntity( m_nRenderMode );
 	DT_BaseEntity( m_flSimulationTime );
 	DT_BaseEntity( m_flAnimTime );
+	DT_BaseEntity( m_hOwnerEntity );
 
-	m_vecViewOffset = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_vecViewOffset[0]" ) );// one off cuz diff name
-	m_hViewModel = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_hViewModel[0]" ) );// one off cuz diff name
+	Netvars->m_vecViewOffset = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_vecViewOffset[0]" ) );// one off cuz diff name
+	Netvars->m_hViewModel = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_hViewModel[0]" ) );// one off cuz diff name
 	DT_BasePlayer( m_lifeState );
 	DT_BasePlayer( m_iHealth );
 	DT_BasePlayer( m_fFlags );
 	DT_BasePlayer( m_aimPunchAngle );
 	DT_BasePlayer( m_viewPunchAngle );
 	DT_BasePlayer( pl );
-	DT_BasePlayer( m_hOwnerEntity );
 	DT_BasePlayer( m_nTickBase );
 	DT_BasePlayer( m_hViewEntity );
 	DT_BasePlayer( m_vphysicsCollisionState );
@@ -50,10 +57,11 @@ void Offsets::Init( ) {
 	DT_BasePlayer( m_hGroundEntity );
 	DT_BasePlayer( m_bStrafing );
 	DT_BasePlayer( m_nModelIndex );
+	DT_BasePlayer( m_vecBaseVelocity );
 	DT_BasePlayer( pl );
-	m_vecVelocity = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_vecVelocity[0]" ) );// one off cuz diff name
+	Netvars->m_vecVelocity = PropManager::Get( ).GetOffset( _( "DT_BasePlayer" ), _( "m_vecVelocity[0]" ) );// one off cuz diff name
 
-	m_angEyeAngles = PropManager::Get( ).GetOffset( _( "DT_CSPlayer" ), _( "m_angEyeAngles[0]" ) );// one off cuz diff name
+	Netvars->m_angEyeAngles = PropManager::Get( ).GetOffset( _( "DT_CSPlayer" ), _( "m_angEyeAngles[0]" ) );// one off cuz diff name
 	DT_CSPlayer( m_flFlashDuration );
 	DT_CSPlayer( m_bIsScoped );
 	DT_CSPlayer( m_ArmorValue );
@@ -82,6 +90,7 @@ void Offsets::Init( ) {
 	DT_BaseCombatWeapon( m_flNextPrimaryAttack );
 	DT_BaseCombatWeapon( m_flNextSecondaryAttack );
 	DT_BaseCombatWeapon( m_hWeaponWorldModel );
+	DT_BaseCombatWeapon( m_hOwner );
 
 	DT_BaseWeaponWorldModel( m_hCombatWeaponParent );
 
@@ -118,7 +127,7 @@ void Offsets::Init( ) {
 	DT_CSPlayerResource( m_iPing );
 	DT_CSPlayerResource( m_iPlayerC4 );
 
-	m_vecVelocityGRENADE = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenadeProjectile" ), _( "m_vecVelocity" ) );// one off cuz diff name
+	Netvars->m_vecVelocityGRENADE = PropManager::Get( ).GetOffset( _( "DT_BaseCSGrenadeProjectile" ), _( "m_vecVelocity" ) );// one off cuz diff name
 
 	DT_BaseCSGrenade( m_fThrowTime );
 	DT_BaseCSGrenade( m_flThrowStrength );
@@ -126,13 +135,29 @@ void Offsets::Init( ) {
 
 	DT_SmokeGrenadeProjectile( m_nSmokeEffectTickBegin );
 
-	m_fog_enable = PropManager::Get( ).GetOffset( _( "DT_FogController" ), _( "m_fog.enable" ) );
+	DT_Precipitation( m_nPrecipType );
+
+	Netvars->m_fog_enable = PropManager::Get( ).GetOffset( _( "DT_FogController" ), _( "m_fog.enable" ) );
+
+	{
+		std::ofstream write{ "C:\\Users\\Admin\\Documents\\GitHub\\MINE\\csgo-legacy\\build\\Release\\netvars.txt" };
+		std::string sigsStruct;
+
+		for ( int i = 0; i < sizeof( netvars ); i++ ) {
+			const auto currentByte{ *reinterpret_cast< char* >( uintptr_t( &Netvars ) + i ) };
+			for ( int x = 0; x < 8; x++ )
+				write << ( int ) ( ( currentByte >> x ) & 1 );
+		}
+
+		write.close( );
+	}
+#endif
 
 	/* cvars */
 	DEFCVAR( mp_teammates_are_enemies );
 	DEFCVAR( cl_foot_contact_shadows );
 	DEFCVAR( weapon_recoil_scale );
-	DEFCVAR( view_recoil_tracking );	
+	DEFCVAR( view_recoil_tracking );
 	DEFCVAR( ff_damage_reduction_bullets );
 	DEFCVAR( ff_damage_bullet_penetration );
 	DEFCVAR( r_drawspecificstaticprop );
@@ -205,31 +230,14 @@ void Offsets::Init( ) {
 	//Interfaces::ConVar->FindVar( _( "cl_pred_doresetlatch" ) )->SetValue( 0 );
 	//Interfaces::ConVar->FindVar( _( "cl_extrapolate" ) )->SetValue( 0 );
 	//Interfaces::ConVar->FindVar( _( "cl_extrapolate_amount" ) )->SetValue( 0 );
-	//Interfaces::ConVar->FindVar( _( "cl_simulationtimefix " ) )->SetValue( 0 );
+	// well... i think m_bDisableSimulationFix will be set.. i havent checked tho. schitzophrenia change tbh
+	Interfaces::ConVar->FindVar( _( "cl_simulationtimefix" ) )->nFlags &= ~FCVAR_HIDDEN;
+	Interfaces::ConVar->FindVar( _( "cl_simulationtimefix" ) )->SetValue( 0 );
 	//Interfaces::ConVar->FindVar( _( "viewmodel_fov" ) )->fnChangeCallbacks.Size( ) = 0;
 	//Interfaces::ConVar->FindVar( _( "viewmodel_offset_x" ) )->fnChangeCallbacks.Size( ) = 0;
 	//Interfaces::ConVar->FindVar( _( "viewmodel_offset_y" ) )->fnChangeCallbacks.Size( ) = 0;
 	//Interfaces::ConVar->FindVar( _( "viewmodel_offset_z" ) )->fnChangeCallbacks.Size( ) = 0;
-
-	/* sigs */
-	Sigs.CBaseEntity__PrecacheModel = MEM::FindPattern( SERVER_DLL, _( "56 8B F1 85 F6 74 4F" ) );// WARNING: THIS IS NOT UNIQUE SIG!
-
-	Sigs.uPredictionRandomSeed = MEM::FindPattern( CLIENT_DLL, _( "8B 0D ? ? ? ? BA ? ? ? ? E8 ? ? ? ? 83 C4 04" ) ) + 0x2;
-	Sigs.pPredictionPlayer = MEM::FindPattern( CLIENT_DLL, _( "89 35 ? ? ? ? F3 0F 10 48 20" ) ) + 0x2;
-
-
-	Sigs.ReInitPredictables = MEM::FindPattern( CLIENT_DLL, _( "A1 ? ? ? ? B9 ? ? ? ? 53 56 FF 50 ? 8B D8" ) );
-	Sigs.ShutDownPredictables = MEM::FindPattern( CLIENT_DLL, _( "53 56 8B 35 ? ? ? ? 33 DB 57 33" ) );
 	
-	/*Sigs.InitKeyValues = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 56 8B F1 33 C0 8B 4D 0C 81" ) );// @xref: "OldParticleSystem_Destroy"
-	Sigs.DestructKeyValues = MEM::FindPattern( CLIENT_DLL, _( "56 8B F1 E8 ? ? ? ? 8B 4E 14" ) );// @xref: "OldParticleSystem_Destroy"
-	Sigs.oFromString = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 81 EC ? ? ? ? 85 D2 53" ) );// @xref: "#empty#", "#int#"
-	Sigs.oLoadFromBuffer = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 34 53 8B 5D 0C 89" ) );// @xref: "KeyValues::LoadFromBuffer(%s%s%s): Begin"
-	Sigs.oLoadFromFile = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 14 53 56 8B 75 08 57 FF" ) );// @xref: "rb"
-	Sigs.oFindKey = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 1C 53 8B D9 85 DB" ) );// @xref: "rb"
-	Sigs.oSetString = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC A1 ? ? ? ? 53 56 57 8B F9 8B 08 8B 01" ) );// @xref: "rb"
-	Sigs.oGetString = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 C0 81 EC ? ? ? ? 53 8B 5D 08" ) );*/
-
 	Sigs.oCreateAnimationState = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 56 8B F1 B9 ? ? ? ? C7 46" ) );// @xref: "ggprogressive_player_levelup"
 	Sigs.oUpdateAnimationState = MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 83 EC 18 56 57 8B F9 F3 0F 11 54 24" ) );// @xref: "%s_aim"
 	Sigs.oResetAnimationState = MEM::FindPattern( CLIENT_DLL, _( "56 6A 01 68 ? ? ? ? 8B F1" ) );// @xref: "player_spawn"
@@ -350,14 +358,14 @@ void Offsets::Init( ) {
 	Sigs.CBoneSetup__CalcBoneAdj = { MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 E4 F8 81 EC ? ? ? ? 8B C1 89" ) ) };
 }
 
-std::uintptr_t Offsets::FindInDataMap( DataMap_t* pMap, const char* name ) {
+std::uintptr_t Displacement::FindInDataMap( DataMap_t* pMap, const char* name ) {
 	while ( pMap ) {
 		for ( int i = 0; i < pMap->nDataFields; i++ ) {
-			if ( pMap->pDataDesc[ i ].szFieldName == NULL )
+			if ( pMap->pDataDesc[ i ].szFieldName == nullptr )
 				continue;
 
 			if ( strcmp( name, pMap->pDataDesc[ i ].szFieldName ) == 0 )
-				return pMap->pDataDesc[ i ].iFieldOffset[ TD_OFFSET_NORMAL ];
+				return pMap->pDataDesc[ i ].iFieldOffset;
 
 			if ( pMap->pDataDesc[ i ].iFieldType == FIELD_EMBEDDED ) {
 				if ( pMap->pDataDesc[ i ].pTypeDescription ) {

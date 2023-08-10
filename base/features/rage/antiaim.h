@@ -8,19 +8,20 @@
 
 class CAntiAim {
 public:
-	bool Pitch( CUserCmd& cmd );
+	void Pitch( CUserCmd& cmd );
 	void FakeLag( int cmdNum );
-	void RunLocalModifications( CUserCmd& cmd, bool& sendPacket );
+	void RunLocalModifications( CUserCmd& cmd, int tickbase );
+	float BaseYaw( CUserCmd& cmd );
+	bool Condition( CUserCmd& cmd, bool checkCmd = false );
 
 	int ManualSide{ };
-	float m_flLowerBodyRealignTimer{};
+	bool m_bFlickNow{ };
+	bool Invert{ };
+
 private:
 	bool ChokeCycleJitter{ };
 	bool m_bAntiBackstab{ };
-
-	bool Condition( CUserCmd& cmd, bool checkCmd = false );
-	float BaseYaw( CUserCmd& cmd );
-	void Yaw( CUserCmd& cmd, bool& sendPacket );
+	int Freestanding( );
 	void PickYaw( float& yaw );
 	void AtTarget( float& yaw );
 	//bool AutoDirection( float& yaw );

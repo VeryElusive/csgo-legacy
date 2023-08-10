@@ -3,6 +3,23 @@
 #include "../../context.h"
 #include "../rage/antiaim.h"
 
+struct SideData_t {
+	//float m_flAbsYaw{ };
+	//float m_flMoveYaw{ };
+	//float m_flMoveYawIdeal{ };
+
+	std::array<float, 24> m_flPoseParameter;
+
+	bool m_bFilled{ };
+	CAnimationLayer m_pLayers[ 13 ];
+
+	CCSGOPlayerAnimState m_cAnimState{ };
+
+	//CIKContext m_cExtrapolatedIk{ };
+
+	matrix3x4a_t m_pMatrix[ 256 ]{ };
+};
+
 struct AnimData_t {
 	inline AnimData_t( CBasePlayer* player ) :
 		m_flSimulationTime( player->m_flSimulationTime( ) ),
@@ -12,19 +29,19 @@ struct AnimData_t {
 		m_flDuckAmount( player->m_flDuckAmount( ) ),
 		m_vecMins( player->m_vecMins( ) ), 
 		m_vecMaxs( player->m_vecMaxs( ) ),
-		m_flLowerBodyYawTarget( player->m_flLowerBodyYawTarget( ) ),
 		m_vecVelocity( player->m_vecVelocity( ) ),
 		m_pWeapon( player->GetWeapon( ) )
 	{
 		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * 13 );
 	}
 
+	std::array< SideData_t, 3> m_arrSides{ };
+
 	int m_iFlags{ };
 
 	float m_flSimulationTime{ };
 	float m_flOldSimulationTime{ };
 	float m_flDuckAmount{ };
-	float m_flLowerBodyYawTarget{ };
 
 	Vector m_vecOrigin{ };
 	Vector m_vecMins{ };
@@ -50,14 +67,15 @@ struct LagRecord_t {
 
 	AnimData_t m_cAnimData;
 
-	matrix3x4a_t m_pMatrix[ 256 ]{ };
-
 	bool m_bBrokeLC{ true };
+	bool m_bMultiMatrix{ };
 	bool m_bDormant{ };
-	bool m_bResolverThisTick{ };
+	bool m_bAccurateVelocity{ };
 
 	bool m_bFixJumpFall{ };
 	float m_flLeftGroundTime{ };
+
+	int m_iResolverSide{ };
 
 	int m_iReceiveTick{ };
 	int m_iNewCmds{ 1 };
@@ -68,18 +86,25 @@ struct LagRecord_t {
 	int m_nSequence{ };
 	float m_flCycle{ };
 
-	int m_iBonesCount{ 256 };
+	bool m_bFirst{ };
 
 	FORCEINLINE void FinalAdjustments( CBasePlayer* player, const std::optional <AnimData_t>& previous );
 	FORCEINLINE uint8_t Validity( );
-	FORCEINLINE void Apply( CBasePlayer* ent );
+	FORCEINLINE void Apply( CBasePlayer* ent, int side = 0 );
+};
+
+struct PreviousYaw_t {
+	int m_iTickCount{ };
+	float m_flYaw{ };
+	
+	float m_flAngleDifference{ };
 };
 
 struct PlayerEntry {
 	CBasePlayer* m_pPlayer{ };
 	std::optional < AnimData_t > m_optPreviousData{ };
 	std::vector< std::shared_ptr<LagRecord_t>> m_pRecords{ };
-	//std::vector<std::pair<int, float> > m_flPreviousYaws{ };
+	std::vector<PreviousYaw_t > m_flPreviousYaws{ };
 	//std::array<float, 50> m_arrPreviousYaws{ };
 	//std::vector< Interpolated_t > m_pInterpolatedData{ };
 
@@ -88,8 +113,10 @@ struct PlayerEntry {
 	//Vector m_vecMatrixOriginDelta[ 256 ]{ };
 	Vector m_vecUpdatedOrigin{ };
 	Vector m_vecLastMergeOrigin{ };
+	Vector m_vecPreviousVelocity{ };
 
 	float m_flSpawnTime{ };
+	//bool m_bStartingDuck{ };
 	//float m_flLastPacketTime{ };
 	//float m_flTrackSimulationTime{ };
 	//float m_flExtrapolatedEyeYaw{ };
@@ -102,7 +129,6 @@ struct PlayerEntry {
 
 	int m_iMissedShots{ };
 	//int m_iLastResolvedSide{ 0 };
-	//int m_iResolverSide{ 1 };
 	//int m_iFirstResolverSide{ };
 	int m_iLastRecievedTick{ };
 
@@ -112,6 +138,7 @@ struct PlayerEntry {
 	FORCEINLINE void OutOfDormancy( );
 	FORCEINLINE void OnNewRound( );
 	FORCEINLINE void OnPlayerChange( CBasePlayer* player );
+	void Rezik( LagRecord_t* current );
 };
 
 class CAnimationSys {
@@ -119,9 +146,8 @@ public:
 	void RunAnimationSystem( );
 	void AnimatePlayerThread( PlayerEntry& entry );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
-	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
-	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from );
-	void Rezik( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from );
+	void UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side );
+	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from, int side );
 	//FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
 	bool SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* bones, const int mask, const float time, const bool clampbonesinbbox );

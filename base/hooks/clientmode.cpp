@@ -71,8 +71,8 @@ void FASTCALL Hooks::hkOverrideView( IClientModeShared* thisptr, int edx, CViewS
 
 	if ( ctx.m_bFakeDucking && !ctx.m_pLocal->IsDead( ) )
 		pSetup->vecOrigin = ctx.m_pLocal->GetAbsOrigin( ) + Vector( 0, 0, Interfaces::GameMovement->GetPlayerViewOffset( false ).z );
-	else if( Interfaces::Input->bCameraInThirdPerson )
-		pSetup->vecOrigin = ctx.m_pLocal->GetAbsOrigin( ) + ctx.m_pLocal->m_vecViewOffset( );
+	//else if( Interfaces::Input->bCameraInThirdPerson )
+	//	pSetup->vecOrigin = ctx.m_pLocal->GetAbsOrigin( ) + ctx.m_pLocal->m_vecViewOffset( );
 
 	oOverrideView( thisptr, edx, pSetup );
 

@@ -13,9 +13,9 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 
 	CGameTrace trace{ };
 
-	//CTraceFilterSkipTwoEntities traceFilter{ shooter };
-	CBasePlayer* lastHitEntity{ };
 	CTraceFilter traceFilter{ shooter };
+	CBasePlayer* lastHitEntity{ };
+	//CTraceFilter traceFilter{ shooter };
 
 	const auto dir{ ( dst - src ).Normalized( ) };
 
@@ -24,6 +24,7 @@ PenetrationData CAutowall::FireBullet( CBasePlayer* const shooter, CBasePlayer* 
 
 		const auto end{ src + dir * remainingDist };
 
+		// todo:
 		//traceFilter.pSkip2 = lastHitEntity;
 
 		Interfaces::EngineTrace->TraceRay(
@@ -85,11 +86,11 @@ void CAutowall::ScaleDamage( CBasePlayer* player, float& damage, float ArmourRat
 	const auto CT{ player->m_iTeamNum( ) == TEAM_CT },
 		heavyArmor{ player->m_bHasHeavyArmor( ) };
 
-	auto headDmgScale{ CT ? Offsets::Cvars.mp_damage_scale_ct_head->GetFloat( ) : Offsets::Cvars.mp_damage_scale_t_head->GetFloat( ) };
+	auto headDmgScale{ CT ? Displacement::Cvars.mp_damage_scale_ct_head->GetFloat( ) : Displacement::Cvars.mp_damage_scale_t_head->GetFloat( ) };
 	if ( heavyArmor ) 
 		headDmgScale *= 0.5f;
 
-	const auto bodyDmgScale{ CT ? Offsets::Cvars.mp_damage_scale_ct_body->GetFloat( ) : Offsets::Cvars.mp_damage_scale_t_body->GetFloat( ) };
+	const auto bodyDmgScale{ CT ? Displacement::Cvars.mp_damage_scale_ct_body->GetFloat( ) : Displacement::Cvars.mp_damage_scale_t_body->GetFloat( ) };
 
 	switch ( hitgroup ) {
 	case HITGROUP_HEAD:
@@ -209,7 +210,8 @@ bool CAutowall::TraceToExit( CBasePlayer* shooter, const Vector& start, const Ve
 			// we exited the wall into a player's hitbox
 			if ( trExit.bStartSolid && ( trExit.surface.uFlags & SURF_HITBOX )/*( nStartContents & CONTENTS_HITBOX ) == 0 && (nCurrentContents & CONTENTS_HITBOX)*/ ) {
 				// do another trace, but skip the player to get the actual exit surface 
-				CTraceFilter filter2{ trExit.pHitEntity };
+				// // TODO:
+				//filter.pSkip2 = trExit.pHitEntity;
 				Interfaces::EngineTrace->TraceRay( { end, start }, MASK_SHOT_PLAYER, reinterpret_cast< ITraceFilter* >( &filter ), &trExit );
 
 				if ( trExit.DidHit( ) && !trExit.bStartSolid )
@@ -267,7 +269,7 @@ bool CAutowall::HandleBulletPenetration( CBasePlayer* const shooter, const CCSWe
 	const auto enterMaterial{ enterSurfaceData->game.hMaterial };
 	const auto exitMaterial{ exitSurfaceData->game.hMaterial };
 
-	if ( Offsets::Cvars.sv_penetration_type->GetInt( ) != 1 ) {
+	if ( Displacement::Cvars.sv_penetration_type->GetInt( ) != 1 ) {
 		float damageModifier{ };
 
 		if ( hitGrate || IsNodraw ) {
@@ -302,10 +304,10 @@ bool CAutowall::HandleBulletPenetration( CBasePlayer* const shooter, const CCSWe
 			else
 				penetrationModifier = 1.f;
 		}
-		else if ( enterMaterial == CHAR_TEX_FLESH && !Offsets::Cvars.ff_damage_reduction_bullets->GetFloat( ) 
+		else if ( enterMaterial == CHAR_TEX_FLESH && !Displacement::Cvars.ff_damage_reduction_bullets->GetFloat( ) 
 			&& enterTrace.pHitEntity && enterTrace.pHitEntity->IsPlayer( ) 
 			&& !static_cast< CBasePlayer* >( enterTrace.pHitEntity )->IsTeammate( shooter ) ) {
-			const auto ff_damage_reduction_bullets{ Offsets::Cvars.ff_damage_reduction_bullets->GetFloat( ) };
+			const auto ff_damage_reduction_bullets{ Displacement::Cvars.ff_damage_reduction_bullets->GetFloat( ) };
 			if ( !ff_damage_reduction_bullets )
 				return true;
 
@@ -408,6 +410,7 @@ PenetrationData CAutowall::FireEmulated( CBasePlayer* const shooter, CBasePlayer
 
 		const auto cur_dst = src + dir * dist_remaining;
 
+		// TODO:
 		//traceFilter.pSkip2 = trace.pHitEntity && trace.pHitEntity->IsPlayer( ) ? trace.pHitEntity : nullptr;
 
 		Interfaces::EngineTrace->TraceRay(

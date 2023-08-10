@@ -1,11 +1,11 @@
 #include "input_manager.h"
 #include "config.h"
-#include "menu/menu.h"
+#include "menu rework/menu.h"
 #include "../features/rage/antiaim.h"
 
 void Inputsys::update( ) {
 	if ( Interfaces::Engine->IsActiveApp( )
-		&& ( !Interfaces::Engine->IsConsoleVisible( ) && Interfaces::Engine->IsConsoleVisible( ) ) || Menu::Opened ) {
+		&& ( !Interfaces::Engine->IsConsoleVisible( ) && Interfaces::Engine->IsConsoleVisible( ) ) || Menu::m_bOpened ) {
 		for ( auto& i : KeysToCheck ) {
 			prev_state[ i ] = state[ i ];
 			state[ i ] = GetAsyncKeyState( i );
@@ -33,12 +33,12 @@ void Inputsys::updateNeededKeys( ) {
 	if ( !Interfaces::Engine->IsActiveApp( ) )
 		return;
 
-	if ( Menu::Opened ) {
+	if ( Menu::m_bOpened ) {
 		for ( int i = 0; i < 256; i++ )
 			KeysToCheck.emplace_back( i );
 	}
 	else {
-		if ( !Offsets::Cvars.cl_mouseenable->GetBool( ) )
+		if ( !Displacement::Cvars.cl_mouseenable->GetBool( ) )
 			return;
 
 		if ( Interfaces::Engine->IsConsoleVisible( ) )
@@ -54,8 +54,11 @@ void Inputsys::updateNeededKeys( ) {
 		DODAKEYBINDCUH( RagebotForceSafePointKey );
 		DODAKEYBINDCUH( ExploitsDoubletapKey );
 		DODAKEYBINDCUH( ExploitsHideshotsKey );
+		DODAKEYBINDCUH( AntiaimFlickInvert );
 		DODAKEYBINDCUH( DBGKeybind );
 		DODAKEYBINDCUH( RagebotForceYawSafetyKey );
+		DODAKEYBINDCUH( AntiaimFreestandingKey );
+
 
 		if ( !Config::Get<keybind_t>( Vars.AntiaimRight ).enabled )
 			DODAKEYBINDCUH( AntiaimRight );

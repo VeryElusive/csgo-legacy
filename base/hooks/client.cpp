@@ -7,6 +7,11 @@
 #include "../features/animations/animation.h"
 #include "../features/rage/exploits.h"
 
+// The client overwrites the already predicted viewmodel animation data with networked data from the server.
+// We store the data before the client overwrites it and restore it after. This will fix our viewmodel animation resetting while fakelagging.
+CBaseViewModel* viewmdl = nullptr;
+auto cycle = 0.f, animtime = 0.f;
+
 struct ClientHitVerify_t {
 	Vector m_vecPos;
 	float  m_flTime;
@@ -63,6 +68,8 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	}
 
 	if ( stage == FRAME_RENDER_START ) {
+		//Features::Visuals.Weather.Main( );
+
 		if ( ctx.m_pLocal ) {
 			/*if ( Interfaces::Input->bCameraInThirdPerson ) {
 				auto state{ ctx.m_pLocal->m_pAnimState( ) };
@@ -78,13 +85,13 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 				Color col{ Config::Get<Color>( Vars.VisClientBulletImpactsCol ) };
 				for ( auto i = clientImpactsList.Count( ); i > lastcount; --i )
 					Interfaces::DebugOverlay->AddBoxOverlay( clientImpactsList[ i - 1 ].m_vecPos, Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), QAngle( 0, 0, 0 ),
-						col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), col.Get<COLOR_A>( ), Offsets::Cvars.sv_showimpacts_time->GetFloat( ) );
+						col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), col.Get<COLOR_A>( ), Displacement::Cvars.sv_showimpacts_time->GetFloat( ) );
 
 				if ( clientImpactsList.Count( ) != lastcount )
 					lastcount = clientImpactsList.Count( );
 			}
 
-			for ( int i{ 1 }; i <= 64; i++ ) {
+			for ( int i{ 1 }; i < 64; i++ ) {
 				const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 				if ( !player || player->IsDead( ) || !player->IsPlayer( ) || player == ctx.m_pLocal )
 					continue;
@@ -126,77 +133,90 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 		{
 
-			if ( Offsets::Cvars.r_modelAmbientMin->GetFloat( ) != ( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f ) )
-				Offsets::Cvars.r_modelAmbientMin->SetValue( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f );
+			if ( Displacement::Cvars.r_modelAmbientMin->GetFloat( ) != ( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f ) )
+				Displacement::Cvars.r_modelAmbientMin->SetValue( Config::Get<bool>( Vars.VisWorldBloom ) ? Config::Get<int>( Vars.VisWorldBloomAmbience ) / 10.0f : 0.f );
 
 			static bool reset = false;
 			if ( Config::Get<bool>( Vars.WorldAmbientLighting ) ) {
 				reset = false;
-				if ( Offsets::Cvars.mat_ambient_light_r->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_R>( ) / 255.f )
-					Offsets::Cvars.mat_ambient_light_r->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_R>( ) / 255.f );
+				if ( Displacement::Cvars.mat_ambient_light_r->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_R>( ) / 255.f )
+					Displacement::Cvars.mat_ambient_light_r->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_R>( ) / 255.f );
 
-				if ( Offsets::Cvars.mat_ambient_light_g->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_G>( ) / 255.f )
-					Offsets::Cvars.mat_ambient_light_g->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_G>( ) / 255.f );
+				if ( Displacement::Cvars.mat_ambient_light_g->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_G>( ) / 255.f )
+					Displacement::Cvars.mat_ambient_light_g->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_G>( ) / 255.f );
 
-				if ( Offsets::Cvars.mat_ambient_light_b->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_B>( ) / 255.f )
-					Offsets::Cvars.mat_ambient_light_b->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_B>( ) / 255.f );
+				if ( Displacement::Cvars.mat_ambient_light_b->GetFloat( ) != Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_B>( ) / 255.f )
+					Displacement::Cvars.mat_ambient_light_b->SetValue( Config::Get<Color>( Vars.WorldAmbientLightingCol ).Get<COLOR_B>( ) / 255.f );
 			}
 			else {
 				if ( !reset ) {
-					Offsets::Cvars.mat_ambient_light_r->SetValue( 0.f );
-					Offsets::Cvars.mat_ambient_light_g->SetValue( 0.f );
-					Offsets::Cvars.mat_ambient_light_b->SetValue( 0.f );
+					Displacement::Cvars.mat_ambient_light_r->SetValue( 0.f );
+					Displacement::Cvars.mat_ambient_light_g->SetValue( 0.f );
+					Displacement::Cvars.mat_ambient_light_b->SetValue( 0.f );
 					reset = true;
 				}
 			}
 
-			auto& smokeCount = **reinterpret_cast< int** >( Offsets::Sigs.SmokeCount + 0x1 );
+			auto& smokeCount = **reinterpret_cast< int** >( Displacement::Sigs.SmokeCount + 0x1 );
 			backupsmokeCount = smokeCount;
 
 			if ( Config::Get<bool>( Vars.RemovalSmoke ) )
 				smokeCount = 0;
 
-			**reinterpret_cast< bool** >( Offsets::Sigs.PostProcess + 0x2 ) = ( ctx.m_pLocal && !Config::Get<bool>( Vars.VisWorldBloom ) && Config::Get<bool>( Vars.RemovalPostProcess ) );
+			**reinterpret_cast< bool** >( Displacement::Sigs.PostProcess + 0x2 ) = ( ctx.m_pLocal && !Config::Get<bool>( Vars.VisWorldBloom ) && Config::Get<bool>( Vars.RemovalPostProcess ) );
 
 
-			//if ( Offsets::Cvars.r_drawspecificstaticprop->GetBool( ) )
-			//	Offsets::Cvars.r_drawspecificstaticprop->SetValue( FALSE );
+			//if ( Displacement::Cvars.r_drawspecificstaticprop->GetBool( ) )
+			//	Displacement::Cvars.r_drawspecificstaticprop->SetValue( FALSE );
 
-			//if ( Offsets::Cvars.sv_showimpacts->GetInt( ) != 2 )
-			//	Offsets::Cvars.sv_showimpacts->SetValue( 2 );
+			//if ( Displacement::Cvars.sv_showimpacts->GetInt( ) != 2 )
+			//	Displacement::Cvars.sv_showimpacts->SetValue( 2 );
 
 			if ( !Config::Get<bool>( Vars.VisWorldFog ) )
-				Offsets::Cvars.fog_override->SetValue( FALSE );
+				Displacement::Cvars.fog_override->SetValue( FALSE );
 			else {
-				Offsets::Cvars.fog_override->SetValue( TRUE );
+				Displacement::Cvars.fog_override->SetValue( TRUE );
 
-				if ( Offsets::Cvars.fog_start->GetInt( ) )
-					Offsets::Cvars.fog_start->SetValue( 0 );
+				if ( Displacement::Cvars.fog_start->GetInt( ) )
+					Displacement::Cvars.fog_start->SetValue( 0 );
 
 
-				if ( Offsets::Cvars.fog_end->GetInt( ) != Config::Get<int>( Vars.VisWorldFogDistance ) )
-					Offsets::Cvars.fog_end->SetValue( Config::Get<int>( Vars.VisWorldFogDistance ) );
+				if ( Displacement::Cvars.fog_end->GetInt( ) != Config::Get<int>( Vars.VisWorldFogDistance ) )
+					Displacement::Cvars.fog_end->SetValue( Config::Get<int>( Vars.VisWorldFogDistance ) );
 
-				if ( Offsets::Cvars.fog_maxdensity->GetFloat( ) != ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f )
-					Offsets::Cvars.fog_maxdensity->SetValue( ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f );
+				if ( Displacement::Cvars.fog_maxdensity->GetFloat( ) != ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f )
+					Displacement::Cvars.fog_maxdensity->SetValue( ( float )Config::Get<int>( Vars.VisWorldFogDensity ) * 0.01f );
 
-				if ( Offsets::Cvars.fog_hdrcolorscale->GetFloat( ) != Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f )
-					Offsets::Cvars.fog_hdrcolorscale->SetValue( Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f );
+				if ( Displacement::Cvars.fog_hdrcolorscale->GetFloat( ) != Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f )
+					Displacement::Cvars.fog_hdrcolorscale->SetValue( Config::Get<int>( Vars.VisWorldFogHDR ) * 0.01f );
 
 				const auto& col{ Config::Get<Color>( Vars.VisWorldFogCol ) };
 
 				char bufferColor[ 12 ]{ };
 				sprintf_s( bufferColor, 12, "%i %i %i", col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ) );
 
-				if ( strcmp( Offsets::Cvars.fog_color->GetString( ), bufferColor ) )
-					Offsets::Cvars.fog_color->SetValue( bufferColor );
+				if ( strcmp( Displacement::Cvars.fog_color->GetString( ), bufferColor ) )
+					Displacement::Cvars.fog_color->SetValue( bufferColor );
 			}
 		}
 	}
 	else if ( stage == FRAME_NET_UPDATE_POSTDATAUPDATE_START ) {
 		if ( ctx.m_pLocal ) {
 			if ( !ctx.m_pLocal->IsDead( ) && !ctx.m_pLocal->m_pAnimState( )->bFirstUpdate ) {
-				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 3 ], &ctx.m_pAnimationLayers[ 3 ], sizeof CAnimationLayer );
+
+				// TODO: trigger this when standing and save ourselves with defnsive LOL
+				/*if ( Config::Get<bool>( Vars.AntiaimTrickLBY ) ) {
+					const auto speed{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
+
+					if ( speed <= 1.f ) {
+						if ( ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight >= .15f && !ctx.m_pAnimationLayers[ 3 ].flCycle ) {
+							Features::Antiaim.Invert = !Features::Antiaim.Invert;
+							Features::Logger.Log( "fuck", true );
+						}
+					}
+				}*/
+
+				//std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 3 ], &ctx.m_pAnimationLayers[ 3 ], sizeof CAnimationLayer );
 				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 4 ], &ctx.m_pAnimationLayers[ 4 ], sizeof CAnimationLayer );
 				std::memcpy( &ctx.m_pLocal->m_AnimationLayers( )[ 5 ], &ctx.m_pAnimationLayers[ 5 ], sizeof CAnimationLayer );
 
@@ -206,7 +226,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			}
 
 			Features::Visuals.SkyboxChanger( );
-			Features::Visuals.ModelChanger( );
+			//Features::Visuals.ModelChanger( );
 		}
 
 	}
@@ -227,13 +247,22 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 	//Features::Visuals.ModelChanger( );
 
+	if ( stage != FRAME_NET_UPDATE_POSTDATAUPDATE_START ) {
+		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {
+			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
+				if ( viewModel->m_flAnimTime( ) != animtime )
+					ctx.m_flLastAnimTimeUpdate = Interfaces::Globals->flRealTime;
+			}
+		}
+	}
+
 	oFrameStageNotify( thisptr, edx, stage );
 
 	switch ( stage ) {
 	case FRAME_RENDER_START: {
 		//Features::AnimSys.SetupFakeMatrix( );
 
-		/*for ( int i{ 1 }; i <= 64; i++ ) {
+		/*for ( int i{ 1 }; i < 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 			if ( !player || player->IsDead( ) || !player->IsPlayer( ) )
 				continue;
@@ -243,13 +272,30 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			draw_server_hitboxes( i );
 		}*/
 	}break;
+	case FRAME_NET_UPDATE_START: {
+		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {
+			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
+				cycle = viewModel->m_flCycle( );
+				animtime = viewModel->m_flAnimTime( );
+			}
+		}
+	}break;
+	case FRAME_NET_UPDATE_POSTDATAUPDATE_START: {
+		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {
+			if ( const auto viewModel{ static_cast< CBaseViewModel* >( Interfaces::ClientEntityList->GetClientEntityFromHandle( ctx.m_pLocal->m_hViewModel( ) ) ) }; viewModel ) {
+				viewModel->m_flCycle( ) = cycle;
+				viewModel->m_flAnimTime( ) = animtime;
+			}
+		}
+	}break;	
 	case FRAME_RENDER_END: {
-		**reinterpret_cast< int** >( Offsets::Sigs.SmokeCount + 0x1 ) = backupsmokeCount;
+		**reinterpret_cast< int** >( Displacement::Sigs.SmokeCount + 0x1 ) = backupsmokeCount;
 
 		//Features::Visuals.BulletTracers.Draw( );
 	}break;
 	case FRAME_NET_UPDATE_END: {
 		if ( ctx.m_pLocal ) {
+
 			/*if ( !ctx.m_pLocal->IsDead( ) ) {
 				for ( auto i{ Interfaces::ClientState->pEvents }; i; i = Interfaces::ClientState->pEvents->next ) {
 					if ( !i->iClassID )
@@ -267,11 +313,11 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 		Features::Shots.ProcessShots( );
 		
-		/* {
+		{
 			static DWORD* KillFeedTime = nullptr;
 			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
 				if ( !KillFeedTime )
-					KillFeedTime = MEM::FindHudElement<DWORD>( ( "CCSGO_HudDeathNotice" ) );
+					KillFeedTime = MEM::FindHudElement<DWORD>( _( "CCSGO_HudDeathNotice" ) );
 
 				if ( KillFeedTime ) {
 					auto LocalDeathNotice = ( float* )( ( uintptr_t )KillFeedTime + 0x50 );
@@ -281,7 +327,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 
 					if ( ctx.m_bClearKillfeed ) {
 						using Fn = void( __thiscall* )( uintptr_t );
-						static auto clearNotices = ( Fn )Offsets::Sigs.ClearNotices;
+						static auto clearNotices = ( Fn )Displacement::Sigs.ClearNotices;
 
 						clearNotices( ( uintptr_t )KillFeedTime - 0x14 );
 
@@ -291,7 +337,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			}
 			else
 				KillFeedTime = 0;
-		}*/
+		}
 	}break;
 	default: break;
 
@@ -337,21 +383,40 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 		moveMsg->m_iBackupCmds = 0;
 		moveMsg->m_iNewCmds = std::min( 16, Interfaces::ClientState->nChokedCommands + 1 );
 
-		const auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + moveMsg->m_iNewCmds };
+		auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + moveMsg->m_iNewCmds };
 
 		// TODO: make this run at the end and dont call writeusercmd ourself, just makes it look neater, doesnt change performance and technically runs shit that is unnecessary
 		for ( to = Interfaces::ClientState->iLastOutgoingCommand + 1; to <= nextCmdNumber; ++to ) {
-			if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) )
+			if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
+				Features::Logger.Log( _( "FAILED WUCTB" ), true );
+				ctx.m_iSentCmds.push_back( nextCmdNumber );
 				return false;
+			}
 
 			from = to;
 		}
 
 		if ( ctx.m_iTicksAllowed > 0 ) {
-			if ( Features::Exploits.m_bWasDefensiveTick )
-				Features::Exploits.BreakLC( buf, ctx.m_iTicksAllowed, moveMsg );
-			else if ( Features::Exploits.m_iShiftAmount )
+			const auto newCmds{ std::min( Interfaces::ClientState->nChokedCommands + 1 + ctx.m_iTicksAllowed, 16 ) };
+
+			//const auto backup{ ctx.m_flFixedCurtime };
+			//ctx.m_flFixedCurtime = TICKS_TO_TIME( Features::Exploits.AdjustTickbase( newCmds ) + Interfaces::ClientState->nChokedCommands + ctx.m_iTicksAllowed );
+
+			const auto& idx{ ctx.m_pWeapon->m_iItemDefinitionIndex( ) };
+
+			const auto dontShift{ ctx.m_bSafeFromDefensive && Features::Exploits.m_bRealCmds 
+				&& ( /*( !ctx.m_pLocal->CanShoot( ) && idx != WEAPON_SSG08 && idx != WEAPON_AWP )
+					|| */( Features::Misc.AutoPeeking && Config::Get<bool>( Vars.ExploitsDoubletapExtended ) && Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) ) };
+
+			//ctx.m_flFixedCurtime = backup;
+
+			if ( dontShift )
+				ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
+
+			if ( Features::Exploits.m_iShiftAmount && !dontShift )
 				Features::Exploits.Shift( buf, moveMsg );
+			else if ( Features::Exploits.m_bWasDefensiveTick )
+					Features::Exploits.BreakLC( buf, ctx.m_iTicksAllowed, moveMsg );
 			else if ( Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ) {
 				const auto newCmds{ std::min( moveMsg->m_iNewCmds + ctx.m_iTicksAllowed, 16 ) };
 
@@ -361,7 +426,11 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 			}
 		}
 
-		ctx.m_iSentCmds.push_back( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 );
+		nextCmdNumber = Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1;
+
+		ctx.m_cLocalData.at( nextCmdNumber % 150 ).m_iTickCount = Interfaces::Globals->iTickCount;
+
+		ctx.m_iSentCmds.push_back( nextCmdNumber );
 	}
 	
 	return true;

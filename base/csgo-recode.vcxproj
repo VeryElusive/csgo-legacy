@@ -5,6 +5,10 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Developer|Win32">
+      <Configuration>Developer</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -18,8 +22,10 @@
     <ClInclude Include="core\hooks.h" />
     <ClInclude Include="core\input_manager.h" />
     <ClInclude Include="core\interfaces.h" />
-    <ClInclude Include="core\menu\group\group.h" />
-    <ClInclude Include="core\menu\menu.h" />
+    <ClInclude Include="core\menu rework\controls\argument_types.h" />
+    <ClInclude Include="core\menu rework\controls\containers.h" />
+    <ClInclude Include="core\menu rework\abuse.h" />
+    <ClInclude Include="core\menu rework\menu.h" />
     <ClInclude Include="core\prop_manager.h" />
     <ClInclude Include="core\variables.h" />
     <ClInclude Include="dependencies\json\adl_serializer.hpp" />
@@ -124,6 +130,7 @@
     <ClInclude Include="sdk\interfaces\imemalloc.h" />
     <ClInclude Include="sdk\interfaces\inetchannel.h" />
     <ClInclude Include="sdk\interfaces\inetworkstring.h" />
+    <ClInclude Include="sdk\interfaces\iphysicscollision.h" />
     <ClInclude Include="sdk\interfaces\iphysicssurfaceprops.h" />
     <ClInclude Include="sdk\interfaces\iprediction.h" />
     <ClInclude Include="sdk\interfaces\irefcount.h" />
@@ -150,6 +157,9 @@
     <ClInclude Include="utils\math.h" />
     <ClInclude Include="utils\memory.h" />
     <ClInclude Include="utils\memory\pe32.h" />
+    <ClInclude Include="utils\networking\encryption.h" />
+    <ClInclude Include="utils\networking\networking.h" />
+    <ClInclude Include="utils\networking\request_types.h" />
     <ClInclude Include="utils\performance_monitor.h" />
     <ClInclude Include="utils\ray_tracer.h" />
     <ClInclude Include="utils\render.h" />
@@ -160,19 +170,19 @@
   <ItemGroup>
     <ClCompile Include="core\event_listener.cpp" />
     <ClCompile Include="core\input_manager.cpp" />
-    <ClCompile Include="core\menu\elements.cpp" />
-    <ClCompile Include="core\menu\group\controls\button.cpp" />
-    <ClCompile Include="core\menu\group\controls\checkbox.cpp" />
-    <ClCompile Include="core\menu\group\controls\colorpicker.cpp" />
-    <ClCompile Include="core\menu\group\controls\combo.cpp" />
-    <ClCompile Include="core\menu\group\controls\keybind.cpp" />
-    <ClCompile Include="core\menu\group\controls\label.cpp" />
-    <ClCompile Include="core\menu\group\controls\listbox.cpp" />
-    <ClCompile Include="core\menu\group\controls\multicombo.cpp" />
-    <ClCompile Include="core\menu\group\controls\slider.cpp" />
-    <ClCompile Include="core\menu\group\controls\textinput.cpp" />
-    <ClCompile Include="core\menu\group\group.cpp" />
-    <ClCompile Include="core\menu\menu.cpp" />
+    <ClCompile Include="core\menu rework\controls\button.cpp" />
+    <ClCompile Include="core\menu rework\controls\checkbox.cpp" />
+    <ClCompile Include="core\menu rework\controls\colorpicker.cpp" />
+    <ClCompile Include="core\menu rework\controls\combo.cpp" />
+    <ClCompile Include="core\menu rework\controls\group.cpp" />
+    <ClCompile Include="core\menu rework\controls\keybind.cpp" />
+    <ClCompile Include="core\menu rework\controls\label.cpp" />
+    <ClCompile Include="core\menu rework\controls\listbox.cpp" />
+    <ClCompile Include="core\menu rework\controls\multicombo.cpp" />
+    <ClCompile Include="core\menu rework\controls\slider.cpp" />
+    <ClCompile Include="core\menu rework\controls\text_input.cpp" />
+    <ClCompile Include="core\menu rework\elements.cpp" />
+    <ClCompile Include="core\menu rework\menu.cpp" />
     <ClCompile Include="features\animations\animations.cpp" />
     <ClCompile Include="features\animations\local_animations.cpp" />
     <ClCompile Include="features\animations\setupbones\bonesetup.cpp" />
@@ -185,6 +195,7 @@
     <ClCompile Include="features\rage\autowall.cpp" />
     <ClCompile Include="features\rage\exploits.cpp" />
     <ClCompile Include="features\rage\knifebot.cpp" />
+    <ClCompile Include="features\rage\player_extrapolation.cpp" />
     <ClCompile Include="features\rage\ragebot.cpp" />
     <ClCompile Include="features\visuals\bullet_tracers.cpp" />
     <ClCompile Include="features\visuals\chams.cpp" />
@@ -193,6 +204,7 @@
     <ClCompile Include="features\visuals\hitmarker.cpp" />
     <ClCompile Include="features\visuals\player_esp.cpp" />
     <ClCompile Include="features\visuals\visuals.cpp" />
+    <ClCompile Include="features\visuals\weather.cpp" />
     <ClCompile Include="hooks\client.cpp" />
     <ClCompile Include="hooks\clientmode.cpp" />
     <ClCompile Include="hooks\createmove.cpp" />
@@ -205,7 +217,7 @@
     <ClCompile Include="hooks\engine.cpp" />
     <ClCompile Include="hooks\enginesound.cpp" />
     <ClCompile Include="hooks\material_system.cpp" />
-    <ClCompile Include="hooks\networking.cpp" />
+    <ClCompile Include="hooks\network.cpp" />
     <ClCompile Include="hooks\paint.cpp" />
     <ClCompile Include="hooks\prediction.cpp" />
     <ClCompile Include="hooks\recv_and_cvar.cpp" />
@@ -229,12 +241,15 @@
     <ClCompile Include="sdk\weapon.cpp" />
     <ClCompile Include="utils\math.cpp" />
     <ClCompile Include="utils\memory.cpp" />
+    <ClCompile Include="utils\networking\encryption.cpp" />
+    <ClCompile Include="utils\networking\networking.cpp" />
     <ClCompile Include="utils\ray_tracer.cpp" />
     <ClCompile Include="utils\render.cpp" />
     <ClCompile Include="utils\threading\impl\thread_pool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="features\animations\record_utils.inl" />
+    <None Include="testing_shit.havoc" />
     <None Include="utils\math.inl" />
     <None Include="utils\threading\impl\thread_pool.inl" />
   </ItemGroup>
@@ -244,7 +259,7 @@
     <ProjectGuid>{0ae1f3a9-87f5-4f11-9ad3-5846b76b6565}</ProjectGuid>
     <RootNamespace>havoc</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>havoc-sdk-legacy-new</ProjectName>
+    <ProjectName>havoc-sdk-legacy</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -254,6 +269,13 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Developer|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
@@ -271,36 +293,52 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Developer|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)log\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetName>base</TargetName>
-    <ExternalIncludePath>$(SolutionDir)dependencies\freetype\include;$(SolutionDir)dependencies\json;$(DXSDK_DIR)Include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(SolutionDir)dependencies\freetype\win32;$(DXSDK_DIR)Lib\x86;$(LibraryPath);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <ExternalIncludePath>$(SolutionDir)base\dependencies\freetype\include;$(SolutionDir)dependencies\json;$(DXSDK_DIR)Include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)base\dependencies\freetype\win32;$(DXSDK_DIR)Lib\x86;$(LibraryPath);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)log\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetName>base</TargetName>
-    <ExternalIncludePath>$(SolutionDir)base\dependencies\freetype\include;$(SolutionDir)base\dependencies\json;$(DXSDK_DIR)Include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
-    <LibraryPath>$(SolutionDir)base\dependencies\freetype\win32;$(DXSDK_DIR)Lib\x86;$(LibraryPath);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <ExternalIncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)base\dependencies\freetype\include;$(SolutionDir)base\dependencies\json;$(DXSDK_DIR)Include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(SolutionDir)base\dependencies\freetype\win32;$(DXSDK_DIR)Lib\x86;$(LibraryPath);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Developer|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)log\$(ProjectName)\$(Configuration)\</IntDir>
+    <TargetName>base</TargetName>
+    <ExternalIncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)base\dependencies\freetype\include;$(SolutionDir)base\dependencies\json;$(DXSDK_DIR)Include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(SolutionDir)base\dependencies\freetype\win32;$(DXSDK_DIR)Lib\x86;$(LibraryPath);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>DEBUG_CONSOLE;NOMINMAX;WIN32;_DEBUG;CINNAMON_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DEBUG_CONSOLE;NOMINMAX;WIN32;_DEBUG;CINNAMON_EXPORTS;_WINDOWS;_USRDLL;DEVELOPER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -315,17 +353,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;WIN32;NDEBUG;CINNAMON_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;WIN32;NDEBUG;CINNAMON_EXPORTS;_WINDOWS;_USRDLL;_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>None</DebugInformationFormat>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
@@ -335,6 +373,39 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapExports>false</MapExports>
+      <AssemblyDebug>false</AssemblyDebug>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Developer|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;WIN32;NDEBUG;CINNAMON_EXPORTS;_WINDOWS;_USRDLL;DEVELOPER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard_C>Default</LanguageStandard_C>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
+      <AssemblyDebug>true</AssemblyDebug>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

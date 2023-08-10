@@ -48,7 +48,7 @@ void CGrenadePrediction::Paint( ) {
 	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) )
 		return;
 
-	if ( !ctx.m_pWeapon || !ctx.m_pWeapon->IsGrenade( ) || !ctx.m_pWeapon->m_bPinPulled( ) || ctx.m_pWeapon->m_fThrowTime( ) > 0 )
+	if ( !ctx.m_pWeapon || !ctx.m_pWeapon->IsGrenade( ) || ctx.m_pWeapon->m_fThrowTime( ) > 0 )
 		return;
 
 	if ( !ctx.m_pWeaponData )
@@ -63,7 +63,7 @@ void CGrenadePrediction::Paint( ) {
 	if ( wpnIndex && vecPath.size( ) > 1 ) {
 		// iterate all players.
 		if ( wpnIndex == WEAPON_HEGRENADE ) {
-			for ( int i{ 1 }; i <= 64; ++i ) {
+			for ( int i{ 1 }; i < 64; ++i ) {
 				const auto player = static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) );
 				if ( !player )
 					continue;
@@ -104,13 +104,7 @@ void CGrenadePrediction::Paint( ) {
 					entry.m_iNadeDamage = damage;
 			}
 		}
-		/*else if ( wpnIndex != WEAPON_MOLOTOV && wpnIndex != WEAPON_INCGRENADE ) {
-			Vector screen;
-			if ( Math::WorldToScreen( vecBounces.back( ), screen ) ) {
-				Render::Rectangle( screen.x, screen.y, 10.f, 10.f, Menu::AccentCol );
-			}
-		}
-		else {
+		/*else if ( wpnIndex == WEAPON_MOLOTOV || wpnIndex == WEAPON_INCGRENADE ) {
 			CEffectData data;
 			data.hitBox = 3;// waaaaaaaaaaaaaaaaaaaaaaat
 			data.origin = vecBounces.back( );
@@ -118,32 +112,38 @@ void CGrenadePrediction::Paint( ) {
 			data.damageType = 2;
 
 			dispatch_effect( "weapon_molotov_held", data );
-		}
+		}*/
+		//else if ( wpnIndex != WEAPON_FLASHBANG && wpnIndex != WEAPON_DECOY )
+		//	Render::WorldCircle( vecPath.back( ), 120.f, Config::Get<Color>( Vars.VisGrenadePredictionCol ), Config::Get<Color>( Vars.VisGrenadePredictionCol ).Set<COLOR_A>( Config::Get<Color>( Vars.VisGrenadePredictionCol ).Get<COLOR_A>( ) / 8.f ) );
 
-		else if ( wpnIndex != WEAPON_FLASHBANG && wpnIndex != WEAPON_DECOY )
-			Render::WorldCircle( vecPath.back( ), 120.f, Config::Get<Color>( Vars.VisGrenadePredictionCol ), Config::Get<Color>( Vars.VisGrenadePredictionCol ).Set<COLOR_A>( Config::Get<Color>( Vars.VisGrenadePredictionCol ).Get<COLOR_A>( ) / 8.f ) );
-		*/
 			
 		Vector2D ab, cd;
 		auto prev = vecPath[ 0 ];
-
-		for ( const auto& bounce : vecBounces ) {
-			Vector screen;
-
-			if ( Math::WorldToScreen( bounce, screen ) ) {
-				//Render::FilledRectangle( screen.x - 2, screen.y - 2, 4, 4, Menu::Accent2Col.Set<COLOR_A>( 100 ) );
-				//Render::Rectangle( screen.x - 3, screen.y - 3, 6, 6, Menu::AccentCol );
-
-				Render::Circle( screen.x, screen.y, 3, 10, Menu::AccentCol );
-			}
-		}
-
 		for ( auto it = vecPath.begin( ), end = vecPath.end( ); it != end; ++it ) {
-			if ( Math::WorldToScreen( prev, ab ) && Math::WorldToScreen( *it, cd ) )
-				Render::Line( ab, cd, Config::Get<Color>( Vars.VisGrenadePredictionCol ) );
+			/*using RenderLine_t = void( __vectorcall* )( Vector*, Vector*, int, int, int, bool );
+
+			static auto renderLineAddr{ MEM::FindPattern( ENGINE_DLL, "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 56 57 E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 90 ? ? ? ? 8B F0 85 F6" ) };
+			static auto oRenderLine = reinterpret_cast< RenderLine_t >( renderLineAddr ); */
+			
+			const auto& col{ Config::Get<Color>( Vars.VisGrenadePredictionCol ) };
+			
+			if ( Math::WorldToScreen( prev, ab ) && Math::WorldToScreen( *it, cd ) && !prev.IsZero( ) )
+				Render::Line( ab, cd, col );
 
 			prev = *it;
 		}
+
+		/*for ( const auto& bounce : vecBounces ) {
+			Vector screen;
+
+			if ( Math::WorldToScreen( bounce, screen ) ) {
+				//Render::FilledRectangle( screen.x - 2, screen.y - 2, 4, 4, ACCENT2.Set<COLOR_A>( 100 ) );
+				//Render::Rectangle( screen.x - 3, screen.y - 3, 6, 6, ACCENT );
+
+				Render::Circle( screen.x - 1, screen.y + 1, 2, 8, Color( 0.f, 0.f, 0.f, .5f ) );
+				//Render::FilledCircle( Vector2D{ screen.x, screen.y }, 8, ( bounce == vecBounces.back( ) ? Color( 1.f, 0.f, 0.f ) : Color( 1.f, 1.f, 1.f ) ), 100 );
+			}
+		}*/
 	}
 }
 
@@ -161,7 +161,7 @@ void CGrenadePrediction::View( ) {
 	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) )
 		return;
 
-	if ( !ctx.m_pWeapon || !ctx.m_pWeapon->IsGrenade( ) || !ctx.m_pWeapon->m_bPinPulled( ) || ctx.m_pWeapon->m_fThrowTime( ) > 0 )
+	if ( !ctx.m_pWeapon || !ctx.m_pWeapon->IsGrenade( ) || ctx.m_pWeapon->m_fThrowTime( ) > 0 )
 		return;
 
 	if ( !ctx.m_pWeaponData )
@@ -380,7 +380,7 @@ void CGrenadePrediction::ResolveFlyCollisionCustom( CGameTrace& tr, Vector& vecV
 int CGrenadePrediction::Step( Vector& vecSrc, Vector& vecThrow, int tick, float interval ) {
 	auto AddGravityMove = [ ]( Vector& move, Vector& vel ) {
 		// gravity for grenades.
-		float gravity{ Offsets::Cvars.sv_gravity->GetFloat( ) * 0.4f };
+		float gravity{ Displacement::Cvars.sv_gravity->GetFloat( ) * 0.4f };
 
 		// move one tick using current velocity.
 		move.x = vel.x * Interfaces::Globals->flIntervalPerTick;
@@ -409,12 +409,12 @@ int CGrenadePrediction::Step( Vector& vecSrc, Vector& vecThrow, int tick, float 
 		case WEAPON_MOLOTOV:
 		case WEAPON_INCGRENADE:
 			// Detonate when hitting the floor
-			if ( tr.flFraction != 1.0f && ( std::cos( DEG2RAD( Offsets::Cvars.weapon_molotov_maxdetonateslope->GetFloat( ) ) ) <= tr.plane.vecNormal.z ) )
+			if ( tr.flFraction != 1.0f && ( std::cos( DEG2RAD( Displacement::Cvars.weapon_molotov_maxdetonateslope->GetFloat( ) ) ) <= tr.plane.vecNormal.z ) )
 				return true;
 
 			// detonate if we have traveled for too long.
 			// checked every 0.1s
-			return time >= Offsets::Cvars.molotov_throw_detonate_time->GetFloat( ) && !( tick % TIME_TO_TICKS( 0.1f ) );
+			return time >= Displacement::Cvars.molotov_throw_detonate_time->GetFloat( ) && !( tick % TIME_TO_TICKS( 0.1f ) );
 
 		case WEAPON_FLASHBANG:
 		case WEAPON_HEGRENADE:

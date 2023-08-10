@@ -312,6 +312,7 @@ bool Config::Load(std::string_view szFileName)
 	}
 
 	Features::Antiaim.ManualSide = 0;
+	Config::Get<bool>( Vars.DBGLC1 ) = false;
 
 	return true;
 }

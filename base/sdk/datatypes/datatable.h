@@ -40,7 +40,8 @@ public:
 	int					nObjectID;	// the object being referred to
 };
 
-using RecvVarProxyFn = void( __cdecl* )( const CRecvProxyData*, void*, void* );
+class CBasePlayer;
+using RecvVarProxyFn = void( __cdecl* )( const CRecvProxyData*, void*, void* );//CRecvProxyData*, void*, void*
 using ArrayLengthProxyFn = void(__cdecl*)(void*, int, int);
 using DataTableProxyFn = void(__cdecl*)(const RecvProp_t*, void**, void*, int);
 

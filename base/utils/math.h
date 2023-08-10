@@ -43,6 +43,7 @@ namespace Math
 	// Get
 	/* export specific functions addresses from libraries handles to get able call them */
 	bool	Setup();
+	bool	Stub();
 	/* convert vector to angles */
 	FORCEINLINE void	VectorAngles(const Vector& vecForward, QAngle& angView);
 	/* convert angles to x, y, z vectors */
@@ -136,6 +137,19 @@ namespace Math
 		y_part += std::sin( angle2 * M_PI / 180 );
 
 		return std::atan2( y_part / 2.f, x_part / 2.f ) * 180.f / M_PI;
+	}
+
+	inline float Approach( float target, float value, float speed ) {
+		float delta = target - value;
+
+		if ( delta > speed )
+			value += speed;
+		else if ( delta < -speed )
+			value -= speed;
+		else
+			value = target;
+
+		return value;
 	}
 
 

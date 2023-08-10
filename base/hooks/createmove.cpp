@@ -27,6 +27,9 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeapon || !ctx.m_pWeaponData )
 		return;
 
+	if ( !Interfaces::ClientState->pNetChannel )
+		return;
+
 	if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand )
 		return;
 
@@ -39,7 +42,7 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 			Features::Exploits.m_bRealCmds = ( !ctx.m_bExploitsEnabled || isDTEnabled || ctx.m_bFakeDucking );
 			Features::Exploits.m_iShiftAmount = ctx.m_iTicksAllowed;// Features::Exploits.m_bRealCmds ? ctx.m_iTicksAllowed : 9;
 
-			//**( int** )Offsets::Sigs.numticks += ctx.m_iTicksAllowed; 1 line dt xD
+			//**( int** )Displacement::Sigs.numticks += ctx.m_iTicksAllowed; 1 line dt xD
 		}
 	}
 }
@@ -52,18 +55,26 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	auto& cmd{ Interfaces::Input->pCommands[ nSequenceNumber % 150 ] };
 	auto& verifiedCmd{ Interfaces::Input->pVerifiedCommands[ nSequenceNumber % 150 ] };
 
-	const auto sameFrameCMD{ **( int** )Offsets::Sigs.numticks - **( int** )Offsets::Sigs.host_currentframetick > 0 };
+	const auto sameFrameCMD{ **( int** )Displacement::Sigs.numticks - **( int** )Displacement::Sigs.host_currentframetick > 0 };
 
-	/*if ( **( int** )Offsets::Sigs.host_currentframetick == 1 ) {
-		Interfaces::ClientState->iServerTick += **( int** )Offsets::Sigs.numticks - 1;
-		Interfaces::ClientState->iClientTick += **( int** )Offsets::Sigs.numticks - 1;
-		Interfaces::Globals->iTickCount += **( int** )Offsets::Sigs.numticks - 1;
+	/*if ( **( int** )Displacement::Sigs.host_currentframetick == 1 ) {
+		Interfaces::ClientState->iServerTick += **( int** )Displacement::Sigs.numticks - 1;
+		Interfaces::ClientState->iClientTick += **( int** )Displacement::Sigs.numticks - 1;
+		Interfaces::Globals->iTickCount += **( int** )Displacement::Sigs.numticks - 1;
 	}*/
 
 	ctx.GetLocal( );
 
+	if ( !Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
+		if ( Displacement::Cvars.cl_predict->GetBool( ) )
+			Displacement::Cvars.cl_predict->SetValue( 0 );
+	}
+
+	static bool did{ };
+
 	if ( !ctx.m_pLocal ) {
 		ctx.m_iLastPeekCmdNum = 0;
+		did = false;
 		return;
 	}
 
@@ -71,18 +82,18 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( !nci )
 		return;
 
-	if ( Menu::Opened )
+	if ( Menu::m_bOpened )
 		cmd.iButtons &= ~( IN_ATTACK | IN_ATTACK2 );
 
 	cmd.iButtons &= ~( IN_SPEED | IN_WALK );
 
 	ctx.m_flLerpTime = std::max(
-		Offsets::Cvars.cl_interp->GetFloat( ),
-		Offsets::Cvars.cl_interp_ratio->GetFloat( ) / Offsets::Cvars.cl_updaterate->GetFloat( ) );
+		Displacement::Cvars.cl_interp->GetFloat( ),
+		Displacement::Cvars.cl_interp_ratio->GetFloat( ) / Displacement::Cvars.cl_updaterate->GetFloat( ) );
 
-	ctx.m_flServerLatency = nci->GetAvgLatency( FLOW_OUTGOING );
-	ctx.m_flRealOutLatency = nci->GetLatency( FLOW_OUTGOING );
-	ctx.m_flInLatency = nci->GetLatency( FLOW_INCOMING );
+	ctx.m_iRealOutLatencyTicks = ( ctx.m_iLast4Deltas[ 0 ] + ctx.m_iLast4Deltas[ 1 ] + ctx.m_iLast4Deltas[ 2 ] + ctx.m_iLast4Deltas[ 3 ] ) / 4;
+	ctx.m_flOutLatency = nci->GetAvgLatency( FLOW_INCOMING );
+	ctx.m_flInLatency = nci->GetAvgLatency( FLOW_INCOMING );
 
 	ctx.m_angOriginalViewangles = cmd.viewAngles;
 
@@ -97,17 +108,17 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	static bool prev{ };
 	auto updateClantag = [ ]( const char* tag ) -> void {
 		using Fn = int( __fastcall* )( const char*, const char* );
-		static auto fn = reinterpret_cast< Fn >( Offsets::Sigs.ClanTag );
+		static auto fn = reinterpret_cast< Fn >( Displacement::Sigs.ClanTag );
 
 		fn( tag, tag );
 	};
 
 	static bool reset{ };
 	if ( Config::Get<bool>( Vars.MiscClantag ) ) {
-		updateClantag( _( "Wreakin' havoc" ) );
-
-		if ( !reset )
+		if ( !reset ) {
+			updateClantag( _( "Wreakin' havoc" ) );
 			reset = true;
+		}
 	}
 	else if ( reset ) {
 		reset = false;
@@ -122,20 +133,28 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		return;
 	}
 
-	static bool did{ };
-	if ( !did )
-		did = Features::EnginePrediction.AddToDataMap( );
+	if ( cmd.iButtons & IN_ATTACK )
+		ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
+
+	//if ( !did && ctx.m_pWeapon )
+	//	did = Features::EnginePrediction.ModifyDatamap( );
 
 	static float prevSpawnTime = ctx.m_pLocal->m_flSpawnTime( );
 
 	if ( prevSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) ) {
 		//Interfaces::Engine->ClientCmdUnrestricted( _( "cl_fullupdate" ) );
 		//ctx.m_pLocal->m_pAnimState( )->Reset( );
+		reset = false;
 		ctx.m_cLocalData = { };
+		ctx.m_iTicksAllowed = 0;
 
+		ctx.m_iHighestTickbase = 0;
 		ctx.m_iLastShotNumber = 0;
 
 		for ( int i{ }; i < 13; ++i ) {
+			if ( i < 4 )
+				ctx.m_iLast4Deltas[ i ] = 0;
+
 			auto& layer{ ctx.m_pAnimationLayers[i] };
 			auto& layer2{ ctx.m_pLocal->m_AnimationLayers( )[i] };
 			layer.flCycle = layer.flWeight = layer.flPlaybackRate = layer.nSequence =
@@ -155,20 +174,16 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		cmd.iTickCount = INT_MAX;
 		verifiedCmd.userCmd = cmd;
 		verifiedCmd.uHashCRC = cmd.GetChecksum( );
-
-		ctx.m_bSendPacket = false;
 		KeepCommunication( );
 		return;
 	}
 
 	ctx.m_bInCreatemove = true;
 
-	if ( ( ctx.m_iTicksAllowed >= 14
-		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
-		&& ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) )
+	if ( ( ctx.m_iTicksAllowed
+		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) // ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled )
 		// fakelag
-		|| ( Config::Get<bool>( Vars.AntiaimFakeLagInPeek ) && !ctx.m_iTicksAllowed
-			&& cmd.iCommandNumber - ctx.m_iLastPeekCmdNum >= 14 ) ) {
+		|| ( Config::Get<bool>( Vars.AntiaimFakeLagInPeek ) && !ctx.m_iTicksAllowed ) ) {
 		ctx.m_bInPeek = Features::Misc.InPeek( Interfaces::Input->pCommands[ Interfaces::ClientState->iLastOutgoingCommand % 150 ] );
 
 		if ( ctx.m_bInPeek ) {
@@ -187,11 +202,13 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	localData.Save( ctx.m_pLocal, cmd, ctx.m_pWeapon );
 
 	// get some sleep and tidy this shit up later
-	const auto extraTicks{ **( int** )Offsets::Sigs.numticks - **( int** )Offsets::Sigs.host_currentframetick };
+	const auto extraTicks{ **( int** )Displacement::Sigs.numticks - **( int** )Displacement::Sigs.host_currentframetick };
 
-	const auto runningDefensive{ ctx.m_iTicksAllowed >= 14
+	static auto hadExtraTicks{ extraTicks > 0 };
+
+	const auto runningDefensive{ ctx.m_iTicksAllowed >= 13
 		&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
-		&& ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) };
+		&& ctx.m_iTicksAllowed };//( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled )
 
 	const auto newCmdsWithDefensive{ std::min( Interfaces::ClientState->nChokedCommands + 1 + extraTicks + ctx.m_iTicksAllowed, 16 ) };
 	const auto newCmdsReal{ std::min( Interfaces::ClientState->nChokedCommands + 1 + extraTicks, 16 ) };
@@ -202,8 +219,8 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	const auto backupSFD{ ctx.m_bSafeFromDefensive };
 
 	if ( runningDefensive ) {
-		// breaks when we shoot but whatever
-		if ( tbDefensive + 2 > ctx.m_iHighestTickbase )// + 1 but 2 for case of 1 tickbase off
+		// + 2 for the case of tickbase error, not really needed but i wanna be really safe
+		if ( tbDefensive /* + 2*/ > ctx.m_iHighestTickbase )
 			ctx.m_bSafeFromDefensive = false;
 		else
 			ctx.m_bSafeFromDefensive = true;
@@ -235,12 +252,18 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	Features::Antiaim.FakeLag( cmd.iCommandNumber );
 	Features::Misc.Movement( cmd );
 
+	// lby breaker
+	//if ( TICKS_TO_TIME( ctx.m_pLocal->m_nTickBase( ) ) > Features::AnimSys.m_flLowerBodyRealignTimer && ctx.m_pLocal->m_vecVelocity( ).Length2D( ) <= 0.1f )
+	//	ctx.m_bSendPacket = false;
+
+
 	// doing this before now
 	localData.SavePredVars( ctx.m_pLocal, cmd );
 
 	Features::EnginePrediction.RunCommand( cmd );
 	{
-		Interfaces::Globals->flCurTime = ctx.m_flFixedCurtime;
+		// after pred so we dont trigger ppl's lby detection
+		//Features::Misc.MicroMove( cmd );
 
 		ctx.m_vecEyePos = ctx.m_pLocal->GetEyePosition( ctx.m_angOriginalViewangles.y, ctx.m_angOriginalViewangles.x );
 
@@ -267,11 +290,28 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 
 		//localData.m_bRevolverCock = !ctx.m_bRevolverCanShoot;
 
-		Features::Ragebot.Main( cmd, !sameFrameCMD );
+		if ( !sameFrameCMD )
+			Features::Ragebot.Main( cmd, true );
+
+		if ( !Features::Ragebot.m_bShouldStop ) {
+			cmd.flForwardMove = Features::Misc.m_ve2SubAutostopMovement.x;
+			cmd.flSideMove = Features::Misc.m_ve2SubAutostopMovement.y;
+		}
+		else {
+			Features::Ragebot.m_bShouldStop = false;
+			ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
+		}
 
 		Features::Misc.AutoPeek( cmd );
+
+		localData.m_bCanAA = !Features::Antiaim.Condition( cmd, true );
+
+		//Features::Misc.MoveMINTFix( cmd, ctx.m_angOriginalViewangles, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
 	}
 	Features::EnginePrediction.Finish( );
+
+	//if ( Config::Get<int>( Vars.AntiaimSafeYawRandomisation ) && ctx.m_bSafeFromDefensive )
+	//	ctx.m_bSendPacket = true;
 
 	if ( sameFrameCMD && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) )
 		cmd.iButtons &= ~IN_ATTACK;
@@ -291,20 +331,16 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 
 	ShouldShift( cmd );
 
-	if ( sameFrameCMD )
+	if ( Features::Antiaim.m_bFlickNow )
+		ctx.m_bSendPacket = true;
+
+	if ( sameFrameCMD ) {
+		hadExtraTicks = true;
 		ctx.m_bSendPacket = false;
+	}
 
-	/*if ( cmd.iCommandNumber % 2 && ctx.m_iTicksAllowed ) {
-		Features::Exploits.m_iShiftAmount = ctx.m_iTicksAllowed;
-		Features::Exploits.m_bRealCmds = false;
-		//localData.PredictedNetvars.m_nTickBase = tbDefensive;
-	}*/
-
-	localData.m_bCanAA = Features::Antiaim.Pitch( cmd );
-	ctx.m_flFixedCurtime = TICKS_TO_TIME( runningDefensive && ctx.m_bInPeek && ctx.m_bSafeFromDefensive ? tbDefensive : tbReal );
-	Features::Antiaim.RunLocalModifications( cmd, ctx.m_bSendPacket );
-
-	const auto resetTHISTick{ Features::Exploits.m_bResetNextTick };
+	const auto resetTHISTick{ Features::Exploits.m_bResetNextTick || ( hadExtraTicks && ctx.m_bSendPacket ) };
+	Features::Exploits.m_bResetNextTick = false;
 	if ( ctx.m_bSendPacket ) {
 		if ( Features::Exploits.m_iRechargeCmd == Interfaces::ClientState->iLastOutgoingCommand ) {
 			int ranCommands{ };
@@ -317,34 +353,34 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 			}
 			localData.m_bOverrideTickbase = true;
 
-			// we still charge with choked commands if it is less than 15 - commands to charge so sometimes itll be off by 1
 			localData.m_iAdjustedTickbase = Features::Exploits.AdjustTickbase( Interfaces::ClientState->nChokedCommands + 1 ) + ranCommands;
 
 			Features::Exploits.m_bResetNextTick = true;
 			Features::Exploits.m_bWasDefensiveTick = false;
 		}
 		else {
-			if ( ctx.m_iTicksAllowed >= 14
-				&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
-				&& ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled )
-				&& ( !Features::Exploits.m_iShiftAmount || ( Features::Misc.AutoPeeking && ctx.m_bSafeFromDefensive && ctx.m_bInPeek && Config::Get<bool>( Vars.ExploitsDoubletapExtended ) ) ) ) {
+			if ( ctx.m_iTicksAllowed
+				&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) {//Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled
 
-				if ( ctx.m_bInPeek && ctx.m_bSafeFromDefensive ) {
-					if ( !Features::Exploits.m_bWasDefensiveTick )
-						localData.m_bOverrideTickbase = true;
-
-					Features::Exploits.m_bWasDefensiveTick = true;
-				}
-				else {
-					//Features::Visuals.Chams.AddHitmatrix( ctx.m_pLocal, ctx.m_matRealLocalBones );
-					Features::Exploits.m_bAlreadyPeeked = true;
-
-					if ( Features::Exploits.m_bWasDefensiveTick ) {
-						localData.m_bOverrideTickbase = true;
-						localData.m_iAdjustedTickbase = tbReal;
-					}
+				if ( !ctx.m_bSafeFromDefensive
+					&& ( ( Config::Get<bool>( Vars.ExploitsDefensiveInAir ) && Features::Misc.m_bWasJumping ) || ctx.m_bInPeek )
+					&& Features::Exploits.m_bWasDefensiveTick ) {
+					localData.m_iAdjustedTickbase = tbReal;
+					localData.m_bOverrideTickbase = true;
 
 					Features::Exploits.m_bWasDefensiveTick = false;
+				}
+				else {
+					const auto backup{ Features::Exploits.m_bWasDefensiveTick };
+
+					Features::Exploits.m_bWasDefensiveTick = Config::Get<bool>( Vars.ExploitsDefensiveBreakAnimations ) ? ctx.m_bInPeek || !Features::Exploits.m_bWasDefensiveTick : true;
+
+					if ( !backup )
+						localData.m_bOverrideTickbase = Features::Exploits.m_bWasDefensiveTick;
+					else if ( !Features::Exploits.m_bWasDefensiveTick ) {
+						localData.m_iAdjustedTickbase = tbReal;
+						localData.m_bOverrideTickbase = true;
+					}
 				}
 			}
 			else {
@@ -362,19 +398,30 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		KeepCommunication( );
 	}
 
+	const auto tb{ Features::Exploits.m_bWasDefensiveTick || Features::Exploits.m_iShiftAmount ? tbDefensive : tbReal };
+
+	if ( ctx.m_bSendPacket ) {
+		Features::Antiaim.RunLocalModifications( cmd, tb );
+
+		if ( tb > ctx.m_iHighestTickbase )
+			ctx.m_iHighestTickbase = tb;
+
+		hadExtraTicks = false;
+	}
+
 	if ( resetTHISTick ) {
 		localData.m_bOverrideTickbase = true;
-		localData.m_iAdjustedTickbase = Features::Exploits.m_bWasDefensiveTick ? tbDefensive : tbReal;
-		Features::Exploits.m_bResetNextTick = false;
+		localData.m_iAdjustedTickbase = tb;
 	}
 
 	/*if ( ctx.m_iTicksAllowed ) {
-		if ( !ctx.m_pLocal->m_vecVelocity( ).Length( ) && ctx.m_bSafeFromDefensive ) {
+		if ( cmd.iWeaponSelect ) {
 			Features::Exploits.m_bRealCmds = false;
 			Features::Exploits.m_iShiftAmount = ctx.m_iTicksAllowed;
-			cmd.viewAngles.y += 180.f;
 		}
 	}*/
+
+	Features::Misc.NormalizeMovement( cmd );
 
 	verifiedCmd.userCmd = cmd;
 	verifiedCmd.uHashCRC = cmd.GetChecksum( );

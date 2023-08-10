@@ -34,39 +34,17 @@ CUserCmd* FASTCALL Hooks::hkGetUserCmd( uint8_t* ecx, uint8_t* edx, int slot, in
 
 	const auto ret{ oGetUserCmd( ecx, edx, slot, seqnr ) };
 
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToPerformPrediction ) {
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.ReturnToPerformPrediction ) {
 		if ( localData.m_bOverrideTickbase
 			&& std::abs( ctx.m_pLocal->m_nTickBase( ) - localData.m_iAdjustedTickbase ) <= 17 )
 			ctx.m_pLocal->m_nTickBase( ) = localData.m_iAdjustedTickbase;
+
+		if ( ret && ret->iTickCount == INT_MAX )
+			ret->bHasBeenPredicted = true;
 
 		//if ( !ret || ret->iTickCount == INT_MAX || Config::Get<keybind_t>( Vars.DBGKeybind ).enabled )
 		//	return nullptr;
 	}
 
 	return ret;
-}
-
-// fixme! netvar compression
-void FASTCALL Hooks::hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper ) {
-	static auto oRunCommand{ DTR::RunCommand.GetOriginal<decltype( &hkRunCommand )>( ) };
-
-	if ( player != ctx.m_pLocal )
-		return oRunCommand( ecx, edx, player, cmd, moveHelper );
-
-	if ( Interfaces::Globals->iTickCount + static_cast< int >( 1 / Interfaces::Globals->flIntervalPerTick ) + 8 <= cmd->iTickCount ) {
-		cmd->bHasBeenPredicted = true;
-
-		return;// Features::EnginePrediction.StoreNetvars( player->m_nTickBase( ) );
-	}
-
-	if ( ctx.m_iSentCmds.size( )
-		&& std::find( ctx.m_iSentCmds.rbegin( ), ctx.m_iSentCmds.rend( ), cmd->iCommandNumber ) != ctx.m_iSentCmds.rend( ) ) {
-		if ( ( ctx.m_pLocal->m_nTickBase( ) > ctx.m_iHighestTickbase )
-			|| std::abs( ctx.m_iHighestTickbase - Interfaces::ClientState->iServerTick > 17 ) )
-			ctx.m_iHighestTickbase = ctx.m_pLocal->m_nTickBase( );
-	}
-
-	oRunCommand( ecx, edx, player, cmd, moveHelper );
-
-	//Features::EnginePrediction.StoreNetvars( player->m_nTickBase( ) );
 }

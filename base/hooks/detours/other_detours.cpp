@@ -178,8 +178,8 @@ void FASTCALL Hooks::hkUpdatePostProcessingEffects( void* ecx, int edx ) {
 int FASTCALL Hooks::hkGetWeaponType( void* ecx, int edx ) {
 	static auto oGetWeaponType = DTR::GetWeaponType.GetOriginal<decltype( &hkGetWeaponType )>( );
 
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToWantReticleShown
-		|| reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToDrawCrosshair ) {
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.ReturnToWantReticleShown
+		|| reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.ReturnToDrawCrosshair ) {
 		if ( Config::Get<bool>( Vars.MiscForceCrosshair ) && ctx.m_pLocal && !ctx.m_pLocal->m_bIsScoped( ) )
 			return 0xFADED;
 	}
@@ -187,56 +187,82 @@ int FASTCALL Hooks::hkGetWeaponType( void* ecx, int edx ) {
 	return oGetWeaponType( ecx, edx );
 }
 
-// TODO: so basically, when we call readpackets before cl_move, the ping calc gets fucked since we dont call senddatagram in time
-int LastTickCount{ };
-
+int lastTickCount{};
 void __vectorcall Hooks::hk_Host_RunFrame_Input( float accumulated_extra_samples, bool bFinalTick ) {
 	static auto o_Host_RunFrame_Input = DTR::_Host_RunFrame_Input.GetOriginal<decltype( &hk_Host_RunFrame_Input )>( );
 	static auto o_Host_RunFrame_Client = DTR::_Host_RunFrame_Client.GetOriginal<decltype( &hk_Host_RunFrame_Client )>( );
 
 	ctx.GetLocal( );
 
-	if ( !Config::Get<bool>( Vars.DBGLC1 ) )
+	if ( Config::Get<bool>( Vars.DBGNoPingReducer ) )
 		return o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
 
-	int backupTickCount{ Interfaces::Globals->iTickCount };
-	int backupTickCountEnd{ };
-
-	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) && !Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) ) {
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
 		o_Host_RunFrame_Client( bFinalTick );
-		backupTickCountEnd = Interfaces::Globals->iTickCount;
-		Interfaces::Globals->iTickCount = backupTickCount;
+
+		o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
+
+		lastTickCount = Interfaces::ClientState->iServerTick;
+
 	}
+	else
+		o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
 
-	o_Host_RunFrame_Input( accumulated_extra_samples, bFinalTick );
-
-	if ( backupTickCountEnd )
-		Interfaces::Globals->iTickCount = backupTickCountEnd;
 }
 
 void FASTCALL Hooks::hk_Host_RunFrame_Client( bool bFinalTick ) {
 	static auto o_Host_RunFrame_Client = DTR::_Host_RunFrame_Client.GetOriginal<decltype( &hk_Host_RunFrame_Client )>( );
-	if ( !Config::Get<bool>( Vars.DBGLC1 ) )
+	static auto o_Host_RunFrame_Input = DTR::_Host_RunFrame_Input.GetOriginal<decltype( &hk_Host_RunFrame_Input )>( );
+	if ( Config::Get<bool>( Vars.DBGNoPingReducer ) )
 		return o_Host_RunFrame_Client( bFinalTick );
 
-	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) || Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) )
+	ctx.GetLocal( );
+
+	if ( lastTickCount != Interfaces::ClientState->iServerTick
+		|| !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) )
 		o_Host_RunFrame_Client( bFinalTick );
 }
 
-/*void __vectorcall Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) {
+int accumulated{ };
+void __vectorcall Hooks::hkCL_Move( float accumulated_extra_samples, bool bFinalTick ) {
 	static auto oCL_Move = DTR::CL_Move.GetOriginal<decltype( &hkCL_Move )>( );
-	accumulatedExtraSamples = accumulated_extra_samples;
-	static auto oCL_ReadPackets = DTR::CL_ReadPackets.GetOriginal<decltype( &hkCL_ReadPackets )>( );
-	
+
 	ctx.GetLocal( );
 
-	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) && !Interfaces::Engine->GetNetChannelInfo( )->IsLoopback( ) )
-		oCL_ReadPackets( bFinalTick );
+	if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
+		const auto extraTicks{ **( int** ) Displacement::Sigs.numticks - **( int** ) Displacement::Sigs.host_currentframetick };
+
+		if ( Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand
+			&& Interfaces::ClientState->nChokedCommands - accumulated + extraTicks > 15 - ctx.m_iTicksAllowed
+			&& Interfaces::ClientState->nChokedCommands < 16 ) {
+			++accumulated;
+			const auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 };
+
+			for ( int i = Interfaces::ClientState->iLastOutgoingCommand + 1; i <= nextCmdNumber; ++i ) {
+				auto& localData{ ctx.m_cLocalData.at( i % 150 ) };
+				localData.m_bOverrideTickbase = true;
+				localData.m_iAdjustedTickbase = localData.m_iTickbase - 1;
+			}
+
+			//++** ( int** ) Displacement::Sigs.numticks;
+			return;
+		}
+		else {
+			accumulated = 0;
+		}
+	}
 
 	oCL_Move( accumulated_extra_samples, bFinalTick );
 }
 
-void FASTCALL Hooks::hkCL_ReadPackets( bool bFinalTick ) {
+void FASTCALL Hooks::hkInterpolatedVarArrayBase_Reset( void* ecx, int edx, float a2 ) {
+	Features::Logger.Log( "faggot", false );
+
+	//Features::Logger.Log( std::to_string( reinterpret_cast< uintptr_t >( *( void** ) ( reinterpret_cast< uintptr_t >( ecx ) + 4 ) ) ), false );
+	return;
+}
+
+/*void FASTCALL Hooks::hkCL_ReadPackets( bool bFinalTick ) {
 	static auto oCL_ReadPackets = DTR::CL_ReadPackets.GetOriginal<decltype( &hkCL_ReadPackets )>( );
 	static auto oCL_Move = DTR::CL_Move.GetOriginal<decltype( &hkCL_Move )>( );
 
@@ -247,7 +273,7 @@ void FASTCALL Hooks::hkCL_ReadPackets( bool bFinalTick ) {
 bool FASTCALL Hooks::hkisBoneAvailableForRead( void* ecx, int edx, int a2 ) {
 	static auto oisBoneAvailableForRead = DTR::isBoneAvailableForRead.GetOriginal<decltype( &hkisBoneAvailableForRead )>( );
 
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToProcessInputIsBoneAvailableForRead )
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.ReturnToProcessInputIsBoneAvailableForRead )
 		return false;
 	else
 		return oisBoneAvailableForRead( ecx, edx, a2 );
@@ -257,7 +283,7 @@ Vector temp{ 0, 0, 20 };
 Vector* FASTCALL Hooks::hkGetAbsOrigin( void* ecx, int edx ) {
 	static auto oGetAbsOrigin = DTR::GetAbsOrigin.GetOriginal<decltype( &hkGetAbsOrigin )>( );
 
-	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.ReturnToProcessInputGetAbsOrigin )
+	if ( reinterpret_cast< uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.ReturnToProcessInputGetAbsOrigin )
 		return &temp;
 	else
 		return oGetAbsOrigin( ecx, edx );

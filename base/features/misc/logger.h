@@ -1,7 +1,7 @@
 #pragma once
 #include "../../context.h"
 #include "../../utils/math.h"
-#include "../../core/menu/menu.h"
+#include "../../core/menu rework/menu.h"
 
 struct OnsCreen_t {
 	OnsCreen_t( std::string str ) {
@@ -20,7 +20,7 @@ public:
 	void PrintToScreen( );
 	FORCEINLINE void Log( std::string text, bool show_on_screen ) {
 		text.append( "\n" );
-		Interfaces::ConVar->ConsoleColorPrintf( Menu::AccentCol, _( "[ HAVOC ] " ) );
+		Interfaces::ConVar->ConsoleColorPrintf( ACCENT, _( "[ HAVOC ] " ) );
 		Interfaces::ConVar->ConsolePrintf( text.c_str( ) );
 
 		for ( auto it{ text.begin( ) }; it != text.end( ); ++it ) {

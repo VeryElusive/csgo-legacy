@@ -142,6 +142,8 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, VisWorldBloomAmbience, 0 );
 	C_ADD_VARIABLE( int, VisWorldBloomExposure, 0 );
 
+	C_ADD_VARIABLE( int, VisWorldWeather, 0 );
+
 	C_ADD_VARIABLE( bool, VisWorldFog, false );
 	C_ADD_VARIABLE( Color, VisWorldFogCol, Color( 255, 255, 255 ) );
 	C_ADD_VARIABLE( int, VisWorldFogDistance, 0 );
@@ -164,6 +166,7 @@ struct Variables_t {
 	C_ADD_VARIABLE( bool, MiscFakeDuck, false );
 	C_ADD_VARIABLE( keybind_t, MiscFakeDuckKey, { } );
 	C_ADD_VARIABLE( bool, MiscAutoPeek, false );
+	C_ADD_VARIABLE( bool, MiscAutoPeekOnRelease, false );
 	C_ADD_VARIABLE( keybind_t, MiscAutoPeekKey, { } );
 	C_ADD_VARIABLE( Color, MiscAutoPeekCol, Color( 255, 107, 107 ) );
 
@@ -210,8 +213,9 @@ struct Variables_t {
 	// ragebot
 	C_ADD_VARIABLE( bool, RagebotEnable, false );
 	C_ADD_VARIABLE( bool, RagebotResolver, true );
-	//C_ADD_VARIABLE( bool, RagebotLagcompensation, true );
+	C_ADD_VARIABLE( bool, RagebotLagcompensation, true );
 	//C_ADD_VARIABLE( bool, RagebotForceSafeClampbones, false );
+	C_ADD_VARIABLE( int, RagebotWeaponGroup, 0 );
 	ADD_RAGE_VAR( int, RagebotFOV, 0 );
 	ADD_RAGE_VAR( bool, RagebotAutoFire, false );
 	ADD_RAGE_VAR( bool, RagebotSilentAim, false );
@@ -228,12 +232,15 @@ struct Variables_t {
 	ADD_RAGE_VAR( int, RagebotOverrideDamage, 0 );
 	ADD_RAGE_VAR( bool, RagebotAutoStop, false );
 	ADD_RAGE_VAR( bool, RagebotBetweenShots, false );
+	ADD_RAGE_VAR( bool, RagebotAutostopInAir, false );
 	C_ADD_VARIABLE( bool, RagebotZeusbot, false );
 	C_ADD_VARIABLE( bool, RagebotKnifebot, false );
 
 	C_ADD_VARIABLE( bool, ExploitsDoubletap, false );
 	C_ADD_VARIABLE( bool, ExploitsDoubletapDefensive, false );
 	C_ADD_VARIABLE( bool, ExploitsDoubletapExtended, false );
+	C_ADD_VARIABLE( bool, ExploitsDefensiveInAir, false );
+	C_ADD_VARIABLE( bool, ExploitsDefensiveBreakAnimations, false );
 	C_ADD_VARIABLE( keybind_t, ExploitsDoubletapKey, { } );	
 	C_ADD_VARIABLE( bool, ExploitsHideshots, false );
 	C_ADD_VARIABLE( keybind_t, ExploitsHideshotsKey, { } );
@@ -264,9 +271,9 @@ struct Variables_t {
 	ADD_RAGE_VAR( int, RagebotHeadScale, 0 );
 	ADD_RAGE_VAR( int, RagebotBodyScale, 0 );
 	ADD_RAGE_VAR( bool, RagebotIgnoreLimbs, false );
-	C_ADD_VARIABLE( bool, RagebotForceBaimAfterX, false );
+	ADD_RAGE_VAR( bool, RagebotForceBaimAfterX, false );
 	C_ADD_VARIABLE( bool, RagebotForceSafeClampbones, false );
-	C_ADD_VARIABLE( int, RagebotForceBaimAfterXINT, 0 );
+	ADD_RAGE_VAR( int, RagebotForceBaimAfterXINT, 0 );
 	ADD_RAGE_VAR( bool, RagebotPreferBaim, false );
 	ADD_RAGE_VAR( bool, RagebotPreferBaimDoubletap, false );
 	ADD_RAGE_VAR( bool, RagebotPreferBaimLethal, false );
@@ -277,33 +284,42 @@ struct Variables_t {
 	// anti aim
 	C_ADD_VARIABLE( bool, AntiaimEnable, false );
 	C_ADD_VARIABLE( bool, AntiaimDesync, false );
+	C_ADD_VARIABLE( bool, AntiaimTrickLBY, false );
 	C_ADD_VARIABLE( bool, AntiAimManualDir, false );
+	C_ADD_VARIABLE( bool, AntiAimManualDirInd, false );
 	C_ADD_VARIABLE( int, AntiaimAtTargets, 0 );
 	C_ADD_VARIABLE( int, AntiaimPitch, 0 );
 	C_ADD_VARIABLE( int, AntiaimYaw, 0 );
-	C_ADD_VARIABLE( int, AntiaimBreakAngle, 0 );
+	C_ADD_VARIABLE( int, AntiaimSafePitch, 0 );
+	C_ADD_VARIABLE( int, AntiaimSafeYawRandomisation, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawAdd, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawRange, 0 );
 	C_ADD_VARIABLE( int, AntiaimYawSpeed, 0 );
 	C_ADD_VARIABLE( int, AntiaimFreestand, 0 );
 	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
-	C_ADD_VARIABLE( bool, AntiaimDistortion, false );
-	C_ADD_VARIABLE( bool, AntiAimManualDirInd, false );
-	C_ADD_VARIABLE( int, AntiaimDistortionRange, 0 );
-	C_ADD_VARIABLE( int, AntiaimDistortionSpeed, 0 );
-	C_ADD_VARIABLE( bool, AntiaimDistortionSpike, false );
+	C_ADD_VARIABLE( int, AntiaimFreestanding, 0 );
+	C_ADD_VARIABLE( keybind_t, AntiaimFreestandingKey, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimInvert, { } );
-	C_ADD_VARIABLE( keybind_t, AntiaimInvertSpam, { } );
+	C_ADD_VARIABLE( bool, AntiaimConstantInvert, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimRight, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimLeft, { } );
 	C_ADD_VARIABLE( Color, AntiaimManualCol, Color( 255, 255, 255 ) );
+
+	C_ADD_VARIABLE( bool, AntiaimFlickHead, false );
+	C_ADD_VARIABLE( bool, AntiaimConstantInvertFlick, false );
+	C_ADD_VARIABLE( int, AntiaimFlickAdd, 0 );
+	C_ADD_VARIABLE( int, AntiaimFlickSpeed, 0 );
+	C_ADD_VARIABLE( keybind_t, AntiaimFlickInvert, { } );
 
 	C_ADD_VARIABLE( int, AntiaimFakeLagLimit, 0 );
 	C_ADD_VARIABLE( int, AntiaimFakeLagVariance, 0 );
 	C_ADD_VARIABLE( bool, AntiaimFakeLagBreakLC, false );
 	C_ADD_VARIABLE( bool, AntiaimFakeLagInPeek, false );
 
-	C_ADD_VARIABLE( bool, DBGLC1, true );
+	C_ADD_VARIABLE( bool, DBGLC1, false );
+	C_ADD_VARIABLE( bool, DBGExtrap, false );
+	C_ADD_VARIABLE( bool, DBGOldPing, false );
+	C_ADD_VARIABLE( bool, DBGNoPingReducer, false );
 	C_ADD_VARIABLE( keybind_t, DBGKeybind, { } );
 };
 

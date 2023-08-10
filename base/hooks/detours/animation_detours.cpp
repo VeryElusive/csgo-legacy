@@ -13,7 +13,7 @@ void FASTCALL Hooks::hkStandardBlendingRules( CBasePlayer* const ent, const std:
 	//if ( ctx.m_bSetupBones )
 	//	mask = BONE_USED_BY_HITBOX;
 
-	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Displacement::Sigs.LookupBone ) };
 
 	//Vector pos[ 256 ];
 	//Quaternion q[ 256 ];
@@ -54,6 +54,30 @@ bool FASTCALL Hooks::hkShouldSkipAnimFrame( void* ecx, uint32_t ebx ) {
 	return false;
 }
 
+void FASTCALL Hooks::hkOnNewCollisionBounds( CBasePlayer* ecx, uint32_t edx, Vector* oldMins, Vector* newMins, Vector* oldMaxs, Vector* newMaxs ) {
+	static auto oOnNewCollisionBounds = DTR::OnNewCollisionBounds.GetOriginal<decltype( &hkOnNewCollisionBounds )>( );
+
+	/*oOnNewCollisionBounds( ecx, edx, oldMins, newMins, oldMaxs, newMaxs );
+
+	if ( ecx != ctx.m_pLocal )
+	Features::Logger.Log( ( "CLIENT: " + std::to_string( ecx->m_flNewBoundsTime( ) ) + " maxs: " +
+		std::to_string( ecx->m_flNewBoundsMaxs( ) ) ).c_str( ), true );
+
+	static auto oOnNewCollisionBounds = DTR::OnNewCollisionBounds.GetOriginal<decltype( &hkOnNewCollisionBounds )>( );
+
+	const auto backupCurtime{ Interfaces::Globals->flCurTime };
+	Interfaces::Globals->flCurTime = ecx->m_flSimulationTime( );
+
+	oOnNewCollisionBounds( ecx, edx, oldMins, newMins, oldMaxs, newMaxs );
+
+	Interfaces::Globals->flCurTime = backupCurtime;*/
+
+	//Features::Logger.Log( std::to_string( Interfaces::Globals->flRealTime ), true );
+
+	// rebuild of this function
+	//*( float* )( uintptr_t( ecx ) + Displacement::Netvars->m_bIsScoped - 0x54 ) = *( float* )( uintptr_t( ecx ) + Displacement::Netvars->m_fFlags - 0x50 ) + oldMaxs->z;
+	//*( float* )( uintptr_t( ecx ) + Displacement::Netvars->m_bIsScoped - 0x50 ) = ecx->m_flSimulationTime( );
+}
 
 #ifdef SERVER_DBGING
 void FASTCALL Hooks::hkServerSetupBones( CBaseAnimating* ecx, int edx, matrix3x4a_t* pBoneToWorld, int boneMask ) {
@@ -114,7 +138,6 @@ bool FASTCALL Hooks::hkSetupbones( const std::uintptr_t ecx, const std::uintptr_
 		entry.m_vecLastMergeOrigin = absOrigin;
 	}
 
-	// fixme!
 	if ( mask & BONE_USED_BY_ATTACHMENT )
 		player->SetupBonesAttachmentHelper( );
 
@@ -176,7 +199,7 @@ bool FASTCALL Hooks::hkIsBoneAvailable( void* ecx, uint32_t edx, int a1 ) {
 	static auto oIsBoneAvailable = DTR::IsBoneAvailable.GetOriginal<decltype( &hkIsBoneAvailable )>( );
 
 	// skip this check since its not present on the server
-	if ( *reinterpret_cast< std::uintptr_t* >( _AddressOfReturnAddress( ) ) == Offsets::Sigs.ReturnToClampBonesInBBox )
+	if ( *reinterpret_cast< std::uintptr_t* >( _AddressOfReturnAddress( ) ) == Displacement::Sigs.ReturnToClampBonesInBBox )
 		return true;
 
 	return oIsBoneAvailable( ecx, edx, a1 );

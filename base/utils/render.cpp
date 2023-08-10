@@ -6,7 +6,7 @@ void Render::CreateFonts( ) {
 	Interfaces::Surface->SetFontGlyphSet( Fonts::HealthESP = Interfaces::Surface->FontCreate( ), _( "Small Fonts" ), 8, FW_MEDIUM, NULL, NULL, FONTFLAG_OUTLINE );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::Menu = Interfaces::Surface->FontCreate( ), _( "Tahoma" ), 13, FW_DONTCARE, NULL, NULL, FONTFLAG_DROPSHADOW );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::Logs = Interfaces::Surface->FontCreate( ), _( "Tahoma" ), 11, FW_DONTCARE, NULL, NULL, NULL );
-	Interfaces::Surface->SetFontGlyphSet( Fonts::MenuTabs = Interfaces::Surface->FontCreate( ), _( "test2" ), 35, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW | FONTFLAG_ANTIALIAS );
+	Interfaces::Surface->SetFontGlyphSet( Fonts::MenuTabs = Interfaces::Surface->FontCreate( ), _( "test2" ), 55, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW | FONTFLAG_ANTIALIAS );
 	Interfaces::Surface->SetFontGlyphSet( Fonts::DamageMarker = Interfaces::Surface->FontCreate( ), _( "Verdana" ), 14, FW_NORMAL, NULL, NULL, FONTFLAG_DROPSHADOW | FONTFLAG_ANTIALIAS );
 }
 
@@ -21,6 +21,9 @@ void Render::FilledRectangle( Vector2D pos, Vector2D size, Color col ) {
 void Render::FilledRoundedBox( Vector2D pos, Vector2D size, int points, int radius, Color col ) {
 	if ( GlobalAlpha < 1.f )
 		col = col.Set<COLOR_A>( col.Get<COLOR_A>( ) * GlobalAlpha );
+
+	pos.x = std::floor( pos.x );
+	pos.y = std::floor( pos.y );
 
 	Vertex_t* round = new Vertex_t[ 4 * points ];
 
@@ -44,7 +47,42 @@ void Render::FilledRoundedBox( Vector2D pos, Vector2D size, int points, int radi
 	Interfaces::Surface->DrawSetColor( col );
 	Interfaces::Surface->DrawSetTexture( Texture );
 
-	Interfaces::Surface->DrawTexturedPolygon( 4 * points, round );
+	Interfaces::Surface->DrawTexturedPolygon( 4 * points, round, true );
+
+	delete[ ] round;
+}
+
+void Render::RoundedBox( Vector2D pos, Vector2D size, int points, int radius, Color col ) {
+	size -= Vector2D{ 1,1 };
+	if ( GlobalAlpha < 1.f )
+		col = col.Set<COLOR_A>( col.Get<COLOR_A>( ) * GlobalAlpha );
+
+	pos.x = std::floor( pos.x );
+	pos.y = std::floor( pos.y );
+
+	Vertex_t* round = new Vertex_t[ 4 * points ];
+
+	for ( int i = 0; i < 4; i++ ) {
+		int _x = pos.x + ( ( i < 2 ) ? ( size.x - radius ) : radius );
+		int _y = pos.y + ( ( i % 3 ) ? ( size.y - radius ) : radius );
+
+		float a = 90.f * i;
+
+		for ( int j = 0; j < points; j++ ) {
+			float _a = DEG2RAD( a + ( j / ( float ) ( points - 1 ) ) * 90.f );
+
+			round[ ( i * points ) + j ] = Vertex_t( Vector2D( _x + radius * sin( _a ), _y - radius * cos( _a ) ) );
+		}
+	}
+
+	static int Texture = Interfaces::Surface->CreateNewTextureID( true );
+	unsigned char buffer[ 4 ] = { 255, 255, 255, 255 };
+
+	Interfaces::Surface->DrawSetTextureRGBA( Texture, buffer, 1, 1 );
+	Interfaces::Surface->DrawSetColor( col );
+	Interfaces::Surface->DrawSetTexture( Texture );
+
+	Interfaces::Surface->DrawTexturedPolyLine( round, 4 * points );
 
 	delete[ ] round;
 }

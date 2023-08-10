@@ -5,7 +5,7 @@
 
 bool FASTCALL Hooks::hkSvCheatsGetBool( CConVar* thisptr, int edx ) {
 	static auto oSvCheatsGetBool = DTR::SvCheatsGetBool.GetOriginal<decltype( &hkSvCheatsGetBool )>( );
-	if ( reinterpret_cast< std::uintptr_t >( _ReturnAddress( ) ) == Offsets::Sigs.uCAM_ThinkReturn )
+	if ( reinterpret_cast< std::uintptr_t >( _ReturnAddress( ) ) == Displacement::Sigs.uCAM_ThinkReturn )
 		return true;
 
 	return oSvCheatsGetBool( thisptr, edx );
@@ -30,13 +30,15 @@ void CDECL Hooks::m_flSimulationTimeHook( const CRecvProxyData* data, void* enti
 }
 
 void CDECL Hooks::m_hWeaponHook( const CRecvProxyData* data, void* entity, void* output ) {
-	const auto backupCurtime{ Interfaces::Globals->flCurTime };
+	const auto viewModel{ ( ( CBaseViewModel* ) entity ) };
 
-	Interfaces::Globals->flCurTime = Interfaces::Globals->flRealTime;
+	const auto backupAnimTime{ viewModel->m_flAnimTime( ) };
+	const auto backupCycle{ viewModel->m_flCycle( ) };
 
 	m_hWeapon( data, entity, output );
 
-	Interfaces::Globals->flCurTime = backupCurtime;
+	viewModel->m_flAnimTime( ) = backupAnimTime;
+	viewModel->m_flCycle( ) = backupCycle;
 }
 
 void CDECL Hooks::m_flAbsYawHook( const CRecvProxyData* data, void* entity, void* output ) {

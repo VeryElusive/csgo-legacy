@@ -20,7 +20,7 @@ void CShots::ProcessShots( ) {
 					else
 						Features::Logger.Log( _( "shot did not register" ), true );
 				}
-					
+
 				return remove;
 			}
 		),
@@ -37,7 +37,7 @@ void CShots::ProcessShots( ) {
 	for ( auto it{ m_vecShots.begin( ) }; it != m_vecShots.end( ); it = std::next( it ) ) {
 		auto& shot{ *it };
 		if ( !shot.m_pPlayer ) {
-			NONEXISTANT:
+		NONEXISTANT:
 			Features::Logger.Log( _( "player no longer exists" ), true );
 			it = m_vecShots.erase( it );
 			if ( m_vecShots.empty( ) )
@@ -56,8 +56,8 @@ void CShots::ProcessShots( ) {
 
 		if ( shot.m_pPlayer->IsDead( ) ) {
 			if ( shot.m_bHitPlayer )
-				Features::Logger.Log( ( _( "hit " ) + ( std::string )playerInfo->szName 
-					+ _( " in " ) + Features::Ragebot.Hitgroup2Str( shot.m_iServerHitgroup ) 
+				Features::Logger.Log( ( _( "hit " ) + ( std::string ) playerInfo->szName
+					+ _( " in " ) + Features::Ragebot.HitgroupToString( shot.m_iServerHitgroup )
 					+ _( " for " ) + std::to_string( shot.m_iServerDamage ).c_str( ) ) + _( " damage" ), true );
 			else
 				Features::Logger.Log( _( "target died before server processed shot" ), true );
@@ -96,8 +96,8 @@ void CShots::ProcessShots( ) {
 					Features::Logger.Log( _( "hit incorrect hitbox due to spread" ), false );
 			}
 
-			Features::Logger.Log( ( _( "hit " ) + ( std::string )playerInfo->szName
-				+ _( " in " ) + Features::Ragebot.Hitgroup2Str( shot.m_iServerHitgroup )
+			Features::Logger.Log( ( _( "hit " ) + ( std::string ) playerInfo->szName
+				+ _( " in " ) + Features::Ragebot.HitgroupToString( shot.m_iServerHitgroup )
 				+ _( " for " ) + std::to_string( shot.m_iServerDamage ).c_str( ) ) + _( " damage" ), true );
 		}
 		else {

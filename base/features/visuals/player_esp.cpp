@@ -101,13 +101,14 @@ void CPlayerESP::DrawHealth( VisualPlayerEntry& entry ) {
 	const auto bar_height{ static_cast<int>( static_cast< float >( entry.health ) * static_cast< float >( entry.BBox.h ) / 100.0f ) };
 	const auto offset{ entry.BBox.h - bar_height };
 
-	Render::FilledRectangle( entry.BBox.x - 6, entry.BBox.y - 1, 4, entry.BBox.h + 2, outline );
+	Render::FilledRectangle( entry.BBox.x - 6, entry.BBox.y - 1, 4, entry.BBox.h + 2, outline.Set<COLOR_A>( outline.Get<COLOR_A>( ) * .5f ) );
 	Render::FilledRectangle( entry.BBox.x - 5, entry.BBox.y + offset, 2, bar_height, last );
 
-	if ( entry.health < 95 )
-		Render::Text( Fonts::HealthESP, entry.BBox.x - 5, entry.BBox.y + offset - 3, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_CENTER, std::to_string( entry.health ).c_str( ) );
-
+	Render::Rectangle( entry.BBox.x - 6, entry.BBox.y - 1, 4, entry.BBox.h + 2, outline );
 	//Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 15, entry.BBox.y, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_RIGHT, std::to_string( Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_iLastChoked ).c_str( ) );
+
+	if ( entry.health <= 92 )
+		Render::Text( Fonts::HealthESP, entry.BBox.x - 5, entry.BBox.y + offset - 3, Color( 255, 255, 255 ).Set<COLOR_A>( last.Get<COLOR_A>( ) ), FONT_CENTER, std::to_string( entry.health ).c_str( ) );
 }
 
 bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
@@ -128,6 +129,9 @@ bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
 	if ( !weapon_info )
 		return false;
 
+	if ( weapon_info->nWeaponType == WEAPONTYPE_HEALTHSHOT )
+		return false;
+
 	const auto ammo = weapon->m_iClip1( );
 	const auto max_clip = weapon_info->iMaxClip1;
 
@@ -140,10 +144,12 @@ bool CPlayerESP::DrawAmmo( VisualPlayerEntry& entry ) {
 	const auto outline = Color( 0, 0, 0, static_cast< int >( last.Get<COLOR_A>( ) ) );
 
 	// outline
-	Render::FilledRectangle( entry.BBox.x - 1, entry.BBox.y + entry.BBox.h + 2,  entry.BBox.w + 2, 4, outline );
+	Render::FilledRectangle( entry.BBox.x - 1, entry.BBox.y + entry.BBox.h + 2,  entry.BBox.w + 2, 4, outline.Set<COLOR_A>( outline.Get<COLOR_A>( ) * .5f ) );
 	// color
 	if ( ammo )
 		Render::FilledRectangle( entry.BBox.x, entry.BBox.y + entry.BBox.h + 3,  std::min( entry.BBox.w, ammo * entry.BBox.w / max_clip ), 2, last );
+
+	Render::Rectangle( entry.BBox.x - 1, entry.BBox.y + entry.BBox.h + 2, entry.BBox.w + 2, 4, outline );
 
 	return true;
 }
@@ -200,7 +206,7 @@ void CPlayerESP::DrawWeapon( VisualPlayerEntry& entry, bool AmmoBar ) {
 	if ( AmmoBar )
 		append += 6;
 	CheckIfPlayer( VisWeapText, entry.type ) {
-		Render::Text( Fonts::WeaponIcon, entry.BBox.x + entry.BBox.w / 2, entry.BBox.y + entry.BBox.h + append, last, FONT_CENTER, weapon->GetIcon( ).c_str( ) );
+		Render::Text( Fonts::WeaponIcon, entry.BBox.x + entry.BBox.w / 2, entry.BBox.y + entry.BBox.h + append, last.Set<COLOR_A>( last.Get<COLOR_A>( ) * .9f ), FONT_CENTER, weapon->GetIcon( ).c_str( ) );
 
 		append += 12;
 	}
@@ -259,7 +265,7 @@ void CPlayerESP::DrawFlags( VisualPlayerEntry& entry ) {
 
 	int i{ };
 	for ( const auto& flag : flags ) {
-		Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 2, entry.BBox.y + 7 * i, flag.second.Set<COLOR_A>( static_cast< int >( 255 * entry.Alpha ) ), 0, flag.first.c_str( ) );
+		Render::Text( Fonts::HealthESP, entry.BBox.x + entry.BBox.w + 2, entry.BBox.y + 8 * i, flag.second.Set<COLOR_A>( static_cast< int >( 200 * entry.Alpha ) ), 0, flag.first.c_str( ) );
 
 		++i;
 	}

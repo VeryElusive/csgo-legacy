@@ -24,6 +24,7 @@ bool Interfaces::Setup()
 	StudioRender =		Capture<IStudioRender>(STUDIORENDER_DLL, _("VStudioRender"));
 	ConVar =			Capture<IConVar>(VSTDLIB_DLL, _("VEngineCvar"));
 	PhysicsProps =		Capture<IPhysicsSurfaceProps>(PHYSICS_DLL, _("VPhysicsSurfaceProps"));
+	PhysicsCollision = Capture<IPhysicsCollision>( PHYSICS_DLL, _( "VPhysicsCollision" ) );
 	MaterialSystem =	Capture<IMaterialSystem>(MATERIALSYSTEM_DLL, _("VMaterialSystem"));
 	Surface =			Capture<ISurface>(VGUI_DLL, _("VGUI_Surface"));
 	Panel =				Capture<IVPanel>(VGUI2_DLL, _("VGUI_Panel"));
@@ -32,6 +33,9 @@ bool Interfaces::Setup()
 	MatchFramework =	Capture<IMatchFramework>(MATCHMAKING_DLL, _("MATCHFRAMEWORK_"));
 	GameTypes =			Capture<IGameTypes>(MATCHMAKING_DLL, _("VENGINE_GAMETYPES_VERSION"));
 	Server =			Capture<IServerGameDLL>(SERVER_DLL, _("ServerGameDLL"));
+
+	if ( !PhysicsCollision )
+		return false;
 
 	SteamClient = Engine->GetSteamAPIContext()->pSteamClient;
 	if (SteamClient == nullptr)
@@ -98,6 +102,41 @@ bool Interfaces::Setup()
 		return false;
 
 	return true;
+}
+
+// just a stub for erasing
+#define CHECK_INTERFACE( interface ) if ( !interface ) return false; else return true;
+bool Interfaces::CheckInterfaces( ) {
+	CHECK_INTERFACE( Client );
+	CHECK_INTERFACE( ClientEntityList );
+	CHECK_INTERFACE( Effects );
+	CHECK_INTERFACE( GameMovement );
+	CHECK_INTERFACE( Prediction );
+	CHECK_INTERFACE( GameConsole );
+	CHECK_INTERFACE( GameUI );
+	CHECK_INTERFACE( Engine );
+	CHECK_INTERFACE( EngineVGui );
+	CHECK_INTERFACE( EngineTrace );
+	CHECK_INTERFACE( EngineSound );
+	CHECK_INTERFACE( NetworkContainer );
+	CHECK_INTERFACE( GameEvent );
+	CHECK_INTERFACE( RenderView );
+	CHECK_INTERFACE( DebugOverlay );
+	CHECK_INTERFACE( EngineEffects );
+	CHECK_INTERFACE( ModelInfo );
+	CHECK_INTERFACE( ModelRender );
+	CHECK_INTERFACE( MDLCache );
+	CHECK_INTERFACE( StudioRender );
+	CHECK_INTERFACE( ConVar );
+	CHECK_INTERFACE( PhysicsProps );
+	CHECK_INTERFACE( MaterialSystem );
+	CHECK_INTERFACE( Surface );
+	CHECK_INTERFACE( Panel );
+	CHECK_INTERFACE( InputSystem );
+	CHECK_INTERFACE( Localize );
+	CHECK_INTERFACE( MatchFramework );
+	CHECK_INTERFACE( GameTypes );
+	CHECK_INTERFACE( Server );
 }
 
 template <typename T>

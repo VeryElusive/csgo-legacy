@@ -1,0 +1,149 @@
+#pragma once
+struct Signatures_t {
+	struct ClientSigs_t {
+		uintptr_t uPredictionRandomSeed;
+		uintptr_t pPredictionPlayer;
+		uintptr_t ReInitPredictables;
+		uintptr_t ShutDownPredictables;
+
+		uintptr_t InitKeyValues;
+		uintptr_t DestructKeyValues;
+		uintptr_t oFromString;
+		uintptr_t oLoadFromBuffer;
+		uintptr_t oLoadFromFile;
+		uintptr_t oFindKey;
+		uintptr_t oSetString;
+		uintptr_t oGetString;
+
+		uintptr_t oCreateAnimationState;
+		uintptr_t oUpdateAnimationState;
+		uintptr_t oResetAnimationState;
+
+		uintptr_t ReturnToClampBonesInBBox;
+
+		uintptr_t ReturnToDrawCrosshair;
+		uintptr_t ReturnToWantReticleShown;
+
+		uintptr_t ReturnToProcessInputIsBoneAvailableForRead;
+		uintptr_t ReturnToProcessInputGetAbsOrigin;
+
+		uintptr_t ClipRayToHitbox;
+
+		uintptr_t MD5PseudoRandom;
+
+		uintptr_t FindMapping;
+		uintptr_t SelectWeightedSequenceFromModifiers;
+
+		uintptr_t SetAbsOrigin;
+		uintptr_t SetAbsAngles;
+		uintptr_t InvalidatePhysicsRecursive;
+
+		uintptr_t PostProcess;
+
+		uintptr_t SmokeCount;
+		uintptr_t TakeDamageOffset;
+		uintptr_t LookupBone;
+
+		uintptr_t ClearNotices;
+
+		uintptr_t ReturnToInterpolateServerEntities;
+		uintptr_t ReturnToInterpolateServerEntitiesExtrap;
+
+		uintptr_t SetupVelocityReturn;
+
+		uintptr_t uInsertIntoTree;
+
+		uintptr_t uCAM_ThinkReturn;
+
+		uintptr_t ReturnToEyePosAndVectors;
+
+		uintptr_t InvalidateBoneCache;
+
+		uintptr_t SetCollisionBounds;
+
+		uintptr_t m_pStudioHdr;
+
+		uintptr_t WriteUsercmd;
+
+		uintptr_t AddBoxOverlayReturn;
+
+		uintptr_t IsBreakable;
+
+		uintptr_t GetSequenceActivity;
+
+		uintptr_t SetupBones_AttachmentHelper;
+
+		uintptr_t ClampBonesInBBox;
+		uintptr_t C_BaseAnimating__BuildTransformations;
+		uintptr_t StandardBlendingRules;
+
+		uintptr_t TraceFilterSkipTwoEntities;
+
+		uintptr_t ReturnToPerformPrediction;
+
+		uintptr_t CIKContext__Construct;
+		uintptr_t CIKContext__Init;
+		uintptr_t CIKContext__UpdateTargets;
+		uintptr_t CIKContext__SolveDependencies;
+		uintptr_t CIKContext__AddDependencies;
+		uintptr_t CIKContext__CopyTo;
+
+		//uintptr_t CBoneMergeCache__Init;
+		uintptr_t CBoneMergeCache__Construct;
+		uintptr_t CBoneMergeCache__MergeMatchingPoseParams;
+		//uintptr_t CBoneMergeCache__CopyFromFollow;
+		//uintptr_t CBoneMergeCache__CopyToFollow;
+
+		uintptr_t CBoneSetup__AccumulatePose;
+		uintptr_t CBoneSetup__CalcAutoplaySequences;
+		uintptr_t CBoneSetup__CalcBoneAdj;
+	};
+
+	ClientSigs_t Sigs{ };
+
+	struct ClientSigsRelatives_t {
+		uintptr_t CBoneMergeCache__Init;
+		uintptr_t CBoneMergeCache__CopyFromFollow;
+		uintptr_t CBoneMergeCache__CopyToFollow;
+		uintptr_t CalcShotgunSpread;
+	};
+	ClientSigsRelatives_t SigsRelative{ };
+
+
+	uintptr_t LocalPlayer;
+	uintptr_t CBaseEntity__PrecacheModel;
+
+	uintptr_t uDisableRenderTargetAllocationForever;
+
+	uintptr_t SetAbsVelocity;
+
+	uintptr_t LoadNamedSkys;
+	uintptr_t CL_ReadPackets;
+	uintptr_t ClanTag;
+
+	uintptr_t StartDrawing;
+	uintptr_t FinishDrawing;
+
+	uintptr_t ReturnToExtrapolate;
+	uintptr_t ReturnToCl_ReadPackets;
+
+
+
+
+
+
+
+
+
+	uintptr_t CL_SendMove;
+
+
+	uintptr_t CL_FireEvents;
+	uintptr_t NET_ProcessSocket;
+
+	uintptr_t numticks;
+
+
+	uintptr_t current_tickcount;
+	uintptr_t host_currentframetick;
+};

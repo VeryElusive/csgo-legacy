@@ -8,7 +8,38 @@ void FASTCALL Hooks::hkPacketEnd( void* ecx, void* edx ) {
 
 	oPacketEnd( ecx, edx );
 
+	auto& localData{ ctx.m_cLocalData.at( Interfaces::ClientState->iCommandAck % 150 ) };
+
 	Features::Visuals.DormantESP.GetActiveSounds( );
+
+	// TODO:
+	if ( ctx.m_iSentCmds.empty( )
+		|| std::find( ctx.m_iSentCmds.rbegin( ), ctx.m_iSentCmds.rend( ), Interfaces::ClientState->iCommandAck ) == ctx.m_iSentCmds.rend( ) )
+		return;
+
+	static auto last{ Interfaces::ClientState->iCommandAck };
+
+	if ( Interfaces::ClientState->iCommandAck != last ) {
+		last = Interfaces::ClientState->iCommandAck;
+		int lastDelta{ std::min( Interfaces::Globals->iTickCount - localData.m_iTickCount, 64 ) };
+		for ( int i{ }; i < 4; ++i ) {
+			const auto tmp{ ctx.m_iLast4Deltas[ i ] };
+			ctx.m_iLast4Deltas[ i ] = lastDelta;
+			lastDelta = tmp;
+		}
+	}
+
+	if ( ctx.m_pLocal
+		&& localData.m_flSpawnTime == ctx.m_pLocal->m_flSpawnTime( ) ) {
+		//if ( !localData.m_iAdjustedTickbase && ctx.m_pLocal->m_nTickBase( ) - 1 != localData.m_iTickbase )
+		//	Features::Logger.Log( "Differed 1: " + std::to_string( ctx.m_pLocal->m_nTickBase( ) - 1 ) + " | " + std::to_string( localData.m_iTickbase ), false );
+
+		//if ( localData.m_iAdjustedTickbase && ctx.m_pLocal->m_nTickBase( ) - 1 != localData.m_iAdjustedTickbase )
+		//	Features::Logger.Log( "Differed 2: " + std::to_string( ctx.m_pLocal->m_nTickBase( ) - 1 ) + " | " + std::to_string( localData.m_iAdjustedTickbase ), false );
+
+		//localData.m_iTickbase = localData.m_iAdjustedTickbase = ctx.m_pLocal->m_nTickBase( ) - 1;
+	}
+
 }
 
 void FASTCALL Hooks::hkPacketStart( void* ecx, void* edx, int in_seq, int out_acked ) {
@@ -79,17 +110,6 @@ bool FASTCALL Hooks::hkSendNetMsg( INetChannel* pNetChan, void* edx, INetMessage
 	return oSendNetMsg( pNetChan, edx, msg, bForceReliable, bVoice );
 }
 
-void* FASTCALL Hooks::hkAllocKeyValuesMemory( IKeyValuesSystem* thisptr, int edx, int iSize ) {
-	static auto oAllocKeyValuesMemory = DTR::AllocKeyValuesMemory.GetOriginal<decltype( &hkAllocKeyValuesMemory )>( );
-
-	if ( const std::uintptr_t uReturnAddress = reinterpret_cast< std::uintptr_t >( _ReturnAddress( ) ); 
-		uReturnAddress == Offsets::Sigs.uAllocKeyValuesEngine || uReturnAddress == Offsets::Sigs.uAllocKeyValuesClient )
-		return nullptr;
-
-	return oAllocKeyValuesMemory( thisptr, edx, iSize );
-}
-
-
 int FASTCALL Hooks::hkSendDatagram( INetChannel* thisptr, int edx, bf_write* pDatagram ) {
 	static auto oSendDatagram = DTR::SendDatagram.GetOriginal<decltype( &hkSendDatagram )>( );
 
@@ -101,8 +121,7 @@ int FASTCALL Hooks::hkSendDatagram( INetChannel* thisptr, int edx, bf_write* pDa
 	const int iOldInReliableState = thisptr->iInReliableState;
 	const int iOldInSequenceNr = thisptr->iInSequenceNr;
 
-	// calculate max available fake latency with our real ping to keep it w/o real lags or delays
-	const float flMaxLatency = std::max( 0.f, std::clamp( 0.5f, 0.f, Offsets::Cvars.sv_maxunlag->GetFloat( ) ) - pNetChannelInfo->GetLatency( FLOW_OUTGOING ) );
+	const float flMaxLatency = std::max( 0.f, std::clamp( 0.5f, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) - pNetChannelInfo->GetLatency( FLOW_OUTGOING ) );
 	Features::Misc.AddLatencyToNetChannel( thisptr, flMaxLatency );
 
 	const int iReturn = oSendDatagram( thisptr, edx, pDatagram );

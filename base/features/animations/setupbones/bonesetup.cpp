@@ -23,7 +23,7 @@ void CBoneSetup::InitPose( Vector pos[ ], Quaternion q[ ] ) {
 void CBoneSetup::AccumulatePose( Vector pos[ ], Quaternion q[ ], int sequence, float cycle, float weight, float time, void* IKContext ) {
     //55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? A1
     reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, int, float, float, float, void* ) >
-        ( Offsets::Sigs.CBoneSetup__AccumulatePose )( this, pos, q, sequence, cycle, weight, time, IKContext );
+        ( Displacement::Sigs.CBoneSetup__AccumulatePose )( this, pos, q, sequence, cycle, weight, time, IKContext );
 }
 
 void CBoneSetup::CalcAutoplaySequences( Vector pos[ ], Quaternion q[ ], float real_time, void* IKContext ) {
@@ -36,7 +36,7 @@ void CBoneSetup::CalcAutoplaySequences( Vector pos[ ], Quaternion q[ ], float re
         push IKContext
         push q
         push pos
-        call Offsets::Sigs.CBoneSetup__CalcAutoplaySequences
+        call Displacement::Sigs.CBoneSetup__CalcAutoplaySequences
     }
 }
 
@@ -54,7 +54,7 @@ void CBoneSetup::CalcBoneAdj( Vector pos[ ], Quaternion q[ ], const float contro
         push mask
         push controllers
         push q
-        call Offsets::Sigs.CBoneSetup__CalcBoneAdj
+        call Displacement::Sigs.CBoneSetup__CalcBoneAdj
         add esp, 0xC
     }
 }

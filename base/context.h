@@ -19,9 +19,20 @@ struct FakeAnimData_t {
 	matrix3x4a_t m_matMatrix[ 256 ];
 };
 
+struct SequenceObject_t {
+	SequenceObject_t( int iInReliableState, int iOutReliableState, int iSequenceNr, float flCurrentTime )
+		: iInReliableState( iInReliableState ), iOutReliableState( iOutReliableState ), iSequenceNr( iSequenceNr ), flCurrentTime( flCurrentTime ) { }
+
+	int iInReliableState;
+	int iOutReliableState;
+	int iSequenceNr;
+	float flCurrentTime;
+};
+
 struct LocalData_t {
 	int m_iCommandNumber{ };
 
+	int m_iTickCount{ };
 	int m_MoveType{ };
 	int m_iTickbase{ };
 	int m_iAdjustedTickbase{ };
@@ -63,20 +74,17 @@ struct LocalData_t {
 		this->PredictedNetvars.m_vecVelocity = local->m_vecVelocity( );
 		this->PredictedNetvars.m_flDuckAmount = local->m_flDuckAmount( );
 	}
+
+	FORCEINLINE void RestorePredVars( CBasePlayer* local ) {
+		local->m_MoveType( ) = this->PredictedNetvars.m_MoveType;
+		local->m_fFlags( ) = this->PredictedNetvars.m_iFlags;
+		local->m_vecOrigin( ) = this->PredictedNetvars.m_vecOrigin;
+		local->m_vecVelocity( ) = local->m_vecAbsVelocity( ) = this->PredictedNetvars.m_vecVelocity;
+		local->m_flDuckAmount( ) = this->PredictedNetvars.m_flDuckAmount;
+	}
 };
 
 struct LocalData_t;
-
-struct SequenceObject_t
-{
-	SequenceObject_t( int iInReliableState, int iOutReliableState, int iSequenceNr, float flCurrentTime )
-		: iInReliableState( iInReliableState ), iOutReliableState( iOutReliableState ), iSequenceNr( iSequenceNr ), flCurrentTime( flCurrentTime ) { }
-
-	int iInReliableState;
-	int iOutReliableState;
-	int iSequenceNr;
-	float flCurrentTime;
-};
 
 struct HAVOCCTX {
 	Vector2D m_ve2ScreenSize{ };
@@ -119,6 +127,8 @@ struct HAVOCCTX {
 	bool m_bInPeek{ };
 	bool m_bSafeFromDefensive{ };
 	bool m_bUpdatingAnimations{ };
+	bool m_bProhibitSounds{ };
+	bool m_bUnload{ };
 	//bool m_bSpawningCmds{ };
 	//bool m_bReadPackets{ };
 	//bool m_bRepredict{ };
@@ -131,6 +141,7 @@ struct HAVOCCTX {
 	int m_iPenetrationDamage{ };
 	int m_iBombCarrier{ };
 	int m_iHighestTickbase{ };
+	int m_iLast4Deltas[ 4 ]{ };
 
 	int m_iRageRecordPerfTimer{ };
 	//int m_iRageScanTargetsPerfTimer{ };
@@ -138,9 +149,10 @@ struct HAVOCCTX {
 
 	uint8_t m_iLastID{ };
 
+	float m_flLastAnimTimeUpdate{ };
 	float m_iLastStopTime{ };
-	float m_flRealOutLatency{ };
-	float m_flServerLatency{ };
+	float m_flOutLatency{ };
+	int m_iRealOutLatencyTicks{ };
 	float m_flInLatency{ };
 	float m_flLerpTime{ };
 	float m_flFixedCurtime{ };
@@ -153,12 +165,12 @@ struct HAVOCCTX {
 
 		m_pLocal = static_cast< CBasePlayer * >( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetLocalPlayer( ) ) );
 
-		//return *reinterpret_cast< CBasePlayer** >( Offsets::Sigs.LocalPlayer );
+		//return *reinterpret_cast< CBasePlayer** >( Displacement::Sigs.LocalPlayer );
 	};
 
 	FORCEINLINE int CalcCorrectionTicks( ) {
 		return Interfaces::Globals->nMaxClients == 1
-			? -1 : TIME_TO_TICKS( std::clamp<float>( Offsets::Cvars.sv_clockcorrection_msecs->GetFloat( ) / 1000.f, 0.f, 1.f ) );
+			? -1 : TIME_TO_TICKS( std::clamp<float>( Displacement::Cvars.sv_clockcorrection_msecs->GetFloat( ) / 1000.f, 0.f, 1.f ) );
 	}
 };
 inline HAVOCCTX ctx;

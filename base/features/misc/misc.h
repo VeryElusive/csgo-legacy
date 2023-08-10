@@ -3,23 +3,6 @@
 #include "../../utils/math.h"
 #include "../../core/config.h"
 
-struct ExtrapolationData_t {
-	__forceinline constexpr ExtrapolationData_t( ) = default;
-
-	__forceinline ExtrapolationData_t(
-		CBasePlayer* const player
-	) : m_pPlayer{ player }, m_iFlags{ player->m_fFlags( ) },
-		m_bWasInAir{ !( player->m_fFlags( ) & FL_ONGROUND ) }, m_vecOrigin{ player->m_vecOrigin( ) },
-		m_vecVelocity{ player->m_vecVelocity( ) }, m_vecMins{ player->m_vecMins( ) }, m_vecMaxs{ player->m_vecMaxs( ) } {}
-
-	CBasePlayer* m_pPlayer{ };
-
-	int m_iFlags{ };
-	bool m_bWasInAir{ };
-
-	Vector m_vecOrigin{ }, m_vecVelocity{ }, m_vecMins{ }, m_vecMaxs{ };
-};
-
 class CMisc {
 public:
 	void Thirdperson( );
@@ -27,23 +10,25 @@ public:
 	void MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_type );
 	void NormalizeMovement( CUserCmd& cmd );
 	void AutoPeek( CUserCmd& cmd );
-	bool AutoStop( CUserCmd& cmd );
+	void AutoStop( CUserCmd& cmd );
 	bool InPeek( CUserCmd& cmd );
 	bool IsDefensivePositionHittable( );
-	void PlayerMove( ExtrapolationData_t& data );
 	void SlowWalk( CUserCmd& cmd );
 	void AutoStrafer( CUserCmd& cmd );
+	bool MicroMove( CUserCmd& cmd );
+	void LimitSpeed( CUserCmd& cmd, float speed, CBasePlayer* player = nullptr );
 
 	// FAKE PING
 	void UpdateIncomingSequences( INetChannel* pNetChannel );
 	void ClearIncomingSequences( );
 	void AddLatencyToNetChannel( INetChannel* pNetChannel, float flLatency );
-	
+
 	float TPFrac{ };
 	Vector OldOrigin{ };
 	bool AutoPeeking{ };
 
 	Vector2D m_ve2OldMovement{ };
+	Vector2D m_ve2SubAutostopMovement{ };
 	bool m_bWasJumping{ };
 private:
 	QAngle MovementAngle{ };
@@ -54,11 +39,9 @@ private:
 
 	void QuickStop( CUserCmd& cmd );
 	void FakeDuck( CUserCmd& cmd );
-	bool MicroMove( CUserCmd& cmd );
-	void LimitSpeed( CUserCmd& cmd, float speed );
+	void Stop( CUserCmd& cmd );
 
 	// FAKE PING
-	// Values
 	std::deque<SequenceObject_t> m_vecSequences = { };
 	/* our real incoming sequences count */
 	int m_nRealIncomingSequence = 0;

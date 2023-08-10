@@ -32,6 +32,22 @@ bool Math::Setup()
 
 	return true;
 }
+bool Math::Stub( ) {
+	const void* hVstdLib = MEM::GetModuleBaseHandle( VSTDLIB_DLL );
+
+	if ( hVstdLib == nullptr )
+		return false;
+
+	RandomInt = reinterpret_cast< RandomIntFn >( MEM::GetExportAddress( hVstdLib, _( "RandomInt" ) ) );
+	if ( RandomInt == nullptr )
+		return false;
+
+	RandomGaussianFloat = reinterpret_cast< RandomGaussianFloatFn >( MEM::GetExportAddress( hVstdLib, _( "RandomGaussianFloat" ) ) );
+	if ( RandomGaussianFloat == nullptr )
+		return false;
+
+	return false;
+}
 
 bool Math::ScreenTransform( const Vector& point, Vector& screen )
 {

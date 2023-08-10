@@ -1,7 +1,7 @@
 #pragma once
 #include "../../core/interfaces.h"
 #include "../../core/config.h"
-#include "../../core/menu/menu.h"
+#include "../../core/menu rework/menu.h"
 #include "../../utils/math.h"
 #include "../../utils/render.h"
 #include "../misc/misc.h"
@@ -192,14 +192,26 @@ struct TracerData_t {
 	CBasePlayer* m_pShooter{ };
 };
 
+inline bool PrecacheModel( const char* szModelName ) {
+	INetworkStringTable* m_pModelPrecacheTable = Interfaces::NetworkContainer->FindTable( _( "modelprecache" ) );
+
+	if ( m_pModelPrecacheTable ) {
+		Interfaces::ModelInfo->FindOrLoadModel( szModelName );
+		int idx = m_pModelPrecacheTable->AddString( false, szModelName );
+		if ( idx == INVALID_STRING_INDEX )
+			return false;
+	}
+	return true;
+}
+
 class CBulletTracers {
 public:
 	void Draw( );
 	void AddTracer( Vector start, Vector end, CBasePlayer* shooter ) {
-		const auto& col{ Config::Get<Color>( Vars.VisOtherBulletTracersCol ) };
-		//if ( !Config::Get<int>( Vars.VisBulletTracersType ) )
-		//	Interfaces::DebugOverlay->AddLineOverlay( start, end, col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), true, 5.f );
-		//else {
+		const auto& col{ shooter == ctx.m_pLocal ? Config::Get<Color>( Vars.VisLocalBulletTracersCol ) : Config::Get<Color>( Vars.VisOtherBulletTracersCol ) };
+		if ( !Config::Get<int>( Vars.VisBulletTracersType ) )
+			Interfaces::DebugOverlay->AddLineOverlay( start, end, col.Get<COLOR_R>( ), col.Get<COLOR_G>( ), col.Get<COLOR_B>( ), true, 5.f );
+		else {
 			m_vecTracers.erase(
 				std::remove_if(
 					m_vecTracers.begin( ), m_vecTracers.end( ),
@@ -212,10 +224,48 @@ public:
 						);
 
 			m_vecTracers.emplace_back( start, end, shooter );
-		//}
+		}
 	};
 private:
 	std::vector<TracerData_t> m_vecTracers{ };
+};
+
+enum EPrecipitationType : int {
+	PRECIPITATION_TYPE_RAIN = 0,
+	PRECIPITATION_TYPE_SNOW,
+	PRECIPITATION_TYPE_ASH,
+	PRECIPITATION_TYPE_SNOWFALL,
+	PRECIPITATION_TYPE_PARTICLERAIN,
+	PRECIPITATION_TYPE_PARTICLEASH,
+	PRECIPITATION_TYPE_PARTICLERAINSTORM,
+	PRECIPITATION_TYPE_PARTICLESNOW,
+	NUM_PRECIPITATION_TYPES
+};
+
+struct PrecipitationEntity_t {
+	CBaseEntity* m_pEntity;
+	IClientNetworkable* m_pNetworkable;
+	Vector m_vecMins;
+	Vector m_vecMaxs;
+	vcollide_t m_cCollide;
+	bool m_bCollideInit = false;
+	int m_iModelIndex = 0;
+	int m_iAbsModelIndex = 0;
+	EPrecipitationType m_iType;
+};
+
+class CWeather {
+public:
+	std::vector< PrecipitationEntity_t > m_vecPrecipitationList;
+	std::list< int > m_iModelIndexes;
+
+	void CreatePrecipEntity( PrecipitationEntity_t* ent_info, EPrecipitationType precip_mode );
+	void UnloadEntity( PrecipitationEntity_t& precip );
+	void RemoveUnusedEntities( EPrecipitationType type );
+	bool IsTypeActive( EPrecipitationType type );
+	void AppleWeatherEffect( EPrecipitationType type );
+	void CleanUp( );
+	void Main( );
 };
 
 class CVisuals {
@@ -234,11 +284,11 @@ public:
 	CPlayerESP PlayerESP;
 	CGrenadePrediction GrenadePrediction;
 	CBulletTracers BulletTracers;
+	CWeather Weather;
 
 	std::vector<std::shared_ptr< hitmarker_t >> hits;
 
 	Vector2D m_vec2KeyBindPos{ };
-
 private:
 	float m_flAutoPeekSize{ };
 

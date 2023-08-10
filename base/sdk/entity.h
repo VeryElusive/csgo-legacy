@@ -20,7 +20,7 @@
 
 #define OFFSETINDATAMAP( type, name ) \
     __forceinline type& name( ) { \
-		static auto ioffset = Offsets::FindInDataMap( this->GetPredDescMap( ), _( #name ) ); \
+		static auto ioffset = Displacement::FindInDataMap( this->GetPredDescMap( ), _( #name ) ); \
         return *( type* )( reinterpret_cast<std::uintptr_t>( this ) + ioffset ); \
     } \
 
@@ -167,53 +167,53 @@ public:
 class IHandleEntity
 {
 public:
-	virtual							~IHandleEntity() { }
-	virtual void					SetRefEHandle(const CBaseHandle& hRef) = 0;
-	virtual const CBaseHandle&		GetRefEHandle() const = 0;
+	virtual							~IHandleEntity( ) { }
+	virtual void					SetRefEHandle( const CBaseHandle& hRef ) = 0;
+	virtual const CBaseHandle& GetRefEHandle( ) const = 0;
 };
 
 class IClientUnknown;
 class ICollideable
 {
 public:
-	virtual IHandleEntity*			GetEntityHandle() = 0;
-	virtual const Vector&			OBBMins() const = 0;
-	virtual const Vector&			OBBMaxs() const = 0;
-	virtual void					WorldSpaceTriggerBounds(Vector* pVecWorldMins, Vector* pVecWorldMaxs) const = 0;
-	virtual bool					TestCollision(const Ray_t& ray, unsigned int fContentsMask, Trace_t& tr) = 0;
-	virtual bool					TestHitboxes(const Ray_t& ray, unsigned int fContentsMask, Trace_t& tr) = 0;
-	virtual int						GetCollisionModelIndex() = 0;
-	virtual const Model_t*			GetCollisionModel() = 0;
-	virtual Vector&					GetCollisionOrigin() const = 0;
-	virtual QAngle&					GetCollisionAngles() const = 0;
-	virtual const matrix3x4_t&		CollisionToWorldTransform() const = 0;
-	virtual ESolidType				GetSolid() const = 0;
-	virtual int						GetSolidFlags() const = 0;
-	virtual IClientUnknown*			GetIClientUnknown() = 0;
-	virtual int						GetCollisionGroup() const = 0;
+	virtual IHandleEntity* GetEntityHandle( ) = 0;
+	virtual const Vector& OBBMins( ) const = 0;
+	virtual const Vector& OBBMaxs( ) const = 0;
+	virtual void					WorldSpaceTriggerBounds( Vector* pVecWorldMins, Vector* pVecWorldMaxs ) const = 0;
+	virtual bool					TestCollision( const Ray_t& ray, unsigned int fContentsMask, Trace_t& tr ) = 0;
+	virtual bool					TestHitboxes( const Ray_t& ray, unsigned int fContentsMask, Trace_t& tr ) = 0;
+	virtual int						GetCollisionModelIndex( ) = 0;
+	virtual const Model_t* GetCollisionModel( ) = 0;
+	virtual Vector& GetCollisionOrigin( ) const = 0;
+	virtual QAngle& GetCollisionAngles( ) const = 0;
+	virtual const matrix3x4_t& CollisionToWorldTransform( ) const = 0;
+	virtual ESolidType				GetSolid( ) const = 0;
+	virtual int						GetSolidFlags( ) const = 0;
+	virtual IClientUnknown* GetIClientUnknown( ) = 0;
+	virtual int						GetCollisionGroup( ) const = 0;
 
 	/*
 	 * @note: should be equivalent to C_BaseAnimating::ComputeHitboxSurroundingBox
 	 * DOESNT NEEDED TRANSORMATION!
 	 * and bugged when trying to get non-player entity box
 	 */
-	virtual void					WorldSpaceSurroundingBounds(Vector* pVecMins, Vector* pVecMaxs) = 0;
-	virtual unsigned int			GetRequiredTriggerFlags() const = 0;
-	virtual const matrix3x4_t*		GetRootParentToWorldTransform() const = 0;
-	virtual void*					GetVPhysicsObject() const = 0;
+	virtual void					WorldSpaceSurroundingBounds( Vector* pVecMins, Vector* pVecMaxs ) = 0;
+	virtual unsigned int			GetRequiredTriggerFlags( ) const = 0;
+	virtual const matrix3x4_t* GetRootParentToWorldTransform( ) const = 0;
+	virtual void* GetVPhysicsObject( ) const = 0;
 };
 
 class IClientAlphaProperty
 {
 public:
-	virtual IClientUnknown* GetIClientUnknown() = 0;
-	virtual void SetAlphaModulation(std::uint8_t uAlpha) = 0;
-	virtual void SetRenderFX(int nRenderFx, int nRenderMode, float flStartTime = FLT_MAX, float flDuration = 0.0f) = 0;
-	virtual void SetFade(float flGlobalFadeScale, float flDistFadeStart, float flDistFadeEnd) = 0;
-	virtual void SetDesyncOffset(int nOffset) = 0;
-	virtual void EnableAlphaModulationOverride(bool bEnable) = 0;
-	virtual void EnableShadowAlphaModulationOverride(bool bEnable) = 0;
-	virtual void SetDistanceFadeMode(int nFadeMode) = 0;
+	virtual IClientUnknown* GetIClientUnknown( ) = 0;
+	virtual void SetAlphaModulation( std::uint8_t uAlpha ) = 0;
+	virtual void SetRenderFX( int nRenderFx, int nRenderMode, float flStartTime = FLT_MAX, float flDuration = 0.0f ) = 0;
+	virtual void SetFade( float flGlobalFadeScale, float flDistFadeStart, float flDistFadeEnd ) = 0;
+	virtual void SetDesyncOffset( int nOffset ) = 0;
+	virtual void EnableAlphaModulationOverride( bool bEnable ) = 0;
+	virtual void EnableShadowAlphaModulationOverride( bool bEnable ) = 0;
+	virtual void SetDistanceFadeMode( int nFadeMode ) = 0;
 };
 
 class IClientNetworkable;
@@ -224,13 +224,13 @@ class IClientThinkable;
 class IClientUnknown : public IHandleEntity
 {
 public:
-	virtual ICollideable*			GetCollideable() = 0;
-	virtual IClientNetworkable*		GetClientNetworkable() = 0;
-	virtual IClientRenderable*		GetClientRenderable() = 0;
-	virtual IClientEntity*			GetIClientEntity() = 0;
-	virtual CBaseEntity*			GetBaseEntity() = 0;
-	virtual IClientThinkable*		GetClientThinkable() = 0;
-	virtual IClientAlphaProperty*	GetClientAlphaProperty() = 0;
+	virtual ICollideable* GetCollideable( ) = 0;
+	virtual IClientNetworkable* GetClientNetworkable( ) = 0;
+	virtual IClientRenderable* GetClientRenderable( ) = 0;
+	virtual IClientEntity* GetIClientEntity( ) = 0;
+	virtual CBaseEntity* GetBaseEntity( ) = 0;
+	virtual IClientThinkable* GetClientThinkable( ) = 0;
+	virtual IClientAlphaProperty* GetClientAlphaProperty( ) = 0;
 };
 
 struct RenderableInstance_t
@@ -244,72 +244,72 @@ using ModelInstanceHandle_t = std::uint16_t;
 class IClientRenderable
 {
 public:
-	virtual IClientUnknown*			GetIClientUnknown() = 0;
-	virtual Vector&					GetRenderOrigin() = 0;
-	virtual QAngle&					GetRenderAngles() = 0;
-	virtual bool					ShouldDraw() = 0;
-	virtual int						GetRenderFlags() = 0;
-	virtual bool					IsTransparent() = 0;
-	virtual ClientShadowHandle_t	GetShadowHandle() const = 0;
-	virtual ClientRenderHandle_t&	RenderHandle() = 0;
-	virtual const Model_t*			GetModel() const = 0;
-	virtual int						DrawModel(int nFlags, const RenderableInstance_t& uInstance) = 0;
-	virtual int						GetBody() = 0;
-	virtual void					GetColorModulation(float* pColor) = 0;
-	virtual bool					LODTest() = 0;
-	virtual bool					SetupBones(matrix3x4_t* matBoneToWorldOut, int nMaxBones, int fBoneMask, float flCurrentTime) = 0;
-	virtual void					SetupWeights(const matrix3x4_t* matBoneToWorld, int nFlexWeightCount, float* flFlexWeights, float* flFlexDelayedWeights) = 0;
-	virtual void					DoAnimationEvents() = 0;
-	virtual void*					GetPVSNotifyInterface() = 0;
-	virtual void					GetRenderBounds(Vector& vecMins, Vector& vecMaxs) = 0;
-	virtual void					GetRenderBoundsWorldspace(Vector& vecMins, Vector& vecMaxs) = 0;
-	virtual void					GetShadowRenderBounds(Vector& vecMins, Vector& vecMaxs, int iShadowType) = 0;
-	virtual bool					ShouldReceiveProjectedTextures(int nFlags) = 0;
-	virtual bool					GetShadowCastDistance(float* pDistance, int iShadowType) const = 0;
-	virtual bool					GetShadowCastDirection(Vector* vecDirection, int iShadowType) const = 0;
-	virtual bool					IsShadowDirty() = 0;
-	virtual void					MarkShadowDirty(bool bDirty) = 0;
-	virtual IClientRenderable*		GetShadowParent() = 0;
-	virtual IClientRenderable*		FirstShadowChild() = 0;
-	virtual IClientRenderable*		NextShadowPeer() = 0;
-	virtual int						ShadowCastType() = 0;
-	virtual void					unused2() {}
-	virtual void					CreateModelInstance() = 0;
-	virtual ModelInstanceHandle_t	GetModelInstance() = 0;
-	virtual const matrix3x4_t&		RenderableToWorldTransform() = 0;
-	virtual int						LookupAttachment(const char* pAttachmentName) = 0;
-	virtual bool					GetAttachment(int nIndex, Vector& vecOrigin, QAngle& angView) = 0;
-	virtual bool					GetAttachment(int nIndex, matrix3x4_t& matAttachment) = 0;
-	virtual bool					ComputeLightingOrigin(int nAttachmentIndex, Vector vecModelLightingCenter, const matrix3x4_t& matrix, Vector& vecTransformedLightingCenter) = 0;
-	virtual float*					GetRenderClipPlane() = 0;
-	virtual int						GetSkin() = 0;
-	virtual void					OnThreadedDrawSetup() = 0;
-	virtual bool					UsesFlexDelayedWeights() = 0;
-	virtual void					RecordToolMessage() = 0;
-	virtual bool					ShouldDrawForSplitScreenUser(int nSlot) = 0;
-	virtual std::uint8_t			OverrideAlphaModulation(std::uint8_t uAlpha) = 0;
-	virtual std::uint8_t			OverrideShadowAlphaModulation(std::uint8_t uAlpha) = 0;
-	virtual void*					GetClientModelRenderable() = 0;
+	virtual IClientUnknown* GetIClientUnknown( ) = 0;
+	virtual Vector& GetRenderOrigin( ) = 0;
+	virtual QAngle& GetRenderAngles( ) = 0;
+	virtual bool					ShouldDraw( ) = 0;
+	virtual int						GetRenderFlags( ) = 0;
+	virtual bool					IsTransparent( ) = 0;
+	virtual ClientShadowHandle_t	GetShadowHandle( ) const = 0;
+	virtual ClientRenderHandle_t& RenderHandle( ) = 0;
+	virtual const Model_t* GetModel( ) const = 0;
+	virtual int						DrawModel( int nFlags, const RenderableInstance_t& uInstance ) = 0;
+	virtual int						GetBody( ) = 0;
+	virtual void					GetColorModulation( float* pColor ) = 0;
+	virtual bool					LODTest( ) = 0;
+	virtual bool					SetupBones( matrix3x4_t* matBoneToWorldOut, int nMaxBones, int fBoneMask, float flCurrentTime ) = 0;
+	virtual void					SetupWeights( const matrix3x4_t* matBoneToWorld, int nFlexWeightCount, float* flFlexWeights, float* flFlexDelayedWeights ) = 0;
+	virtual void					DoAnimationEvents( ) = 0;
+	virtual void* GetPVSNotifyInterface( ) = 0;
+	virtual void					GetRenderBounds( Vector& vecMins, Vector& vecMaxs ) = 0;
+	virtual void					GetRenderBoundsWorldspace( Vector& vecMins, Vector& vecMaxs ) = 0;
+	virtual void					GetShadowRenderBounds( Vector& vecMins, Vector& vecMaxs, int iShadowType ) = 0;
+	virtual bool					ShouldReceiveProjectedTextures( int nFlags ) = 0;
+	virtual bool					GetShadowCastDistance( float* pDistance, int iShadowType ) const = 0;
+	virtual bool					GetShadowCastDirection( Vector* vecDirection, int iShadowType ) const = 0;
+	virtual bool					IsShadowDirty( ) = 0;
+	virtual void					MarkShadowDirty( bool bDirty ) = 0;
+	virtual IClientRenderable* GetShadowParent( ) = 0;
+	virtual IClientRenderable* FirstShadowChild( ) = 0;
+	virtual IClientRenderable* NextShadowPeer( ) = 0;
+	virtual int						ShadowCastType( ) = 0;
+	virtual void					unused2( ) {}
+	virtual void					CreateModelInstance( ) = 0;
+	virtual ModelInstanceHandle_t	GetModelInstance( ) = 0;
+	virtual const matrix3x4_t& RenderableToWorldTransform( ) = 0;
+	virtual int						LookupAttachment( const char* pAttachmentName ) = 0;
+	virtual bool					GetAttachment( int nIndex, Vector& vecOrigin, QAngle& angView ) = 0;
+	virtual bool					GetAttachment( int nIndex, matrix3x4_t& matAttachment ) = 0;
+	virtual bool					ComputeLightingOrigin( int nAttachmentIndex, Vector vecModelLightingCenter, const matrix3x4_t& matrix, Vector& vecTransformedLightingCenter ) = 0;
+	virtual float* GetRenderClipPlane( ) = 0;
+	virtual int						GetSkin( ) = 0;
+	virtual void					OnThreadedDrawSetup( ) = 0;
+	virtual bool					UsesFlexDelayedWeights( ) = 0;
+	virtual void					RecordToolMessage( ) = 0;
+	virtual bool					ShouldDrawForSplitScreenUser( int nSlot ) = 0;
+	virtual std::uint8_t			OverrideAlphaModulation( std::uint8_t uAlpha ) = 0;
+	virtual std::uint8_t			OverrideShadowAlphaModulation( std::uint8_t uAlpha ) = 0;
+	virtual void* GetClientModelRenderable( ) = 0;
 };
 
 class CBaseClient;
 class IClientNetworkable
 {
 public:
-	virtual IClientUnknown*			GetIClientUnknown() = 0;
-	virtual void					Release() = 0;
-	virtual CBaseClient*			GetClientClass() = 0;
-	virtual void					NotifyShouldTransmit(int iState) = 0;
-	virtual void					OnPreDataChanged(EDataUpdateType updateType) = 0;
-	virtual void					OnDataChanged(EDataUpdateType updateType) = 0;
-	virtual void					PreDataUpdate(EDataUpdateType updateType) = 0;
-	virtual void					PostDataUpdate(EDataUpdateType updateType) = 0;
-	virtual void					OnDataUnchangedInPVS() = 0;
-	virtual bool					IsDormant() const = 0;
-	virtual int						GetIndex() const = 0;
-	virtual void					ReceiveMessage(EClassIndex classIndex, bf_read& msg) = 0;
-	virtual void*					GetDataTableBasePtr() = 0;
-	virtual void					SetDestroyedOnRecreateEntities() = 0;
+	virtual IClientUnknown* GetIClientUnknown( ) = 0;
+	virtual void					Release( ) = 0;
+	virtual CBaseClient* GetClientClass( ) = 0;
+	virtual void					NotifyShouldTransmit( int iState ) = 0;
+	virtual void					OnPreDataChanged( EDataUpdateType updateType ) = 0;
+	virtual void					OnDataChanged( EDataUpdateType updateType ) = 0;
+	virtual void					PreDataUpdate( EDataUpdateType updateType ) = 0;
+	virtual void					PostDataUpdate( EDataUpdateType updateType ) = 0;
+	virtual void					OnDataUnchangedInPVS( ) = 0;
+	virtual bool					IsDormant( ) const = 0;
+	virtual int						GetIndex( ) const = 0;
+	virtual void					ReceiveMessage( EClassIndex classIndex, bf_read& msg ) = 0;
+	virtual void* GetDataTableBasePtr( ) = 0;
+	virtual void					SetDestroyedOnRecreateEntities( ) = 0;
 };
 
 class CClientThinkHandle;
@@ -317,11 +317,11 @@ using ClientThinkHandle_t = CClientThinkHandle*;
 class IClientThinkable
 {
 public:
-	virtual IClientUnknown*			GetIClientUnknown() = 0;
-	virtual void					ClientThink() = 0;
-	virtual ClientThinkHandle_t		GetThinkHandle() = 0;
-	virtual void					SetThinkHandle(ClientThinkHandle_t hThink) = 0;
-	virtual void					Release() = 0;
+	virtual IClientUnknown* GetIClientUnknown( ) = 0;
+	virtual void					ClientThink( ) = 0;
+	virtual ClientThinkHandle_t		GetThinkHandle( ) = 0;
+	virtual void					SetThinkHandle( ClientThinkHandle_t hThink ) = 0;
+	virtual void					Release( ) = 0;
 };
 
 class IClientEntity : public IClientUnknown, public IClientRenderable, public IClientNetworkable, public IClientThinkable
@@ -352,17 +352,17 @@ class CWeaponCSBase;
 class CBaseEntity : public IClientEntity
 {
 public:
-	OFFSET( Vector, m_vecMins( ), Offsets::m_vecMins );
-	OFFSET( Vector, m_vecMaxs( ), Offsets::m_vecMaxs );
-	OFFSET( CBaseHandle, m_hOwnerEntity( ), Offsets::m_hOwnerEntity );
-	OFFSET( Vector, m_vecOrigin( ), Offsets::m_vecOrigin );
-	OFFSET( int, m_iTeamNum( ), Offsets::m_iTeamNum );
-	OFFSET( int, m_CollisionGroup( ), Offsets::m_CollisionGroup );
-	OFFSET( std::uint8_t, m_MoveType( ), Offsets::m_nRenderMode + 0x1 );
-	OFFSET( float, m_flSimulationTime( ), Offsets::m_flSimulationTime );
-	OFFSET( float, m_flOldSimulationTime( ), Offsets::m_flSimulationTime + 4 );
+	OFFSET( Vector, m_vecMins( ), Displacement::Netvars->m_vecMins );
+	OFFSET( Vector, m_vecMaxs( ), Displacement::Netvars->m_vecMaxs );
+	OFFSET( CBaseHandle, m_hOwnerEntity( ), Displacement::Netvars->m_hOwnerEntity );
+	OFFSET( Vector, m_vecOrigin( ), Displacement::Netvars->m_vecOrigin );
+	OFFSET( int, m_iTeamNum( ), Displacement::Netvars->m_iTeamNum );
+	OFFSET( int, m_CollisionGroup( ), Displacement::Netvars->m_CollisionGroup );
+	OFFSET( std::uint8_t, m_MoveType( ), Displacement::Netvars->m_nRenderMode + 0x1 );
+	OFFSET( float, m_flSimulationTime( ), Displacement::Netvars->m_flSimulationTime );
+	OFFSET( float, m_flOldSimulationTime( ), Displacement::Netvars->m_flSimulationTime + 4 );
 
-	OFFSET( int, m_iHealth( ), Offsets::m_iHealth ); // part of dtbaseplayer dont ask
+	OFFSET( int, m_iHealth( ), Displacement::Netvars->m_iHealth ); // part of dtbaseplayer dont ask
 
 	FORCEINLINE int MaxHealth( ) {
 		// @ida: client.dll @ [FF 90 ? ? ? ? 85 C0 0F 8F ? ? ? ? 80 + 0x2] / sizeof(std::uintptr_t)
@@ -391,7 +391,7 @@ public:
 	}
 
 	FORCEINLINE int& TakeDamage( ) {
-		static const std::uintptr_t uTakeDamageOffset = *reinterpret_cast< std::uintptr_t* >( Offsets::Sigs.TakeDamageOffset + 0x2 );
+		static const std::uintptr_t uTakeDamageOffset = *reinterpret_cast< std::uintptr_t* >( Displacement::Sigs.TakeDamageOffset + 0x2 );
 		return *reinterpret_cast< int* >( reinterpret_cast< std::uintptr_t >( this ) + uTakeDamageOffset );
 	}
 
@@ -404,16 +404,16 @@ public:
 
 class CBaseCSGrenadeProjectile : public CBaseEntity { // whack
 public:
-	OFFSET( Vector, m_vecVelocity( ), Offsets::m_vecVelocityGRENADE );
-	OFFSET( int, m_nExplodeEffectTickBegin( ), Offsets::m_nExplodeEffectTickBegin );
+	OFFSET( Vector, m_vecVelocity( ), Displacement::Netvars->m_vecVelocityGRENADE );
+	OFFSET( int, m_nExplodeEffectTickBegin( ), Displacement::Netvars->m_nExplodeEffectTickBegin );
 	OFFSET( float, m_flSpawnTime( ), 0x20 );
 };
 
 class CBaseCombatCharacter : public CBaseEntity
 {
 public:
-	OFFSET( CBaseHandle, m_hActiveWeapon( ), Offsets::m_hActiveWeapon );
-	OFFSET( CBaseHandle*, m_hMyWeapons( ), Offsets::m_hMyWeapons );
+	OFFSET( CBaseHandle, m_hActiveWeapon( ), Displacement::Netvars->m_hActiveWeapon );
+	OFFSET( CBaseHandle*, m_hMyWeapons( ), Displacement::Netvars->m_hMyWeapons );
 };
 
 class CIKContext
@@ -426,30 +426,30 @@ public:
 
 	static void Construct( CIKContext* ik ) {
 		//55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D 8F
-		reinterpret_cast< void( __fastcall* )( void* ) >( Offsets::Sigs.CIKContext__Construct )( ik );
+		reinterpret_cast< void( __fastcall* )( void* ) >( Displacement::Sigs.CIKContext__Construct )( ik );
 	}
 
 	void Init( const CStudioHdr* hdr, const QAngle& angles, const Vector& origin, float time, int framecount, int bonemask ) {
 		//55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D 8F
 		reinterpret_cast< void( __thiscall* )( void*, const CStudioHdr*, const QAngle&, const Vector&, float, int, int ) >
-			( Offsets::Sigs.CIKContext__Init )( this, hdr, angles, origin, time, framecount, bonemask );
+			( Displacement::Sigs.CIKContext__Init )( this, hdr, angles, origin, time, framecount, bonemask );
 	}
 
 	void UpdateTargets( Vector* pos, Quaternion* q, matrix3x4_t* bones, void* computed ) {
 		// 55 8B EC 83 E4 F0 81 EC ? ? ? ? 33 D2 89 4C
 		reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, matrix3x4_t*, void* ) >
-			( Offsets::Sigs.CIKContext__UpdateTargets )( this, pos, q, bones, computed );
+			( Displacement::Sigs.CIKContext__UpdateTargets )( this, pos, q, bones, computed );
 	}
 
 	void SolveDependencies( Vector* pos, Quaternion* q, matrix3x4_t* bones, void* computed ) {
 		// 55 8B EC 83 E4 F0 81 EC ? ? ? ? 8B 81
 		reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, matrix3x4_t*, void* ) >
-			( Offsets::Sigs.CIKContext__SolveDependencies )( this, pos, q, bones, computed );
+			( Displacement::Sigs.CIKContext__SolveDependencies )( this, pos, q, bones, computed );
 	}
 
 	void AddDependencies( mstudioseqdesc_t& seqdesc, int iSequence, float flCycle, const float poseParameters[ ], float flWeight ) {
 		// 55 8B EC 81 EC ? ? ? ? 53 56 57 8B F9 0F 28 CB F3 0F 11 4D
-		const auto fn{ reinterpret_cast< void( __thiscall* )( void*, mstudioseqdesc_t&, int, float, const float[ ], float ) >( Offsets::Sigs.CIKContext__AddDependencies ) };
+		const auto fn{ reinterpret_cast< void( __thiscall* )( void*, mstudioseqdesc_t&, int, float, const float[ ], float ) >( Displacement::Sigs.CIKContext__AddDependencies ) };
 
 		__asm
 		{
@@ -466,7 +466,7 @@ public:
 	void CopyTo( CIKContext* other, const unsigned short* iRemapping ) {
 		// 55 8B EC 83 EC 24 8B 45 08 57 8B F9 89 7D F4 85 C0
 		reinterpret_cast< void( __thiscall* )( void*, CIKContext*, const unsigned short* ) >
-			( Offsets::Sigs.CIKContext__CopyTo )( this, other, iRemapping );
+			( Displacement::Sigs.CIKContext__CopyTo )( this, other, iRemapping );
 	}
 };
 
@@ -493,54 +493,54 @@ class CBoneMergeCache;
 class CBasePlayer : public CBaseCombatCharacter
 {
 public:
-	OFFSET( char, m_lifeState( ), Offsets::m_lifeState );
-	OFFSET( int, m_fFlags( ), Offsets::m_fFlags );
-	OFFSET( float, m_flFlashDuration( ), Offsets::m_flFlashDuration );
-	OFFSET( bool, m_bIsScoped( ), Offsets::m_bIsScoped );
-	OFFSET( QAngle, m_viewPunchAngle( ), Offsets::m_viewPunchAngle );
-	OFFSET( QAngle, m_aimPunchAngle( ), Offsets::m_aimPunchAngle );
-	OFFSET( Vector, m_vecViewOffset( ), Offsets::m_vecViewOffset );
-	OFFSET( CPlayerState, pl( ), Offsets::pl );
-	OFFSET( int, m_ArmorValue( ), Offsets::m_ArmorValue );
-	OFFSET( bool, m_bHasHelmet( ), Offsets::m_bHasHelmet );
-	OFFSET( bool, m_bHasHeavyArmor( ), Offsets::m_bHasHeavyArmor );
-	OFFSET( int, m_nTickBase( ), Offsets::m_nTickBase );
-	OFFSET( int, m_nFinalPredictedTick( ), Offsets::m_nTickBase + 0x4 );
-	OFFSET( float, m_flVelocityModifier( ), Offsets::m_flVelocityModifier );
-	OFFSET( bool, m_bWaitForNoAttack( ), Offsets::m_bWaitForNoAttack );
-	OFFSET( int, m_iPlayerState( ), Offsets::m_iPlayerState );
-	OFFSET( bool, m_bIsDefusing( ), Offsets::m_bIsDefusing );
-	OFFSET( float, m_flNextAttack( ), Offsets::m_flNextAttack );
-	OFFSET( bool, m_bClientSideAnimation( ), Offsets::m_bClientSideAnimation );
-	OFFSET( Vector, m_vecVelocity( ), Offsets::m_vecVelocity );
-	OFFSET( int, m_nHitboxSet( ), Offsets::m_nHitboxSet );
-	OFFSET( CBaseHandle, m_hViewModel( ), Offsets::m_hViewModel );
-	OFFSET( CUserCmd*, CurrentCommand( ), Offsets::m_hViewEntity - 0x4 );
-	OFFSET( int, m_vphysicsCollisionState( ), Offsets::m_vphysicsCollisionState );
-	OFFSET( Vector, m_aimPunchAngleVel( ), Offsets::m_aimPunchAngleVel );
-	OFFSET( float, m_flDuckSpeed( ), Offsets::m_flDuckSpeed );
-	OFFSET( float, m_flDuckAmount( ), Offsets::m_flDuckAmount );
-	OFFSET( float, m_flLowerBodyYawTarget( ), Offsets::m_flLowerBodyYawTarget );
-	OFFSET( float, m_flSpawnTime( ), Offsets::m_iAddonBits - 0x4 );
-	OFFSET( QAngle, m_vecRenderAngles( ), Offsets::deadflag + 0x4 );
-	OFFSET( QAngle, m_angEyeAngles( ), Offsets::m_angEyeAngles );
-	OFFSET( bool, m_bGunGameImmunity( ), Offsets::m_bGunGameImmunity );
-	OFFSET( int, m_hGroundEntity( ), Offsets::m_hGroundEntity );
-	OFFSET( float, m_flThirdpersonRecoil( ), Offsets::m_flThirdpersonRecoil );
-	OFFSET( float, m_flCycle( ), Offsets::m_flCycle );
-	OFFSET( int, m_nSequence( ), Offsets::m_nSequence );
-	OFFSET( bool, m_bStrafing( ), Offsets::m_bStrafing );
-	OFFSET( int, m_iMoveState( ), Offsets::m_iMoveState );
-	OFFSET( bool, m_bIsWalking( ), Offsets::m_bIsWalking );
-	OFFSET( int, m_nModelIndex( ), Offsets::m_nModelIndex );
-	OFFSET( float*, m_flEncodedController( ), Offsets::m_flEncodedController );
-	OFFSET( uint8_t, m_hRender( ), Offsets::m_nRenderMode + 0x17 );// 0x172
-	OFFSET( uint8_t, m_VisibilityBits( ), Offsets::m_nRenderMode + 0x19 ); // 0x174
+	OFFSET( char, m_lifeState( ), Displacement::Netvars->m_lifeState );
+	OFFSET( int, m_fFlags( ), Displacement::Netvars->m_fFlags );
+	OFFSET( float, m_flFlashDuration( ), Displacement::Netvars->m_flFlashDuration );
+	OFFSET( bool, m_bIsScoped( ), Displacement::Netvars->m_bIsScoped );
+	OFFSET( QAngle, m_viewPunchAngle( ), Displacement::Netvars->m_viewPunchAngle );
+	OFFSET( QAngle, m_aimPunchAngle( ), Displacement::Netvars->m_aimPunchAngle );
+	OFFSET( Vector, m_vecViewOffset( ), Displacement::Netvars->m_vecViewOffset );
+	OFFSET( CPlayerState, pl( ), Displacement::Netvars->pl );
+	OFFSET( int, m_ArmorValue( ), Displacement::Netvars->m_ArmorValue );
+	OFFSET( bool, m_bHasHelmet( ), Displacement::Netvars->m_bHasHelmet );
+	OFFSET( bool, m_bHasHeavyArmor( ), Displacement::Netvars->m_bHasHeavyArmor );
+	OFFSET( int, m_nTickBase( ), Displacement::Netvars->m_nTickBase );
+	OFFSET( int, m_nFinalPredictedTick( ), Displacement::Netvars->m_nTickBase + 0x4 );
+	OFFSET( float, m_flVelocityModifier( ), Displacement::Netvars->m_flVelocityModifier );
+	OFFSET( bool, m_bWaitForNoAttack( ), Displacement::Netvars->m_bWaitForNoAttack );
+	OFFSET( int, m_iPlayerState( ), Displacement::Netvars->m_iPlayerState );
+	OFFSET( bool, m_bIsDefusing( ), Displacement::Netvars->m_bIsDefusing );
+	OFFSET( float, m_flNextAttack( ), Displacement::Netvars->m_flNextAttack );
+	OFFSET( bool, m_bClientSideAnimation( ), Displacement::Netvars->m_bClientSideAnimation );
+	OFFSET( Vector, m_vecVelocity( ), Displacement::Netvars->m_vecVelocity );
+	OFFSET( int, m_nHitboxSet( ), Displacement::Netvars->m_nHitboxSet );
+	OFFSET( CBaseHandle, m_hViewModel( ), Displacement::Netvars->m_hViewModel );
+	OFFSET( CUserCmd*, CurrentCommand( ), Displacement::Netvars->m_hViewEntity - 0x4 );
+	OFFSET( int, m_vphysicsCollisionState( ), Displacement::Netvars->m_vphysicsCollisionState );
+	OFFSET( Vector, m_aimPunchAngleVel( ), Displacement::Netvars->m_aimPunchAngleVel );
+	OFFSET( float, m_flDuckSpeed( ), Displacement::Netvars->m_flDuckSpeed );
+	OFFSET( float, m_flDuckAmount( ), Displacement::Netvars->m_flDuckAmount );
+	OFFSET( float, m_flLowerBodyYawTarget( ), Displacement::Netvars->m_flLowerBodyYawTarget );
+	OFFSET( float, m_flSpawnTime( ), Displacement::Netvars->m_iAddonBits - 0x4 );
+	OFFSET( QAngle, m_vecRenderAngles( ), Displacement::Netvars->deadflag + 0x4 );
+	OFFSET( QAngle, m_angEyeAngles( ), Displacement::Netvars->m_angEyeAngles );
+	OFFSET( bool, m_bGunGameImmunity( ), Displacement::Netvars->m_bGunGameImmunity );
+	OFFSET( int, m_hGroundEntity( ), Displacement::Netvars->m_hGroundEntity );
+	OFFSET( float, m_flThirdpersonRecoil( ), Displacement::Netvars->m_flThirdpersonRecoil );
+	OFFSET( float, m_flCycle( ), Displacement::Netvars->m_flCycle );
+	OFFSET( int, m_nSequence( ), Displacement::Netvars->m_nSequence );
+	OFFSET( bool, m_bStrafing( ), Displacement::Netvars->m_bStrafing );
+	OFFSET( int, m_iMoveState( ), Displacement::Netvars->m_iMoveState );
+	OFFSET( bool, m_bIsWalking( ), Displacement::Netvars->m_bIsWalking );
+	OFFSET( int, m_nModelIndex( ), Displacement::Netvars->m_nModelIndex );
+	OFFSET( float*, m_flEncodedController( ), Displacement::Netvars->m_flEncodedController );
+	OFFSET( uint8_t, m_hRender( ), Displacement::Netvars->m_nRenderMode + 0x17 );// 0x172
+	OFFSET( uint8_t, m_VisibilityBits( ), Displacement::Netvars->m_nRenderMode + 0x19 ); // 0x174
 	OFFSET( bool, m_bUseNewAnimstate( ), 0x39E1 );
 	OFFSET( CAnimationLayer*, m_AnimationLayers( ), 0x2970 );
 	OFFSET( CCommandContext, m_CmdContext( ), 0x258u );
 	OFFSET( int, m_nSimulationTick( ), 0x2a8u );
-	OFFSET( unsigned long, g_iModelBoneCounter( ), Offsets::Sigs.InvalidateBoneCache + 0x1B );// havent tested but - 0x10
+	OFFSET( unsigned long, g_iModelBoneCounter( ), Displacement::Sigs.InvalidateBoneCache + 0x1B );// havent tested but - 0x10
 	OFFSET( int, m_iOcclusionFrame( ), 0xa30u );
 	OFFSET( std::uint32_t, m_iOcclusionFlags( ), 0xa28u );
 	OFFSET( std::uint8_t, m_iEntClientFlags( ), 0x68u );
@@ -572,41 +572,41 @@ public:
 
 	void SetAbsOrigin( Vector origin ) {
 		/*Ignoring unreasonable position (%f,%f,%f) from vphysics! (entity %s)\n*/
-		reinterpret_cast< void( __thiscall* )( void*, const Vector& ) >( Offsets::Sigs.SetAbsOrigin )( this, origin );
-	}	
-	
+		reinterpret_cast< void( __thiscall* )( void*, const Vector& ) >( Displacement::Sigs.SetAbsOrigin )( this, origin );
+	}
+
 	void SetCollisionBounds( const Vector mins, const Vector maxs ) {
-		reinterpret_cast< void( __thiscall* )( ICollideable*, const Vector&, const Vector& ) >( Offsets::Sigs.SetCollisionBounds )( GetCollideable( ), mins, maxs );
+		reinterpret_cast< void( __thiscall* )( ICollideable*, const Vector&, const Vector& ) >( Displacement::Sigs.SetCollisionBounds )( GetCollideable( ), mins, maxs );
 	}
 
 	void SetAbsAngles( QAngle angles ) {
-		reinterpret_cast< void( __thiscall* )( void*, const QAngle& ) >( Offsets::Sigs.SetAbsAngles )( this, angles );
+		reinterpret_cast< void( __thiscall* )( void*, const QAngle& ) >( Displacement::Sigs.SetAbsAngles )( this, angles );
 	}
 
 	void SetAbsVelocity( Vector vel ) {
-		reinterpret_cast< void( __thiscall* )( void*, const Vector& ) >( Offsets::Sigs.SetAbsVelocity )( this, vel );
+		reinterpret_cast< void( __thiscall* )( void*, const Vector& ) >( Displacement::Sigs.SetAbsVelocity )( this, vel );
 	}
 
 	void InvalidatePhysicsRecursive( int change ) {
-		reinterpret_cast< void( __thiscall* )( void*, int ) >( Offsets::Sigs.InvalidatePhysicsRecursive )( this, change );
+		reinterpret_cast< void( __thiscall* )( void*, int ) >( Displacement::Sigs.InvalidatePhysicsRecursive )( this, change );
 	}
 
 	void SetupBonesAttachmentHelper( ) {
-		reinterpret_cast< void( __thiscall* )( void*, CStudioHdr* ) >( Offsets::Sigs.SetupBones_AttachmentHelper )( this, this->m_pStudioHdr( ) );
+		reinterpret_cast< void( __thiscall* )( void*, CStudioHdr* ) >( Displacement::Sigs.SetupBones_AttachmentHelper )( this, this->m_pStudioHdr( ) );
 	}
 
 	void UpdateClientsideAnimations( ) {
 		return MEM::CallVFunc<void>( this, 218 );
-	}	
+	}
 
 	float GetLayerSequenceCycleRate( CAnimationLayer* layer, int32_t sequence ) {
 		return MEM::CallVFunc<float>( this, 217, layer, sequence );
 	}
-	
+
 	void UpdateDispatchLayer( CAnimationLayer* layer, CStudioHdr* hdr, int seq ) {
 		return MEM::CallVFunc<void>( this, 247, layer, hdr, seq );
-	}	
-	
+	}
+
 	void CalculateIKLocks( float simtime ) {
 		return MEM::CallVFunc<void>( this, 193, simtime );
 	}
@@ -622,7 +622,7 @@ public:
 	}
 
 	std::array<float, MAXSTUDIOPOSEPARAM>& m_flPoseParameter( ) {
-		return *reinterpret_cast< std::array<float, MAXSTUDIOPOSEPARAM>* >( reinterpret_cast< std::uintptr_t >( this ) + Offsets::m_flPoseParameter );
+		return *reinterpret_cast< std::array<float, MAXSTUDIOPOSEPARAM>* >( reinterpret_cast< std::uintptr_t >( this ) + Displacement::Netvars->m_flPoseParameter );
 	}
 
 	bool IsTeammate( CBasePlayer* Player = nullptr );
@@ -773,15 +773,15 @@ public:
 class CBaseCombatWeapon : public CBaseEntity
 {
 public:
-	OFFSET( short, m_iItemDefinitionIndex( ), Offsets::m_iItemDefinitionIndex );
-	OFFSET( int, m_iBurstShotsRemaining( ), Offsets::m_iBurstShotsRemaining );
-	OFFSET( float, m_fNextBurstShot( ), Offsets::m_fNextBurstShot );
-	OFFSET( int, m_iClip1( ), Offsets::m_iClip1 );
+	OFFSET( short, m_iItemDefinitionIndex( ), Displacement::Netvars->m_iItemDefinitionIndex );
+	OFFSET( int, m_iBurstShotsRemaining( ), Displacement::Netvars->m_iBurstShotsRemaining );
+	OFFSET( float, m_fNextBurstShot( ), Displacement::Netvars->m_fNextBurstShot );
+	OFFSET( int, m_iClip1( ), Displacement::Netvars->m_iClip1 );
 	//OFFSET( bool, m_bReloading( ), 0x32A5 );
-	OFFSET( float, m_flNextPrimaryAttack( ), Offsets::m_flNextPrimaryAttack );
-	OFFSET( float, m_flNextSecondaryAttack( ), Offsets::m_flNextSecondaryAttack );
-	OFFSET( int, m_nSequence( ), Offsets::m_nSequence );
-	OFFSET( float, m_flPostponeFireReadyTime( ), Offsets::m_flPostponeFireReadyTime );
+	OFFSET( float, m_flNextPrimaryAttack( ), Displacement::Netvars->m_flNextPrimaryAttack );
+	OFFSET( float, m_flNextSecondaryAttack( ), Displacement::Netvars->m_flNextSecondaryAttack );
+	OFFSET( int, m_nSequence( ), Displacement::Netvars->m_nSequence );
+	OFFSET( float, m_flPostponeFireReadyTime( ), Displacement::Netvars->m_flPostponeFireReadyTime );
 
 	std::string GetIcon( );
 	std::string GetGunName( );
@@ -790,7 +790,7 @@ public:
 class CTEFireBullets
 {
 public:
-	std::byte	pad0[0x10];				//0x0000
+	std::byte	pad0[ 0x10 ];				//0x0000
 	int			nPlayer;				//0x0010
 	int			nItemDefinitionIndex;	//0x0014
 	Vector		vecOrigin;				//0x0018
@@ -808,22 +808,22 @@ public:
 class CWeaponCSBase : public CBaseCombatWeapon
 {
 public:
-	OFFSET( int, m_zoomLevel( ), Offsets::m_zoomLevel );
-	OFFSET( int, m_nSmokeEffectTickBegin( ), Offsets::m_nSmokeEffectTickBegin );
-	OFFSET( float, m_fAccuracyPenalty( ), Offsets::m_fAccuracyPenalty );
-	OFFSET( float, m_flRecoilIndex( ), Offsets::m_flRecoilIndex );
-	OFFSET( float, m_fThrowTime( ), Offsets::m_fThrowTime );
-	OFFSET( float, m_flThrowStrength( ), Offsets::m_flThrowStrength );
-	OFFSET( bool, m_bPinPulled( ), Offsets::m_bPinPulled );
-	OFFSET( CBaseHandle, m_hWeaponWorldModel( ), Offsets::m_hWeaponWorldModel );
+	OFFSET( int, m_zoomLevel( ), Displacement::Netvars->m_zoomLevel );
+	OFFSET( int, m_nSmokeEffectTickBegin( ), Displacement::Netvars->m_nSmokeEffectTickBegin );
+	OFFSET( float, m_fAccuracyPenalty( ), Displacement::Netvars->m_fAccuracyPenalty );
+	OFFSET( float, m_flRecoilIndex( ), Displacement::Netvars->m_flRecoilIndex );
+	OFFSET( float, m_fThrowTime( ), Displacement::Netvars->m_fThrowTime );
+	OFFSET( float, m_flThrowStrength( ), Displacement::Netvars->m_flThrowStrength );
+	OFFSET( bool, m_bPinPulled( ), Displacement::Netvars->m_bPinPulled );
+	OFFSET( CBaseHandle, m_hWeaponWorldModel( ), Displacement::Netvars->m_hWeaponWorldModel );
 
 	bool IsGrenade( );
 	bool IsKnife( );
 
 	CCSWeaponData* GetCSWeaponData( ) {
 		return MEM::CallVFunc<CCSWeaponData*>( this, 446 );// @xref: "effects/nightvision"
-	}	
-	
+	}
+
 	void UpdateAccuracyPenalty( ) {
 		return MEM::CallVFunc<void>( this, 471 );
 	}
@@ -863,8 +863,8 @@ public:
 class CBaseViewModel : public CBasePlayer
 {
 public:
-	OFFSET( CBaseHandle, m_hViewModelWeapon( ), Offsets::m_hWeapon );
-	OFFSET( int, m_nAnimationParity( ), Offsets::m_nAnimationParity );
+	OFFSET( CBaseHandle, m_hViewModelWeapon( ), Displacement::Netvars->m_hWeapon );
+	OFFSET( int, m_nAnimationParity( ), Displacement::Netvars->m_nAnimationParity );
 
 	OFFSETINDATAMAP( float, m_flCycle );
 	OFFSETINDATAMAP( float, m_flAnimTime );
@@ -879,5 +879,5 @@ public:
 class CBreakableSurface : public CBaseEntity, public IBreakableWithPropData
 {
 public:
-	OFFSET( bool, m_bIsBroken( ), Offsets::m_bIsBroken );
+	OFFSET( bool, m_bIsBroken( ), Displacement::Netvars->m_bIsBroken );
 };

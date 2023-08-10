@@ -17,7 +17,7 @@ public:
 	void RestoreNetvars( int slot );
 	void StoreNetvars( int slot );
 
-	bool AddToDataMap( );
+	bool ModifyDatamap( );
 
 	float Spread{ };
 	float Inaccuracy{ };

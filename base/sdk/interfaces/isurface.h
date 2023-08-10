@@ -181,6 +181,11 @@ public:
 		MEM::CallVFunc<void>(this, 106, n, pVertice, bClipVertices);
 	}
 
+	void DrawTexturedPolyLine( const Vertex_t* p, int n )
+	{
+		MEM::CallVFunc<void>( this, 104, p, n );
+	}
+
 	// fix dis
 	void SetClipRect( int x, int y, int w, int h )
 	{

@@ -18,27 +18,27 @@ public:
 
     void Init( CBasePlayer* pOwner ) {
         // sig is massively long and not unique
-        reinterpret_cast< void( __thiscall* )( void*, CBasePlayer* ) > ( Offsets::Sigs.CBoneMergeCache__Init )( this, pOwner );
+        reinterpret_cast< void( __thiscall* )( void*, CBasePlayer* ) > ( Displacement::Sigs.CBoneMergeCache__Init )( this, pOwner );
     }     
     
     static void Construct( CBoneMergeCache* bmc ) {
         // 56 8B F1 0F 57 C0 C7 86 ? ? ? ? ? ? ? ? C7 86
-        reinterpret_cast< void( __thiscall* )( void* ) > ( Offsets::Sigs.CBoneMergeCache__Construct )( bmc );
+        reinterpret_cast< void( __thiscall* )( void* ) > ( Displacement::Sigs.CBoneMergeCache__Construct )( bmc );
     }        
     
     void MergeMatchingPoseParams( ) {
         // 55 8B EC 83 EC 0C 53 56 8B F1 57 89 75 F8 E8
-        reinterpret_cast< void( __thiscall* )( void* ) > ( Offsets::Sigs.CBoneMergeCache__MergeMatchingPoseParams )( this );
+        reinterpret_cast< void( __thiscall* )( void* ) > ( Displacement::Sigs.CBoneMergeCache__MergeMatchingPoseParams )( this );
     }    
     
     void CopyFromFollow( Vector* followPos, Quaternion* followQ, int boneMask, Vector* myPos, Quaternion* myQ ) {
         // 55 8B EC 83 EC 08 53 56 57 8B F9 89 7D F8 E8 ? ? ? ? 83 7F 10 00 0F 84
-        reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, int, Vector*, Quaternion* ) > ( Offsets::Sigs.CBoneMergeCache__CopyFromFollow )( this, followPos, followQ, boneMask, myPos, myQ );
+        reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, int, Vector*, Quaternion* ) > ( Displacement::Sigs.CBoneMergeCache__CopyFromFollow )( this, followPos, followQ, boneMask, myPos, myQ );
     }
 
     void CopyToFollow( Vector* myPos, Quaternion* myQ, int boneMask, Vector* followPos, Quaternion* followQ ) {
         // 55 8B EC 83 EC 08 53 56 57 8B F9 89 7D F8 E8 ? ? ? ? 83 7F 10 00 0F 84
-        reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, int, Vector*, Quaternion* ) > ( Offsets::Sigs.CBoneMergeCache__CopyToFollow )( this, myPos, myQ, boneMask, followPos, followQ );
+        reinterpret_cast< void( __thiscall* )( void*, Vector*, Quaternion*, int, Vector*, Quaternion* ) > ( Displacement::Sigs.CBoneMergeCache__CopyToFollow )( this, myPos, myQ, boneMask, followPos, followQ );
     }
 
     uint8_t pad1[ 0xA0 ];
@@ -64,12 +64,10 @@ void CAnimationSys::GetSkeleton( CBasePlayer* player, CStudioHdr* hdr, Vector* p
     for ( int i = 0; i < player->m_iAnimationLayersCount( ); i++ )
         layer[ i ] = MAX_OVERLAYS;
 
-    //IsActive on client differs from server btw ( m_fFlags & ANIM_LAYER_ACTIVE ) on server rather than order != MAX_OVERLAYS
     for ( int i = 0; i < player->m_iAnimationLayersCount( ); i++ ) {
-        CAnimationLayer& pLayer = player->m_AnimationLayers( )[ i ];
-        const auto& order{ pLayer.iOrder };
-        if ( ( pLayer.flWeight > 0 ) && ( order != MAX_OVERLAYS ) && order >= 0 && order < player->m_iAnimationLayersCount( ) )
-            layer[ order ] = i;
+        CAnimationLayer& pLayer{ player->m_AnimationLayers( )[ i ] };
+        if ( ( pLayer.flWeight > 0 ) && pLayer.IsActive( ) && pLayer.iOrder >= 0 && pLayer.iOrder < player->m_iAnimationLayersCount( ) )
+            layer[ pLayer.iOrder ] = i;
     }
 
     // check if this is a player with a valid weapon

@@ -19,7 +19,6 @@ inline void PlayerEntry::OnNewRound( ) {
 
 	OutOfDormancy( );
 
-	//this->m_bBot = false;
 	this->m_iMissedShots = 0;
 
 	this->m_flSpawnTime = this->m_pPlayer->m_flSpawnTime( );
@@ -28,6 +27,7 @@ inline void PlayerEntry::OnNewRound( ) {
 inline void PlayerEntry::OutOfDormancy( ) {
 	this->m_optPreviousData.reset( );
 	this->m_pRecords.clear( );
+	this->m_flPreviousYaws.clear( );
 	// idc about matrix itll just get updated anyway before render
 
 	this->m_iLastNewCmds = 0;
@@ -96,7 +96,7 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 	if ( curLayers[ 4 ].flCycle > 0.f && curLayers[ 4 ].flCycle < 0.99f ) {
 		this->m_flLeftGroundTime = this->m_cAnimData.m_flSimulationTime - TICKS_TO_TIME( curLayers[ 4 ].flCycle / ( Interfaces::Globals->flIntervalPerTick * curLayers[ 4 ].flPlaybackRate ) );
 		if ( !( this->m_cAnimData.m_iFlags & FL_ONGROUND ) )
-			this->m_bFixJumpFall = this->m_flLeftGroundTime >= previous->m_flSimulationTime;
+			this->m_bFixJumpFall = this->m_flLeftGroundTime >= this->m_cAnimData.m_flSimulationTime - TICKS_TO_TIME( this->m_iNewCmds );
 	}
 
 	auto chokedTime{ TICKS_TO_TIME( this->m_iNewCmds ) };
@@ -106,9 +106,7 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 		&& this->m_iNewCmds < 16 )
 		curVel = ( this->m_cAnimData.m_vecOrigin - previous->m_vecOrigin ) / chokedTime;
 
-	const auto maxCurrentSpeed{ player->m_flMaxSpeed( ) };
-	if ( !maxCurrentSpeed )
-		return;
+	auto maxCurrentSpeed{ player->m_flMaxSpeed( ) };
 
 	if ( this->m_cAnimData.m_iFlags & FL_ONGROUND
 		&& previous->m_iFlags & FL_ONGROUND ) {
@@ -133,7 +131,6 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 		curVel.z = 0.f;
 
 		const auto avgSpeed{ curVel.Length( ) };
-		//bool fixedOnAliveLoop{ };
 
 		if ( avgSpeed > 0.f ) {
 			if ( prevLayers[ 11 ].nSequence == curLayers[ 11 ].nSequence
@@ -150,15 +147,14 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 
 					if ( m_flSpeedAsPortionOfRunTopSpeed > 0.f && m_flSpeedAsPortionOfRunTopSpeed < 1.f
 						/* && avgSpeed > m_flVelocityLengthXY */ ) {
-
+						this->m_bAccurateVelocity = true;
 						curVel.x *= ( m_flVelocityLengthXY / avgSpeed );
 						curVel.y *= ( m_flVelocityLengthXY / avgSpeed );
-						//fixedOnAliveLoop = true;
 					}
 				}
 			}
 
-			/*if ( !fixedOnAliveLoop ) {
+			/*if ( !this->m_bAccurateVelocity ) {
 				const auto curDir{ RAD2DEG( std::atan2f( curVel.y, curVel.x ) ) };
 				const auto prevDir{ RAD2DEG( std::atan2f( previous->m_vecVelocity.y, previous->m_vecVelocity.x ) ) };
 				const auto delta{ Math::AngleDiff( curDir, prevDir ) };
@@ -172,10 +168,11 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 
 					if ( curLayers[ 6 ].flWeight <= 0.7f && curLayers[ 6 ].flWeight > 0.0f ) {
 						if ( this->m_cAnimData.m_iFlags & FL_DUCKING || this->m_cAnimData.m_iFlags & FL_ANIMDUCKING )
-							maxCurrentSpeed /= 3.f;
+							maxCurrentSpeed *= 0.34f;
 
 						curVel.x = ( curVel.x / avgSpeed ) * ( curLayers[ 6 ].flWeight * maxCurrentSpeed );
 						curVel.y = ( curVel.y / avgSpeed ) * ( curLayers[ 6 ].flWeight * maxCurrentSpeed );
+						this->m_bAccurateVelocity = true;
 					}
 				}
 			}*/
@@ -188,29 +185,30 @@ inline uint8_t LagRecord_t::Validity( ) {
 	if ( ctx.m_bFakeDucking )
 		delay = 15 - Interfaces::ClientState->nChokedCommands;
 
-	const auto extraTicks{ **( int** )Offsets::Sigs.numticks - **( int** )Offsets::Sigs.host_currentframetick };
-	const auto serverCurtime{ TICKS_TO_TIME( Interfaces::ClientState->iServerTick + delay + 2 + TIME_TO_TICKS( ctx.m_flRealOutLatency ) + extraTicks ) };// should this be 1 not + 2 since RecordDataIntoTrack is called AFTER players are simulated?
-	const auto flDeadtime{ static_cast< int >( serverCurtime - Offsets::Cvars.sv_maxunlag->GetFloat( ) ) };
+	const auto serverCurtime{ TICKS_TO_TIME( Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + 1 ) };
+	const auto flDeadtime{ static_cast< int >( serverCurtime - Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
 
 	if ( this->m_cAnimData.m_flSimulationTime < flDeadtime )
 		return 0;
 
-	const auto correct{ std::clamp( ctx.m_flRealOutLatency + ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Offsets::Cvars.sv_maxunlag->GetFloat( ) ) };
-	auto delta{ correct - ( ctx.m_flFixedCurtime - this->m_cAnimData.m_flSimulationTime ) };
+	const auto curtime{ ctx.m_flFixedCurtime + TICKS_TO_TIME( 1 ) };
+
+	const auto correct{ std::clamp( ctx.m_flOutLatency + ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
+	auto delta{ correct - ( curtime - this->m_cAnimData.m_flSimulationTime ) };
 	// pred not right
-	if ( std::fabsf( delta ) > 0.2f )
+	if ( std::fabsf( delta ) >= 0.2f )
 		return 0;
 
 	auto ret{ 1 };
 
 	for ( int i{ 1 }; i <= 14; ++i ) {
 		bool invalid{ };
-		if ( std::fabsf( correct - ( ( ctx.m_flFixedCurtime + TICKS_TO_TIME( i ) ) - this->m_cAnimData.m_flSimulationTime ) ) <= 0.2f )
+		if ( std::fabsf( correct - ( ( curtime + TICKS_TO_TIME( i ) ) - this->m_cAnimData.m_flSimulationTime ) ) < 0.2f )
 			ret++;
 		else
 			invalid = true;
 
-		if ( std::fabsf( correct - ( ( ctx.m_flFixedCurtime - TICKS_TO_TIME( i ) ) - this->m_cAnimData.m_flSimulationTime ) ) <= 0.2f )
+		if ( std::fabsf( correct - ( ( curtime - TICKS_TO_TIME( i ) ) - this->m_cAnimData.m_flSimulationTime ) ) < 0.2f )
 			ret++;
 		else
 			invalid = true;
@@ -258,7 +256,7 @@ inline uint8_t LagRecord_t::Validity( ) {
 	}
 }*/
 
-FORCEINLINE void LagRecord_t::Apply( CBasePlayer* ent ) {
+FORCEINLINE void LagRecord_t::Apply( CBasePlayer* ent, int side ) {
 	//ent->m_vecOrigin( ) = this->m_cAnimData.m_vecOrigin;
 	//ent->m_iEFlags( ) |= EFL_DIRTY_ABSTRANSFORM;
 
@@ -282,7 +280,7 @@ FORCEINLINE void LagRecord_t::Apply( CBasePlayer* ent ) {
 	//ent->m_iEFlags( ) |= EFL_DIRTY_ABSTRANSFORM;
 	ent->SetAbsOrigin( this->m_cAnimData.m_vecOrigin );
 
-	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_cAnimData.m_arrSides.at( side ).m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
 	//ent->SetAbsAngles( { 0.f, this->m_cAnimData.m_arrSides.at( side ).m_flAbsYaw, 0.f } );// we dont need this so remove when i cleanup
 }

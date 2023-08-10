@@ -2,29 +2,27 @@
 
 FORCEINLINE void Math::VectorAngles( const Vector& vecForward, QAngle& angView )
 {
-	float flPitch, flYaw;
+	Vector  left;
+	float   len, up_z, pitch, yaw, roll;
 
-	if ( vecForward.x == 0.f && vecForward.y == 0.f )
-	{
-		flPitch = ( vecForward.z > 0.f ) ? 270.f : 90.f;
-		flYaw = 0.f;
-	}
-	else
-	{
-		flPitch = std::atan2f( -vecForward.z, vecForward.Length2D( ) ) * 180.f / M_PI;
+	// get 2d length.
+	len = vecForward.Length2D( );
 
-		if ( flPitch < 0.f )
-			flPitch += 360.f;
-
-		flYaw = std::atan2f( vecForward.y, vecForward.x ) * 180.f / M_PI;
-
-		if ( flYaw < 0.f )
-			flYaw += 360.f;
+	if ( len > 0.f ) {
+		// calculate pitch and yaw.
+		pitch = RAD2DEG( std::atan2( -vecForward.z, len ) );
+		yaw = RAD2DEG( std::atan2( vecForward.y, vecForward.x ) );
+		roll = 0.f;
 	}
 
-	angView.x = flPitch;
-	angView.y = flYaw;
-	angView.z = 0.f;
+	else {
+		pitch = float( ( vecForward.z > 0 ) ? 270 : 90 );
+		yaw = 0.f;
+		roll = 0.f;
+	}
+
+	// set out angles.
+	angView = { pitch, yaw, roll };
 }
 
 FORCEINLINE void Math::AngleVectors( const QAngle& angView, Vector* pForward, Vector* pRight, Vector* pUp )
@@ -205,12 +203,10 @@ FORCEINLINE bool Math::WorldToScreen( const Vector& origin, Vector& screen )
 {
 	if ( !ScreenTransform( origin, screen ) )
 	{
-		float x = ctx.m_ve2ScreenSize.x / 2;
-		float y = ctx.m_ve2ScreenSize.y / 2;
-		x += 0.5 * screen.x * ctx.m_ve2ScreenSize.x + 0.5f;
-		y -= 0.5 * screen.y * ctx.m_ve2ScreenSize.y + 0.5f;
-		screen.x = x;
-		screen.y = y;
+		screen.x = 0.5 * screen.x * ctx.m_ve2ScreenSize.x;
+		screen.y = -0.5 * screen.y * ctx.m_ve2ScreenSize.y;
+		screen.x += 0.5 * ctx.m_ve2ScreenSize.x;
+		screen.y += 0.5 * ctx.m_ve2ScreenSize.y;
 		return true;
 	}
 
@@ -219,8 +215,10 @@ FORCEINLINE bool Math::WorldToScreen( const Vector& origin, Vector& screen )
 
 FORCEINLINE bool Math::WorldToScreen( const Vector& in, Vector2D& out ) {
 	if ( ScreenTransform( in, out ) ) {
-		out.x = ( ctx.m_ve2ScreenSize.x * 0.5f ) + ( out.x * ctx.m_ve2ScreenSize.x ) * 0.5f;
-		out.y = ( ctx.m_ve2ScreenSize.y * 0.5f ) - ( out.y * ctx.m_ve2ScreenSize.y ) * 0.5f;
+		out.x = 0.5 * out.x * ctx.m_ve2ScreenSize.x;
+		out.y = -0.5 * out.y * ctx.m_ve2ScreenSize.y;
+		out.x += 0.5 * ctx.m_ve2ScreenSize.x;
+		out.y += 0.5 * ctx.m_ve2ScreenSize.y;
 
 		return true;
 	}

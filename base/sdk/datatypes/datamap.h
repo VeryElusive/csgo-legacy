@@ -50,25 +50,43 @@ struct DataMap_t;
 class TypeDescription_t
 {
 public:
-	int iFieldType; //0x0000
-	char* szFieldName; //0x0004
-	int iFieldOffset[ TD_OFFSET_COUNT ]; //0x0008
-	short uFieldSize; //0x0010
-	short fFlags; //0x0012
-	char pad_0014[ 12 ]; //0x0014
-	DataMap_t* pTypeDescription; //0x0020
-	char pad_0024[ 24 ]; //0x0024
+	int			iFieldType;
+	const char* szFieldName;
+	int					iFieldOffset; // Local offset value
+	unsigned short		uFieldSize;
+	short				fFlags;
+	// the name of the variable in the map/fgd data, or the name of the action
+	const char* externalName;
+	// pointer to the function set for save/restoring of custom data types
+	void* pSaveRestoreOps;
+	// for associating function with string names
+	void* inputFunc;
+	// For embedding additional datatables inside this one
+	DataMap_t* pTypeDescription;
+
+	// Stores the actual member variable size in bytes
+	int					fieldSizeInBytes;
+
+	// FTYPEDESC_OVERRIDE point to first baseclass instance if chains_validated has occurred
+	class TypeDescription_t* pOverrideField;
+
+	// Used to track exclusion of baseclass fields
+	int					overrideCount;
+
+	// Tolerance for field errors for float fields
+	float				fieldTolerance;
+
+	// For raw fields (including children of embedded stuff) this is the flattened offset
+	int					flatOffset[ TD_OFFSET_COUNT ];
+	unsigned short		flatGroup;
 }; //Size: 0x003C
 
 struct DataMap_t
 {
 	TypeDescription_t* pDataDesc;
-	int                    nDataFields;
-	char const* szDataClassName;
+	int nDataFields;
+	const char* szDataClassName;
 	DataMap_t* pBaseMap;
-
-	bool                chainsValidated;
-	// Have the "packed" offsets been computed
-	bool                packedOffsetsComputed;
-	int                    iPackedSize;
+	int iPackedSize;
+	void* pOptimizedDataMap;
 };

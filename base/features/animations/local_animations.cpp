@@ -36,10 +36,52 @@ void CAnimationSys::UpdateServerLayers( CUserCmd& cmd ) {
 	const auto state{ ctx.m_pLocal->m_pAnimState( ) };
 
 	const auto onGround{ ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND };
+	const auto onLadder{ !onGround && ctx.m_pLocal->m_MoveType( ) == MOVETYPE_LADDER };
+
+	float flMaxSpeedRun = std::max( ctx.m_pLocal->m_flMaxSpeed( ), 0.001f );
+
+	const auto speedAsPortionOfWalkTopSpeed{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) / ( flMaxSpeedRun * 0.52f ) };
+
+
+	const auto startedLadderingThisFrame = !state->bOnLadder && onLadder;
+	const auto stoppedLadderingThisFrame = state->bOnLadder && !onLadder;
+	const auto landedOnGroundThisFrame{ state->bOnGround != onGround && onGround };
+	const auto leftGroundThisFrame{ state->bOnGround != onGround && !onGround };
+	static bool landing{ };
+
+	bool stoppedMovingThisFrame{ };
+	if ( ctx.m_pLocal->m_vecAbsVelocity( ).y > 0 )
+		stoppedMovingThisFrame = ( state->flDurationMoving <= 0 );
+	else
+		stoppedMovingThisFrame = ( state->flDurationStill <= 0 );
+
+	state->flLastUpdateIncrement = Interfaces::Globals->flIntervalPerTick;
 
 	/* CCSGOPlayerAnimState::SetUpVelocity */
+	/*auto& ANIMATION_LAYER_ADJUST{ ctx.m_pLocal->m_AnimationLayers( )[ 3 ] };
 
-	// i skipped ANIMATION_LAYER_ADJUST cuz it looks ugly
+	if ( !state->m_bAdjustStarted && stoppedMovingThisFrame && onGround && !onLadder && !landing && state->m_flStutterStep < 50 ) {
+		state->m_bAdjustStarted = true;
+		state->SetLayerSequence( &ANIMATION_LAYER_ADJUST, ACT_CSGO_IDLE_ADJUST_STOPPEDMOVING );
+	}
+
+	if ( ctx.m_pLocal->GetSequenceActivity( ANIMATION_LAYER_ADJUST.nSequence ) == ACT_CSGO_IDLE_ADJUST_STOPPEDMOVING ||
+		ctx.m_pLocal->GetSequenceActivity( ANIMATION_LAYER_ADJUST.nSequence ) == ACT_CSGO_IDLE_TURN_BALANCEADJUST ) {
+		auto prevWeight{ ANIMATION_LAYER_ADJUST.flWeight };
+		if ( state->m_bAdjustStarted && speedAsPortionOfWalkTopSpeed <= 0.25f ) {
+			state->IncrementLayerCycle( &ANIMATION_LAYER_ADJUST, false );
+			ANIMATION_LAYER_ADJUST.flWeight = state->GetLayerIdealWeightFromSeqCycle( 3 );
+			state->m_bAdjustStarted = !( ANIMATION_LAYER_ADJUST.flCycle + Interfaces::Globals->flIntervalPerTick * ANIMATION_LAYER_ADJUST.flPlaybackRate >= 1.f );
+		}
+		else {
+			state->m_bAdjustStarted = false;
+			ANIMATION_LAYER_ADJUST.flWeight = std::clamp( Math::Approach( 0.f, prevWeight, Interfaces::Globals->flIntervalPerTick * 5.f ), 0.f, 1.f );
+		}
+
+		ANIMATION_LAYER_ADJUST.flWeightDeltaRate = ( ANIMATION_LAYER_ADJUST.flWeight - prevWeight ) / Interfaces::Globals->flIntervalPerTick;
+	}*/
+
+
 
 	if ( onGround ) {
 		if ( ctx.m_pLocal->m_vecAbsVelocity( ).Length2D( ) > 0.1f ) {
@@ -60,21 +102,12 @@ void CAnimationSys::UpdateServerLayers( CUserCmd& cmd ) {
 	auto& MOVEMENT_LAND_OR_CLIMB{ ctx.m_pLocal->m_AnimationLayers( )[ 5 ] };
 	auto& MOVEMENT_JUMP_OR_FALL{ ctx.m_pLocal->m_AnimationLayers( )[ 4 ] };
 
-
-	const auto onLadder{ !onGround && ctx.m_pLocal->m_MoveType( ) == MOVETYPE_LADDER };
-
-	const auto startedLadderingThisFrame = !state->bOnLadder && onLadder;
-	const auto stoppedLadderingThisFrame = state->bOnLadder && !onLadder;
-	const auto landedOnGroundThisFrame{ state->bOnGround != onGround && onGround };
-	const auto leftGroundThisFrame{ state->bOnGround != onGround && !onGround };
-
 	// this will be off by 1 tick (it doesnt really make much of a difference)
 	if ( state->m_flLadderWeight > 0 || onLadder ) {
 		if ( startedLadderingThisFrame )
 			state->SetLayerSequence( &MOVEMENT_LAND_OR_CLIMB, ACT_CSGO_CLIMB_LADDER );
 	}
 
-	static bool landing{ };
 
 	if ( onGround ) {
 		if ( !landing && ( landedOnGroundThisFrame || stoppedLadderingThisFrame ) ) {

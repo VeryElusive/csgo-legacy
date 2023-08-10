@@ -4,7 +4,7 @@
 
 void* CIKContext::operator new( size_t size )
 {
-	CIKContext* ptr = ( CIKContext* ) Interfaces::MemAlloc->Alloc( size );
+	CIKContext* ptr = ( CIKContext* )Interfaces::MemAlloc->Alloc( size );
 	Construct( ptr );
 
 	return ptr;
@@ -14,55 +14,37 @@ void CIKContext::operator delete( void* ptr ) {
 	Interfaces::MemAlloc->Free( ptr );
 }
 
-bool CBaseEntity::IsBreakable( )
-{
-	// @ida isbreakableentity: client.dll @ 55 8B EC 51 56 8B F1 85 F6 74 68
+bool CBaseEntity::IsBreakable( ) {
+	if ( !this || !this->Index( ) ) 
+		return false;
 
-	const int iHealth = this->m_iHealth( );
+	const auto cc{ this->GetClientClass( ) };
+	if ( !cc ) 
+		return false;
 
-	// first check to see if it's already broken
-	if ( iHealth < 0 && this->MaxHealth( ) > 0 )
+	// The member variable "m_takedamage" isn't properly set in the original function, causing it to return false prematurely.
+	// set it to DAMAGE_YES
+	// Reference: https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/game/shared/obstacle_pushaway.cpp#L110
+	int backupTakeDamage{ this->TakeDamage( ) };
+
+	const auto name{ cc->szNetworkName };
+	if ( ( name[ 1 ] != 'B' || name[ 5 ] != 'D' ) || ( name[ 1 ] == 'B' && name[ 9 ] == 'e' && name[ 10 ] == 'S' && name[ 16 ] == 'e' ) )
+		this->TakeDamage( ) = 2;
+
+	const auto ret{ reinterpret_cast< bool( __thiscall* )( void* ) >( Displacement::Sigs.IsBreakable )( this ) };
+	this->TakeDamage( ) = backupTakeDamage;
+	return ret;
+
+	/*if ( reinterpret_cast< fn_t >( Displacement::Sigs.IsBreakable )( this ) )
 		return true;
 
-	if ( this->TakeDamage( ) != DAMAGE_YES ) {
-		const EClassIndex nClassIndex = this->GetClientClass( )->nClassID;
-
-		// force pass cfuncbrush
-		if ( nClassIndex != EClassIndex::CFuncBrush )
-			return false;
-	}
-
-	if ( const int nCollisionGroup = this->m_CollisionGroup( ); nCollisionGroup != COLLISION_GROUP_PUSHAWAY && nCollisionGroup != COLLISION_GROUP_BREAKABLE_GLASS && nCollisionGroup != COLLISION_GROUP_NONE )
+	const auto cc = this->GetClientClass( );
+	if ( !cc )
 		return false;
 
-	if ( iHealth > 200 )
-		return false;
-
-	if ( IMultiplayerPhysics* pPhysicsInterface = dynamic_cast< IMultiplayerPhysics* >( this ); pPhysicsInterface != nullptr ) {
-		if ( pPhysicsInterface->GetMultiplayerPhysicsMode( ) != PHYSICS_MULTIPLAYER_SOLID )
-			return false;
-	}
-	else {
-		if ( const char* szClassName = this->GetClassname( ); !strcmp( szClassName, _( "func_breakable" ) ) || !strcmp( szClassName, _( "func_breakable_surf" ) ) ) {
-			if ( !strcmp( szClassName, _( "func_breakable_surf" ) ) ) {
-				CBreakableSurface* pSurface = static_cast< CBreakableSurface* >( this );
-
-				// don't try to break it if it has already been broken
-				if ( pSurface->m_bIsBroken( ) )
-					return false;
-			}
-		}
-		else if ( this->PhysicsSolidMaskForEntity( ) & CONTENTS_PLAYERCLIP ) {
-			// hostages and players use CONTENTS_PLAYERCLIP, so we can use it to ignore them
-			return false;
-		}
-	}
-
-	if ( IBreakableWithPropData* pBreakableInterface = dynamic_cast< IBreakableWithPropData* >( this ); pBreakableInterface != nullptr ) {
-		// bullets don't damage it - ignore
-		if ( pBreakableInterface->GetDmgModBullet( ) <= 0.0f )
-			return false;
-	}
-
-	return true;
+	return ( *reinterpret_cast< const std::uint32_t* >( cc->szNetworkName ) == 'erBC'
+		&& *reinterpret_cast< const std::uint32_t* >( cc->szNetworkName + 7 ) == 'Selb' )
+		|| ( *reinterpret_cast< const std::uint32_t* >( cc->szNetworkName ) == 'saBC'
+			&& *reinterpret_cast< const std::uint32_t* >( cc->szNetworkName + 7 ) == 'ytit' );
+	*/
 }

@@ -1,20 +1,26 @@
 #include "antiaim.h"
 #include "../animations/animation.h"
 #include "../rage/exploits.h"
+// TODO: antiresolver!
+// check if we are able to be resolved from animlayers, and balance adjust then just flip desync
+// also force balance adjust to be triggered when stopping or randomly when we are standing
 
-bool CAntiAim::Pitch( CUserCmd& cmd ) {
+void CAntiAim::Pitch( CUserCmd& cmd ) {
 	if ( Condition( cmd, true ) )
-		return false;
+		return;
 
-	switch ( Config::Get<int>( Vars.AntiaimPitch ) ) {
+	if ( Interfaces::ClientState->nChokedCommands < 1 && Config::Get<bool>( Vars.AntiaimDesync ) )
+		ctx.m_bSendPacket = false;
+
+	const auto cond{ ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick ? Config::Get<int>( Vars.AntiaimSafePitch ) : Config::Get<int>( Vars.AntiaimPitch ) };
+
+	switch ( cond ) {
 	case 1: cmd.viewAngles.x = -89.f; break;// up
 	case 2: cmd.viewAngles.x =  89.f; break;// down
 	case 3: cmd.viewAngles.x =  0.f;  break;// zero
 	case 4: cmd.viewAngles.x = Math::RandomFloat( -89.f, 89 );  break;// random
 	default: break;
 	}
-
-	return true;
 }
 
 void CAntiAim::PickYaw( float& yaw ) {
@@ -22,6 +28,8 @@ void CAntiAim::PickYaw( float& yaw ) {
 	static int rotatedYaw{ };
 
 	const int& yawRange{ Config::Get<int>( Vars.AntiaimYawRange ) };
+
+	return;
 
 	switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
 	case 0: yaw += 0.f; break;// forward
@@ -61,59 +69,55 @@ void CAntiAim::PickYaw( float& yaw ) {
 	}
 	default: break;
 	}
+
+	if ( ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick ) {
+		const auto amount{ Config::Get<int>( Vars.AntiaimSafeYawRandomisation ) / 100.f };
+		yaw += Math::RandomFloat( -180 * amount, 180 * amount );
+	}
 }
 
-void CAntiAim::Yaw( CUserCmd& cmd, bool& sendPacket ) {
-	cmd.viewAngles.y = BaseYaw( cmd );
+int CAntiAim::Freestanding( ) {
+	if ( !Config::Get<int>( Vars.AntiaimFreestanding )
+		|| !Config::Get<keybind_t>( Vars.AntiaimFreestandingKey ).enabled )
+		return 0;
 
-	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
+	Vector forward, right;
+	Math::AngleVectors( ctx.m_angOriginalViewangles, &forward, &right );
 
-	if ( m_flVelocityLengthXY <= 0.1f ) {
-		if ( !sendPacket ) {
-			if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
-				switch ( Config::Get<int>( Vars.AntiaimBreakAngle ) ) {
-				case 0:// opposite
-					cmd.viewAngles.y += 180.f;
-					break;
-				case 1:// back
-					cmd.viewAngles.y = ctx.m_angOriginalViewangles.y + 180.f;
-					break;
-				default: break;
-				}	
-			}
-		}
+	CGameTrace tr;
 
-		if ( ctx.m_flFixedCurtime > m_flLowerBodyRealignTimer ) {
-			cmd.viewAngles.y -= 90.f;
-			sendPacket = false;
-		}
+	// middle
+	Interfaces::EngineTrace->TraceRay(
+		{ ctx.m_vecEyePos, ctx.m_vecEyePos + forward * 100.0f }, MASK_PLAYERSOLID,
+		nullptr, &tr
+	);
+	const auto middleDist{ ( tr.vecEnd - tr.vecStart ).Length( ) };
+
+	// right
+	Interfaces::EngineTrace->TraceRay(
+		{ ctx.m_vecEyePos + right * 35.0f, ( ctx.m_vecEyePos + forward * 100.0f ) + right * 35.0f }, MASK_PLAYERSOLID,
+		nullptr, &tr
+	);
+	const auto rightDist{  ( tr.vecEnd - tr.vecStart ).Length( ) };
+
+	// left
+	Interfaces::EngineTrace->TraceRay(
+		{ ctx.m_vecEyePos - right * 35.0f, ( ctx.m_vecEyePos + forward * 100.0f ) - right * 35.0f }, MASK_PLAYERSOLID,
+		nullptr, &tr
+	);
+	const auto leftDist{ ( tr.vecEnd - tr.vecStart ).Length( ) };
+
+	if ( rightDist > leftDist + 20.f ) {
+		if ( rightDist > middleDist + 20.f )
+			return 1;
 	}
-	
-	if ( m_flVelocityLengthXY <= 0.1f ) {
-		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
-			static bool reRoll{ };
-			static float random{ };
-			static float cur{ };
 
-			if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
-				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-				cmd.viewAngles.y += random;
-			}
-			else {
-				if ( reRoll ) {
-					random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-					reRoll = false;
-				}
-
-				cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
-
-				cmd.viewAngles.y += cur;
-
-				if ( std::abs( cur - random ) < 5.f )
-					reRoll = true;
-			}
-		}
+	if ( leftDist > rightDist + 20.f ) {
+		if ( leftDist > middleDist + 20.f )
+			return 2;
 	}
+
+	return 0;
 }
 
 float CAntiAim::BaseYaw( CUserCmd& cmd ) {
@@ -121,7 +125,17 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 	//if ( !Interfaces::ClientState->nChokedCommands )
 	ChokeCycleJitter = !ChokeCycleJitter;
 
+	if ( Config::Get<bool>( Vars.AntiaimConstantInvert ) )
+		Invert = !Invert;
+	else {
+		static auto old{ Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled };
+		if ( old != Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
+			Invert = old = Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled;
+	}
+
 	auto yaw = cmd.viewAngles.y;
+
+	const auto side{ Freestanding( ) };
 
 	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
 		if ( ManualSide == 1 ) {
@@ -134,7 +148,33 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 		}
 	}
 
+	if ( side && Config::Get<int>( Vars.AntiaimFreestanding ) == 1 ) {
+		if ( side == 1 ) {
+			yaw += 90.f;
+			return yaw;
+		}
+		else if ( side == 2 ) {
+			yaw -= 90.f;
+			return yaw;
+		}
+	}
+	else if ( Config::Get<int>( Vars.AntiaimFreestanding ) == 2 || Config::Get<int>( Vars.AntiaimFreestanding ) == 3 ) {
+		if ( side == 1 )
+			Invert = Config::Get<int>( Vars.AntiaimFreestanding ) == 2;
+		else if ( side == 2 )
+			Invert = Config::Get<int>( Vars.AntiaimFreestanding ) != 2;
+	}
+
 	AtTarget( yaw );
+
+	if ( m_bFlickNow ) {
+		if ( Config::Get<bool>( Vars.AntiaimConstantInvertFlick ) )
+			m_bInvertFlick = !m_bInvertFlick;
+		else
+			m_bInvertFlick = Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).enabled;
+
+		yaw += ( m_bInvertFlick ? -Config::Get<int>( Vars.AntiaimFlickAdd ) : Config::Get<int>( Vars.AntiaimFlickAdd ) );
+	}
 
 	if ( m_bAntiBackstab )
 		return yaw;
@@ -152,7 +192,7 @@ void CAntiAim::AtTarget( float& yaw ) {
 	if ( !Config::Get<int>( Vars.AntiaimAtTargets ) && !Config::Get<bool>( Vars.AntiaimAntiBackStab ) )
 		return;
 
-	for ( auto i = 1; i <= 64; ++i ) {
+	for ( auto i = 1; i < 64; ++i ) {
 		const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 		if ( !player
 			|| !player->IsPlayer( )
@@ -248,11 +288,11 @@ void CAntiAim::FakeLag( int cmdNum ) {
 	if ( !Interfaces::ClientState->nChokedCommands )
 		maxChoke = Math::RandomInt( static_cast< int >( max * ( 1.f - ( static_cast< float >( Config::Get<int>( Vars.AntiaimFakeLagVariance ) ) / 100.f ) ) ), max );
 
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length( ) < 1.f
-		|| Interfaces::Engine->IsVoiceRecording( ) ) {
-		ctx.m_bSendPacket = Interfaces::ClientState->nChokedCommands > 1;
-		return;
-	}
+	if ( Config::Get<bool>( Vars.AntiaimDesync ) )
+		maxChoke = std::max( maxChoke, 1 );
+
+	if ( Interfaces::Engine->IsVoiceRecording( ) )
+		maxChoke = 1;
 
 	const auto& localData = ctx.m_cLocalData.at( Interfaces::ClientState->iLastOutgoingCommand % 150 );
 
@@ -264,51 +304,233 @@ void CAntiAim::FakeLag( int cmdNum ) {
 		ctx.m_bSendPacket = true;
 
 	if ( Config::Get<bool>( Vars.AntiaimFakeLagInPeek ) ) {
-		if ( ctx.m_bInPeek )
-			ctx.m_bSendPacket = true;
-		else if ( cmdNum - ctx.m_iLastPeekCmdNum < 15 )
+		
+		if ( cmdNum - ctx.m_iLastPeekCmdNum < 15 ) {
 			ctx.m_bSendPacket = false;
+			//return;
+		}
+		else if ( ctx.m_bInPeek )
+			ctx.m_bSendPacket = true;
+	}
+
+	if ( m_bFlickNow )
+		m_bFlickNow = false;
+
+	if ( Config::Get<bool>( Vars.AntiaimFlickHead ) && !ctx.m_bFakeDucking ) {
+		if ( ++m_iFlickTimer > Config::Get<int>( Vars.AntiaimFlickSpeed ) ) {
+			m_bFlickNow = ctx.m_bSendPacket = true;
+			m_iFlickTimer = 0;
+		}
 	}
 }
 
-void CAntiAim::RunLocalModifications( CUserCmd& cmd, bool& sendPacket ) {
+void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
+	Pitch( cmd );
+
 	const auto animstate{ ctx.m_pLocal->m_pAnimState( ) };
+	const auto totalCmds{ Interfaces::ClientState->nChokedCommands + 1 };
+	if ( totalCmds < 1
+		|| !animstate )
+		return;
 
-	if ( !Condition( cmd, true ) )
-		Yaw( cmd, sendPacket );
+	float yaw{ std::remainderf( BaseYaw( cmd ), 360.f ) };
 
-	Features::Misc.NormalizeMovement( cmd );
-	Features::Misc.MoveMINTFix( cmd, ctx.m_angOriginalViewangles, ctx.m_pLocal->m_fFlags( ), ctx.m_pLocal->m_MoveType( ) );
-	Features::AnimSys.UpdateLocal( cmd.viewAngles, true, cmd );
-	std::memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
-
-	// we landed.
-	if ( animstate->bOnGround ) {
-		// walking, delay lby update by .22.
-		if ( animstate->flVelocityLength2D > 0.1f )
-			Features::Antiaim.m_flLowerBodyRealignTimer = ctx.m_flFixedCurtime + .22;
-		// standing update every 1.1s
-		else if ( ctx.m_flFixedCurtime > Features::Antiaim.m_flLowerBodyRealignTimer )
-			Features::Antiaim.m_flLowerBodyRealignTimer = ctx.m_flFixedCurtime + 1.1f;
+	if ( ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick ) {
+		const auto amount{ Config::Get<int>( Vars.AntiaimSafeYawRandomisation ) / 100.f };
+		yaw += Math::RandomFloat( -180 * amount, 180 * amount );
 	}
 
-	if ( !sendPacket )
-		return;
+	const auto inShot{ ctx.m_iLastShotNumber > Interfaces::ClientState->iLastOutgoingCommand
+		&& ctx.m_iLastShotNumber <= ( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 ) };
+
+	if ( animstate->bFirstUpdate )
+		ctx.m_cFakeData.init = false;
+
+	const auto backupState{ *animstate };
+	CAnimationLayer backupLayers[ 13 ]{ };
+	std::memcpy( backupLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
+
+	bool did{ };
+	const auto oldLBY{ ctx.m_pLocal->m_flLowerBodyYawTarget( ) };
+
+	for ( auto i{ 1 }; i <= totalCmds; ++i ) {
+		const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
+
+		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
+
+		const auto lastCmd{ curUserCmd.iCommandNumber == cmd.iCommandNumber };
+
+		if ( curLocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) )
+			continue;
+
+		if ( curUserCmd.iTickCount == INT_MAX )
+			continue;
+
+		//const auto backup{ Invert };
+
+		if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
+			&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
+			if ( curLocalData.m_bCanAA ) {
+				const auto oldViewAngles{ curUserCmd.viewAngles };
+
+				curUserCmd.viewAngles.y = yaw;
+
+				//const auto backup{ Invert };
+
+				// lby breaker
+				//if ( TICKS_TO_TIME( tickbase - ( totalCmds - i ) ) > Features::AnimSys.m_flLowerBodyRealignTimer && !did && curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) <= 0.1f ) {
+				//	did = true;
+				//	Invert = !Invert;
+				//}
+
+				if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) < 1.f ) {
+					/*if ( i == totalCmds - 1 ) {
+						Invert = !Invert;
+						cmd.flForwardMove = cmd.flSideMove = 0.f;
+					}*/
+
+					if ( lastCmd ) {
+						curUserCmd.flForwardMove = curUserCmd.flSideMove = 0.f;
+					}
+					else {
+						curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimYawRange );
+
+						Features::Misc.MicroMove( curUserCmd );
+
+						curLocalData.PredictedNetvars.m_vecVelocity = { curUserCmd.flSideMove,0,0 };
+					}
+				}
+				else {
+					// avoid overlap
+					if ( Config::Get<bool>( Vars.AntiaimTrickLBY ) )
+						Invert = Math::AngleDiff( oldLBY, yaw ) <= 0;
+				}
+
+				if ( !lastCmd && !inShot && Config::Get<bool>( Vars.AntiaimDesync ) )
+					curUserCmd.viewAngles.y += ( Invert ? -120.f : 120.f );
+
+				//Invert = backup;
+
+				Features::Misc.MoveMINTFix(
+					curUserCmd, oldViewAngles,
+					curLocalData.PredictedNetvars.m_iFlags,
+					curLocalData.PredictedNetvars.m_MoveType
+				);
+
+			}
+
+			Features::Misc.NormalizeMovement( curUserCmd );
+		}
+
+		//Invert = backup;
+
+		ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
+		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+		ctx.m_pLocal->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
+
+		Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
+
+		if ( lastCmd ) {
+			if ( ctx.m_pLocal->m_MoveType( ) == MOVETYPE_WALK ) {
+				cmd.iButtons &= ~( IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT );
+
+				if ( cmd.flForwardMove != 0.f )
+					cmd.iButtons |=
+					( Config::Get<bool>( Vars.MiscSlideWalk ) ? cmd.flForwardMove < 0.f : cmd.flForwardMove > 0.f )
+					? IN_FORWARD : IN_BACK;
+
+				if ( cmd.flSideMove ) {
+					cmd.iButtons |=
+						( Config::Get<bool>( Vars.MiscSlideWalk ) ? cmd.flSideMove < 0.f : cmd.flSideMove > 0.f )
+						? IN_MOVERIGHT : IN_MOVELEFT;
+				}
+			}
+			continue;
+		}
+
+		Interfaces::Input->pVerifiedCommands[ j ].userCmd = curUserCmd;
+		Interfaces::Input->pVerifiedCommands[ j ].uHashCRC = curUserCmd.GetChecksum( );
+	}
+
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = ctx.m_pAnimationLayers[ 3 ].flWeight;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle = ctx.m_pAnimationLayers[ 3 ].flCycle;
+	std::memcpy( ctx.m_pAnimationLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
+
+	/*if ( ( Features::Exploits.m_iShiftAmount
+		&& !Features::Exploits.m_bRealCmds )
+		|| ( ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick ) )
+		return;*/
 
 	ctx.m_pLocal->SetAbsAngles( { 0.f, animstate->flAbsYaw, 0.f } );
 
-	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Offsets::Sigs.LookupBone ) };
+	static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Displacement::Sigs.LookupBone ) };
 	const auto boneIndex{ lookupBone( ctx.m_pLocal, _( "lean_root" ) ) };
 
-	if ( !( ctx.m_pLocal->m_pStudioHdr( )->vecBoneFlags[ boneIndex ] & BONE_USED_BY_SERVER ) )
+	if ( ctx.m_pLocal->m_pStudioHdr( )->vecBoneFlags[ boneIndex ] != BONE_USED_BY_SERVER )
 		ctx.m_pLocal->m_pStudioHdr( )->vecBoneFlags[ boneIndex ] = BONE_USED_BY_SERVER;
 
+	const auto backup12Weight{ ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight };
+	const auto backup3Weight{ ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight };
+	const auto backup3Cycle{ ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle };
+
 	ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight *= 2.f;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle = 0.f;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = 0.f;
+
 	Features::AnimSys.SetupBonesRebuilt( ctx.m_pLocal, ctx.m_matRealLocalBones, BONE_USED_BY_SERVER,
 		Interfaces::Globals->flCurTime, true );
 	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 
+	ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight = backup12Weight;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flCycle = backup3Cycle;
+	ctx.m_pLocal->m_AnimationLayers( )[ 3 ].flWeight = backup3Weight;
+
 	ctx.m_vecSetupBonesOrigin = ctx.m_pLocal->GetAbsOrigin( );
+
+	/* fake matrix */
+	if ( !Config::Get<bool>( Vars.ChamDesync ) )
+		return;
+
+	const auto backupState2{ *animstate };
+
+	if ( ctx.m_cFakeData.init )
+		*animstate = ctx.m_cFakeData.m_sState;
+	else
+		*animstate = backupState;
+
+	std::memcpy( ctx.m_pLocal->m_AnimationLayers( ), backupLayers, 13 * sizeof CAnimationLayer );
+
+	for ( auto i{ 1 }; i <= totalCmds; ++i ) {
+		const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
+
+		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
+
+		ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
+		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+
+		Features::AnimSys.UpdateLocal( cmd.viewAngles, true, curUserCmd );
+	}
+
+	ctx.m_pLocal->SetAbsAngles( { 0.f, animstate->flAbsYaw, 0.f } );
+
+	// enemy gets the real layers networked to them
+	std::memcpy( ctx.m_pLocal->m_AnimationLayers( ), ctx.m_pAnimationLayers, 13 * sizeof CAnimationLayer );
+
+	const auto backupWeight{ ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight };
+	ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight *= 2.f;
+	Features::AnimSys.SetupBonesRebuilt( ctx.m_pLocal, ctx.m_cFakeData.m_matMatrix, BONE_USED_BY_SERVER | BONE_USED_BY_BONE_MERGE,
+		Interfaces::Globals->flCurTime, true );
+	ctx.m_pLocal->m_AnimationLayers( )[ 12 ].flWeight = backupWeight;
+
+	ctx.m_cFakeData.m_sState = *animstate;
+	ctx.m_cFakeData.init = true;
+	*animstate = backupState2;
+
+	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Size( ) * sizeof( matrix3x4_t ) );
 }
 
 // pasta reis courtesy of slazy
@@ -322,7 +544,7 @@ bool CAntiAim::AutoDirection( float& yaw ) {
 
 	const auto view_angles = ctx.m_angOriginalViewangles;
 
-	for ( auto i = 1; i <= 64; ++i ) {
+	for ( auto i = 1; i < 64; ++i ) {
 		const auto player = static_cast< CBasePlayer* >(
 			Interfaces::ClientEntityList->GetClientEntity( i )
 			);

@@ -7,54 +7,131 @@
 #include "../../context.h"
 #include "autowall.h"
 
+#define DESYNC_MATRIX_COUNT 3
+
 #define SETRAGEBOOL( name ) switch ( type ) { \
-case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) name = Config::Get<bool>( Vars.name##HeavyPistol ); else name = Config::Get<bool>( Vars.name##Pistol );break; \
-case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<bool>( Vars.name##SMG );break; \
-case WEAPONTYPE_RIFLE: name = Config::Get<bool>( Vars.name##Rifle );break; \
-case WEAPONTYPE_SHOTGUN: name = Config::Get<bool>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<bool>( Vars.name##Scout ); else name = Config::Get<bool>( Vars.name##Auto );break; \
-case WEAPONTYPE_MACHINEGUN: name = Config::Get<bool>( Vars.name##Machine );break; }\
+case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) MenuVars.name = Config::Get<bool>( Vars.name##HeavyPistol ); else MenuVars.name = Config::Get<bool>( Vars.name##Pistol );break; \
+case WEAPONTYPE_SUBMACHINEGUN: MenuVars.name = Config::Get<bool>( Vars.name##SMG );break; \
+case WEAPONTYPE_RIFLE: MenuVars.name = Config::Get<bool>( Vars.name##Rifle );break; \
+case WEAPONTYPE_SHOTGUN: MenuVars.name = Config::Get<bool>( Vars.name##Shotgun );break; \
+case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) MenuVars.name = Config::Get<bool>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) MenuVars.name = Config::Get<bool>( Vars.name##Scout ); else MenuVars.name = Config::Get<bool>( Vars.name##Auto );break; \
+case WEAPONTYPE_MACHINEGUN: MenuVars.name = Config::Get<bool>( Vars.name##Machine );break; }\
 
 #define SETRAGEINT( name ) switch ( type ) { \
-case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) name = Config::Get<int>( Vars.name##HeavyPistol ); else name = Config::Get<int>( Vars.name##Pistol );break; \
-case WEAPONTYPE_SUBMACHINEGUN: name = Config::Get<int>( Vars.name##SMG );break; \
-case WEAPONTYPE_RIFLE: name = Config::Get<int>( Vars.name##Rifle );break; \
-case WEAPONTYPE_SHOTGUN: name = Config::Get<int>( Vars.name##Shotgun );break; \
-case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) name = Config::Get<int>( Vars.name##Scout ); else name = Config::Get<int>( Vars.name##Auto );break; \
-case WEAPONTYPE_MACHINEGUN: name = Config::Get<int>( Vars.name##Machine );break; }\
+case WEAPONTYPE_PISTOL: if ( idx == WEAPON_DEAGLE || idx == WEAPON_REVOLVER ) MenuVars.name = Config::Get<int>( Vars.name##HeavyPistol ); else MenuVars.name = Config::Get<int>( Vars.name##Pistol );break; \
+case WEAPONTYPE_SUBMACHINEGUN: MenuVars.name = Config::Get<int>( Vars.name##SMG );break; \
+case WEAPONTYPE_RIFLE: MenuVars.name = Config::Get<int>( Vars.name##Rifle );break; \
+case WEAPONTYPE_SHOTGUN: MenuVars.name = Config::Get<int>( Vars.name##Shotgun );break; \
+case WEAPONTYPE_SNIPER: if ( idx == WEAPON_AWP ) MenuVars.name = Config::Get<int>( Vars.name##AWP );else if ( idx == WEAPON_SSG08 ) MenuVars.name = Config::Get<int>( Vars.name##Scout ); else MenuVars.name = Config::Get<int>( Vars.name##Auto );break; \
+case WEAPONTYPE_MACHINEGUN: MenuVars.name = Config::Get<int>( Vars.name##Machine );break; }\
+
+struct PreviousExtrapolationData_t {
+	PreviousExtrapolationData_t( float duck, int flags ) : m_flDuckAmount( duck ), m_iFlags( flags ) {};
+
+	float m_flDuckAmount{ };
+
+	int m_iFlags{ };
+};
+
+struct ExtrapolationBackup_t {
+	ExtrapolationBackup_t( CBasePlayer* player )
+		: m_iFlags( player->m_fFlags( ) ), m_iMoveState( player->m_iMoveState( ) ), m_flDuckAmount( player->m_flDuckAmount( ) ),
+		m_vecVelocity( player->m_vecVelocity( ) ),
+		m_vecMins( player->m_vecMins( ) ), m_vecMaxs( player->m_vecMaxs( ) ),
+		m_cAnimstate( *player->m_pAnimState( ) ),
+		m_iEFlags( player->m_iEFlags( ) ),
+		m_angEyeAngles( player->m_angEyeAngles( ) ), m_vecOrigin( player->m_vecOrigin( ) ), m_vecAbsOrigin( player->GetAbsOrigin( ) )
+	{
+		std::memcpy( m_pLayers, player->m_AnimationLayers( ), sizeof( CAnimationLayer ) * 13 );
+	}
+
+	void restore( CBasePlayer* player ) {
+		player->m_fFlags( ) = m_iFlags;
+		player->m_iMoveState( ) = m_iMoveState;
+		player->m_flDuckAmount( ) = m_flDuckAmount;
+		player->m_vecVelocity( ) = m_vecVelocity;
+		player->m_angEyeAngles( ) = m_angEyeAngles;
+		player->m_vecOrigin( ) = m_vecOrigin;
+		player->m_iEFlags( ) = m_iEFlags;
+
+		*player->m_pAnimState( ) = m_cAnimstate;
+
+		std::memcpy( player->m_AnimationLayers( ), m_pLayers, sizeof( CAnimationLayer ) * 13 );
+
+		player->SetAbsOrigin( m_vecAbsOrigin );
+		player->SetCollisionBounds( m_vecMins, m_vecMaxs );
+	}
+
+	int m_iFlags{ };
+	int m_iMoveState{ };
+	int m_iEFlags{ };
+
+	float m_flDuckAmount{ };
+
+	Vector m_vecVelocity{ };
+	Vector m_vecOrigin{ };
+	Vector m_vecAbsOrigin{ };
+
+	QAngle m_angEyeAngles{ };
+
+	Vector m_vecMins{ };
+	Vector m_vecMaxs{ };
+
+	CCSGOPlayerAnimState m_cAnimstate{ };
+	CAnimationLayer m_pLayers[ 13 ];
+	// TODO: do i restore layers?
+};
 
 struct AimPoint_t {
 	AimPoint_t( ) {}
 	AimPoint_t( Vector point, int ind ) : m_vecPoint{ point }, m_iHitgroup{ ind } {}
 
 	Vector m_vecPoint{ };
-	int m_iHitbox{ };
 	int m_iHitgroup{ };
+	uint8_t m_iDesyncIntersections{ };
 	int m_flDamage{ };
 
-	//float m_flCenterAmt{ };
-
 	bool m_bValid{ };
-	bool m_bPenetrated{ };
-	//bool m_bScanned{ };
 };
 
 struct AimTarget_t {
-	std::shared_ptr< LagRecord_t > m_pRecord{ };
+	/*AimTarget_t( ) {
+		this->m_pMatrices = new matrix3x4_t * [ MATRIX_COUNT ];
+
+		for ( int i = 0; i < MATRIX_COUNT; ++i )
+			this->m_pMatrices[ i ] = new matrix3x4_t[ 256 ];
+	}
+
+	~AimTarget_t( ) {
+		for ( int i = 0; i < MATRIX_COUNT; ++i )
+			delete[ ] this->m_pMatrices[ i ];
+
+		delete[ ] this->m_pMatrices;
+	}*/
+
 	CBasePlayer* m_pPlayer{ };
-	AimPoint_t* m_cAimPoint{ };
-	std::shared_ptr< std::string > m_pDbgLog{ };
 
-	std::vector<AimPoint_t> m_cPoints{ };
+	unsigned int m_iBestDamage{ };
 
-	int m_iMissedShots{ };
-
-	float m_iBestDamage{ };
 	bool m_bExtrapolating{ };
 
-	AimTarget_t( ) {}
-	AimTarget_t( PlayerEntry& e ) : m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ) { }
-	AimTarget_t( std::shared_ptr< LagRecord_t > r, PlayerEntry& e, int side, std::shared_ptr< std::string > dbg ) : m_pRecord( r ), m_pPlayer( e.m_pPlayer ), m_iMissedShots( e.m_iMissedShots ), m_pDbgLog( dbg ) {}
+	AimPoint_t m_cPoint{ };
+
+	std::shared_ptr< std::string > m_pDbgLog{ };
+	std::shared_ptr< LagRecord_t > m_pRecord{ };
+
+	void Extrapolate( PlayerEntry& entry );
+	void GetBestLagRecord( PlayerEntry& entry );
+	void CompareTarget( AimTarget_t& target );
+	void SetupMatrices( std::shared_ptr< LagRecord_t > record, float yaw = 0.f );
+	int QuickScan( std::shared_ptr< LagRecord_t > record, std::vector<int>& hitgroups );
+	void ScanTarget( std::vector<EHitboxIndex>& hitboxes );
+	void GetBestPoint( bool forceBaim, std::vector<EHitboxIndex>& hitboxes );
+	void Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* hitbox, float scale, std::vector<EHitboxIndex>& hitboxes );
+	void ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitboxes );
+	int SafePoint( Vector aimpoint, int index );
+	int HitChance( const QAngle& ang, int hitchance );
+	void Fire( CUserCmd& cmd );
 };
 
 struct KnifeTarget_t {
@@ -68,127 +145,97 @@ struct KnifeTarget_t {
 
 class CRageBot {
 public:
-	bool m_bShouldStop{ };
-	bool RagebotAutoStop{ };
-	bool RagebotBetweenShots{ };
-
 	void Main( CUserCmd& cmd, bool shoot );
-	void GetBestLagRecord( PlayerEntry& entry, AimTarget_t* target );
-	float ExtrapolateYaw( std::vector<std::pair<int, float> >& pattern, int extrapolationAmount );
-	std::vector<std::shared_ptr<AimTarget_t>> m_cAimTargets{ };
 
+	bool m_bShouldStop{ };
+	std::vector<std::pair<float, float>> m_vecPrecomputedSeeds{ };
+
+	bool ExtrapolatePlayer( PlayerEntry& entry, float yaw, int resolverSide, int amount, Vector previousVelocity );
+	bool ExtrapolatePlayer( CBasePlayer* player, float baseTime, int amount, QAngle angles, Vector previousVelocity, bool local );
+
+	Vector2D CalcSpreadAngle( const int itemIndex, const float recoilIndex, float one, float twoPI );
 private:
+	std::vector< EHitboxIndex > m_vecHitboxes{ };
+	void SimulatePlayer( CBasePlayer* player, float time, QAngle angles, int resolverSide, bool last, PreviousExtrapolationData_t& previous, float direction, float assumedSpeed, bool local );
+
 	void KnifeBot( CUserCmd& cmd );
 	void KnifeBotTargetPlayer( CUserCmd& cmd, KnifeTarget_t& target, LagRecord_t* record );
 	bool KnifeBotCanHitTarget( CUserCmd& cmd, KnifeTarget_t& target, Vector dst, bool backStab );
 
-	std::vector<int> m_iHitboxes{ };
-	AimTarget_t* m_pFinalTarget{ };
-	FORCEINLINE int QuickScan( AimTarget_t* target, std::vector<int> hitgroups );
-	FORCEINLINE int OffsetDelta( CBasePlayer* player, LagRecord_t* record );
-	FORCEINLINE bool CheckRecordSafePoint( CBasePlayer* player, LagRecord_t* record, PlayerEntry& entry );
-	void ScanTargets( );
-	bool CreatePoints( AimTarget_t* aim_target );
-	std::size_t CalcPointCount( mstudiohitboxset_t* hitboxSet );
-	void Multipoint( Vector& center, matrix3x4_t& matrix, std::vector<AimPoint_t>& aim_points, mstudiobbox_t* hitbox, mstudiohitboxset_t* hitboxSet, float scale, int index );
-	void ScanPoint( AimTarget_t* aim_target, AimPoint_t& point );
-	AimPoint_t* PickPoints( CBasePlayer* player, std::vector<AimPoint_t>& aimPoints );
-	AimTarget_t* PickTarget( );
-	void Fire( CUserCmd& cmd );
-	bool HitChance( CBasePlayer* player, const QAngle& ang, int hitchance, int index );
-	//bool FastHitChance( CBasePlayer* player, const Vector& dir, const Vector& mins, const Vector& maxs, const float& radius, int hitchance );
-	Vector2D CalcSpreadAngle( const int item_index, const int bullets, const float recoil_index, const int i );
 
-	FORCEINLINE void Reset( ) {
-		m_bShouldStop = false;
-		if ( !m_cAimTargets.empty( ) )
-			m_cAimTargets.clear( );
-	}
-
-	FORCEINLINE void SetupHitboxes( ) {
-		if ( !m_iHitboxes.empty( ) )
-			m_iHitboxes.clear( );
-
-		if ( ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER )
-			return m_iHitboxes.push_back( HITBOX_CHEST );
-
-		if ( RagebotHBArms ) {
-			m_iHitboxes.push_back( HITBOX_RIGHT_UPPER_ARM );
-			m_iHitboxes.push_back( HITBOX_LEFT_UPPER_ARM );
-		}
-
-		if ( RagebotHBLegs ) {
-			m_iHitboxes.push_back( HITBOX_RIGHT_THIGH );
-			m_iHitboxes.push_back( HITBOX_LEFT_THIGH );
-
-			m_iHitboxes.push_back( HITBOX_RIGHT_CALF );
-			m_iHitboxes.push_back( HITBOX_LEFT_CALF );
-		}
-
-		if ( RagebotHBFeet ) {
-			m_iHitboxes.push_back( HITBOX_RIGHT_FOOT );
-			m_iHitboxes.push_back( HITBOX_LEFT_FOOT );
-		}
-
-		if ( RagebotHBUpperChest )
-			m_iHitboxes.push_back( HITBOX_UPPER_CHEST );
-
-		if ( RagebotHBChest )
-			m_iHitboxes.push_back( HITBOX_CHEST );
-
-		if ( RagebotHBLowerChest )
-			m_iHitboxes.push_back( HITBOX_LOWER_CHEST );
-
-		if ( RagebotHBStomach )
-			m_iHitboxes.push_back( HITBOX_STOMACH );
-
-		if ( RagebotHBPelvis )
-			m_iHitboxes.push_back( HITBOX_PELVIS );
-
-		if ( RagebotHBHead )
-			m_iHitboxes.push_back( HITBOX_HEAD );
-	}
-
-	FORCEINLINE bool IsMultiPointEnabled( int hitbox ) {
-
-		switch ( hitbox )
-		{
-		case HITBOX_HEAD:
-		case HITBOX_NECK:
-			return RagebotMPHead;
-		case HITBOX_UPPER_CHEST:
-			return RagebotMPUpperChest;
-		case HITBOX_CHEST:
-			return RagebotMPChest;
-		case HITBOX_LOWER_CHEST:
-			return RagebotMPLowerChest;
-		case HITBOX_STOMACH:
-			return RagebotMPStomach;
-		case HITBOX_PELVIS:
-			return RagebotMPPelvis;
-		case HITBOX_RIGHT_UPPER_ARM:
-		case HITBOX_LEFT_UPPER_ARM:
-			return RagebotMPArms;
-		case HITBOX_LEFT_THIGH:
-		case HITBOX_RIGHT_THIGH:
-		case HITBOX_RIGHT_CALF:
-		case HITBOX_LEFT_CALF:
-			return RagebotMPLegs;
-		case HITBOX_RIGHT_FOOT:
-		case HITBOX_LEFT_FOOT:
-			return RagebotMPFeet;
-		default:
-			return false;
+	void PrecomputeSeeds( ) {
+		for ( int i{ 1 }; i <= 256; ++i ) {
+			Math::RandomSeed( i );
+			m_vecPrecomputedSeeds.emplace_back( Math::RandomFloat( 0.f, 1.f ), Math::RandomFloat( 0.f, 2.f * M_PI ) );
 		}
 	}
 
-	/* cfg */
 	// this makes me want to quit programming im so embarrassed
+	void SetupHitboxes( ) {
+		if ( m_vecHitboxes.size( ) )
+			m_vecHitboxes.clear( );
+
+		if ( m_iLastWeaponIndex == WEAPON_TASER ) {
+			m_vecHitboxes.push_back( HITBOX_CHEST );
+			return;
+		}
+
+		if ( MenuVars.RagebotHBArms ) {
+			m_vecHitboxes.push_back( HITBOX_RIGHT_UPPER_ARM );
+			m_vecHitboxes.push_back( HITBOX_LEFT_UPPER_ARM );
+		}
+
+		if ( MenuVars.RagebotHBLegs ) {
+			m_vecHitboxes.push_back( HITBOX_RIGHT_THIGH );
+			m_vecHitboxes.push_back( HITBOX_LEFT_THIGH );
+
+			m_vecHitboxes.push_back( HITBOX_RIGHT_CALF );
+			m_vecHitboxes.push_back( HITBOX_LEFT_CALF );
+		}
+
+		if ( MenuVars.RagebotHBFeet ) {
+			m_vecHitboxes.push_back( HITBOX_RIGHT_FOOT );
+			m_vecHitboxes.push_back( HITBOX_LEFT_FOOT );
+		}
+
+		if ( MenuVars.RagebotHBUpperChest )
+			m_vecHitboxes.push_back( HITBOX_UPPER_CHEST );
+
+		if ( MenuVars.RagebotHBChest )
+			m_vecHitboxes.push_back( HITBOX_CHEST );
+
+		if ( MenuVars.RagebotHBLowerChest )
+			m_vecHitboxes.push_back( HITBOX_LOWER_CHEST );
+
+		if ( MenuVars.RagebotHBStomach )
+			m_vecHitboxes.push_back( HITBOX_STOMACH );
+
+		if ( MenuVars.RagebotHBPelvis )
+			m_vecHitboxes.push_back( HITBOX_PELVIS );
+
+		if ( MenuVars.RagebotHBHead )
+			m_vecHitboxes.push_back( HITBOX_HEAD );
+	}
+
 	FORCEINLINE void ParseCfgItems( int type ) {
 		const int idx{ ctx.m_pWeapon->m_iItemDefinitionIndex( ) };
+		if ( idx == m_iLastWeaponIndex
+			&& !Menu::m_bOpened )
+			return;
 
 		m_iLastWeaponType = type;
 		m_iLastWeaponIndex = idx;
+
+		if ( idx == WEAPON_TASER ) {
+			MenuVars.RagebotMinimumDamage = 100;
+			MenuVars.RagebotPenetrationDamage = 100;
+			MenuVars.RagebotOverrideDamage = 100;
+			MenuVars.RagebotHitchance = 80;
+			MenuVars.RagebotNoscopeHitchance = 80;
+			MenuVars.RagebotHitchanceThorough = false;
+			SetupHitboxes( );
+			return;
+		}
 
 		SETRAGEBOOL( RagebotHBHead );
 		SETRAGEBOOL( RagebotHBUpperChest );
@@ -218,11 +265,13 @@ private:
 		SETRAGEBOOL( RagebotScaleDamage );
 		SETRAGEBOOL( RagebotAutoStop );
 		SETRAGEBOOL( RagebotBetweenShots );
+		SETRAGEBOOL( RagebotAutostopInAir );
 		SETRAGEBOOL( RagebotStaticPointscale );
 		SETRAGEBOOL( RagebotIgnoreLimbs );
 		SETRAGEBOOL( RagebotPreferBaim );
 		SETRAGEBOOL( RagebotPreferBaimDoubletap );
 		SETRAGEBOOL( RagebotPreferBaimLethal );
+		SETRAGEBOOL( RagebotForceBaimAfterX );
 
 		SETRAGEINT( RagebotFOV );
 		SETRAGEINT( RagebotHitchance );
@@ -232,105 +281,159 @@ private:
 		SETRAGEINT( RagebotOverrideDamage );
 		SETRAGEINT( RagebotHeadScale );
 		SETRAGEINT( RagebotBodyScale );
+		SETRAGEINT( RagebotForceBaimAfterXINT );
+
+		SetupHitboxes( );
 	}
-	bool RagebotHBHead{ };
-	bool RagebotHBUpperChest{ };
-	bool RagebotHBChest{ };
-	bool RagebotHBLowerChest{ };
-	bool RagebotHBStomach{ };
-	bool RagebotHBPelvis{ };
-	bool RagebotHBArms{ };
-	bool RagebotHBLegs{ };
-	bool RagebotHBFeet{ };
 
-	bool RagebotMPHead{ };
-	bool RagebotMPUpperChest{ };
-	bool RagebotMPChest{ };
-	bool RagebotMPLowerChest{ };
-	bool RagebotMPStomach{ };
-	bool RagebotMPPelvis{ };
-	bool RagebotMPArms{ };
-	bool RagebotMPLegs{ };
-	bool RagebotMPFeet{ };
+	struct MenuVars_t {
+		bool RagebotHBHead{ };
+		bool RagebotHBUpperChest{ };
+		bool RagebotHBChest{ };
+		bool RagebotHBLowerChest{ };
+		bool RagebotHBStomach{ };
+		bool RagebotHBPelvis{ };
+		bool RagebotHBArms{ };
+		bool RagebotHBLegs{ };
+		bool RagebotHBFeet{ };
 
-	bool RagebotAutoFire{ };
-	bool RagebotAutoScope{ };
-	bool RagebotSilentAim{ };
-	bool RagebotHitchanceThorough{ };
-	bool RagebotAutowall{ };
-	bool RagebotScaleDamage{ };
-	bool RagebotStaticPointscale{ };
-	bool RagebotIgnoreLimbs{ };
-	bool RagebotPreferBaim{ };
-	bool RagebotPreferBaimDoubletap{ };
-	bool RagebotPreferBaimLethal{ };
+		bool RagebotMPHead{ };
+		bool RagebotMPUpperChest{ };
+		bool RagebotMPChest{ };
+		bool RagebotMPLowerChest{ };
+		bool RagebotMPStomach{ };
+		bool RagebotMPPelvis{ };
+		bool RagebotMPArms{ };
+		bool RagebotMPLegs{ };
+		bool RagebotMPFeet{ };
 
-	int RagebotFOV{ };
-	int RagebotHitchance{ };
-	int RagebotNoscopeHitchance{ };
-	int RagebotMinimumDamage{ };
-	int RagebotPenetrationDamage{ };
-	int RagebotOverrideDamage{ };
-	int RagebotHeadScale{ };
-	int RagebotBodyScale{ };
+		bool RagebotAutoFire{ };
+		bool RagebotAutoScope{ };
+		bool RagebotSilentAim{ };
+		bool RagebotHitchanceThorough{ };
+		bool RagebotScaleDamage{ };
+		bool RagebotStaticPointscale{ };
+		bool RagebotIgnoreLimbs{ };
+		bool RagebotPreferBaim{ };
+		bool RagebotPreferBaimDoubletap{ };
+		bool RagebotPreferBaimLethal{ };
+		bool RagebotForceBaimAfterX{ };
+
+		int RagebotFOV{ };
+		int RagebotHitchance{ };
+		int RagebotNoscopeHitchance{ };
+		int RagebotMinimumDamage{ };
+		int RagebotPenetrationDamage{ };
+		int RagebotOverrideDamage{ };
+		int RagebotHeadScale{ };
+		int RagebotBodyScale{ };
+		int RagebotForceBaimAfterXINT{ };
+
+		bool RagebotAutoStop{ };
+		bool RagebotBetweenShots{ };
+		bool RagebotAutostopInAir{ };
+		bool RagebotAutowall{ };
+	};
 
 	int m_iLastWeaponIndex{ -1 };
 	int m_iLastWeaponType{ -1 };
-
 public:
-	FORCEINLINE const char* Hitgroup2Str( int hitgroup ) {
-		switch ( hitgroup )
-		{
-		case HITGROUP_HEAD:
-			return "head";
-		case HITGROUP_CHEST:
-			return "chest";
-		case HITGROUP_STOMACH:
-			return "stomach";
-		case HITGROUP_LEFTARM:
-		case HITGROUP_RIGHTARM:
-			return "arm";
-		case HITGROUP_LEFTLEG:
-		case HITGROUP_RIGHTLEG:
-			return "leg";
-		default:
-			return "pelvis";
+	MenuVars_t MenuVars;
+
+	public:
+		FORCEINLINE const char* HitgroupToString( int hitgroup ) {
+			switch ( hitgroup )
+			{
+			case HITGROUP_HEAD:
+				return _( "head" );
+			case HITGROUP_CHEST:
+				return _( "chest" );
+			case HITGROUP_STOMACH:
+				return _( "stomach" );
+			case HITGROUP_LEFTARM:
+			case HITGROUP_RIGHTARM:
+				return _( "arm" );
+			case HITGROUP_LEFTLEG:
+			case HITGROUP_RIGHTLEG:
+				return _( "leg" );
+			case HITGROUP_GEAR:
+				return _( "gear" );
+			case HITGROUP_NECK:
+				return _( "neck" );
+			case HITGROUP_GENERIC:
+				return _( "generic" );
+			}
 		}
-	}
-	FORCEINLINE int Hitbox2Hitgroup( int hitgroup ) {
-		switch ( hitgroup )
-		{
-		case HITBOX_HEAD:
-			return HITGROUP_HEAD;
-		case HITBOX_NECK:
-			return HITGROUP_NECK;
-		case HITBOX_PELVIS:
-		case HITBOX_STOMACH:
-			return HITGROUP_STOMACH;
-		case HITBOX_LOWER_CHEST:
-		case HITBOX_CHEST:
-		case HITBOX_UPPER_CHEST:
-			return HITGROUP_CHEST;
-		case HITBOX_RIGHT_THIGH:
-		case HITBOX_RIGHT_FOOT:
-		case HITBOX_RIGHT_CALF:
-			return HITGROUP_RIGHTLEG;
-		case HITBOX_LEFT_CALF:
-		case HITBOX_LEFT_THIGH:
-		case HITBOX_LEFT_FOOT:
-			return HITGROUP_LEFTLEG;
-		case HITBOX_RIGHT_HAND:
-		case HITBOX_RIGHT_UPPER_ARM:
-		case HITBOX_RIGHT_FOREARM:
-			return HITGROUP_RIGHTARM;
-		case HITBOX_LEFT_UPPER_ARM:
-		case HITBOX_LEFT_FOREARM:
-		case HITBOX_LEFT_HAND:
-			return HITGROUP_LEFTARM;
+		FORCEINLINE int HitboxToHitgroup( int hitgroup ) {
+			switch ( hitgroup )
+			{
+			case HITBOX_HEAD:
+				return HITGROUP_HEAD;
+			case HITBOX_NECK:
+				return HITGROUP_NECK;
+			case HITBOX_PELVIS:
+			case HITBOX_STOMACH:
+				return HITGROUP_STOMACH;
+			case HITBOX_LOWER_CHEST:
+			case HITBOX_CHEST:
+			case HITBOX_UPPER_CHEST:
+				return HITGROUP_CHEST;
+			case HITBOX_RIGHT_THIGH:
+			case HITBOX_RIGHT_FOOT:
+			case HITBOX_RIGHT_CALF:
+				return HITGROUP_RIGHTLEG;
+			case HITBOX_LEFT_CALF:
+			case HITBOX_LEFT_THIGH:
+			case HITBOX_LEFT_FOOT:
+				return HITGROUP_LEFTLEG;
+			case HITBOX_RIGHT_HAND:
+			case HITBOX_RIGHT_UPPER_ARM:
+			case HITBOX_RIGHT_FOREARM:
+				return HITGROUP_RIGHTARM;
+			case HITBOX_LEFT_UPPER_ARM:
+			case HITBOX_LEFT_FOREARM:
+			case HITBOX_LEFT_HAND:
+				return HITGROUP_LEFTARM;
+			}
+
+			return 0;
 		}
 
-		return 0;
-	}
+		bool IsMultiPointEnabled( int hitbox ) {
+			if ( m_iLastWeaponIndex == WEAPON_TASER )
+				return false;
+
+			switch ( hitbox )
+			{
+			case HITBOX_HEAD:
+			case HITBOX_NECK:
+				return MenuVars.RagebotMPHead;
+			case HITBOX_UPPER_CHEST:
+				return MenuVars.RagebotMPUpperChest;
+			case HITBOX_CHEST:
+				return MenuVars.RagebotMPChest;
+			case HITBOX_LOWER_CHEST:
+				return MenuVars.RagebotMPLowerChest;
+			case HITBOX_STOMACH:
+				return MenuVars.RagebotMPStomach;
+			case HITBOX_PELVIS:
+				return MenuVars.RagebotMPPelvis;
+			case HITBOX_RIGHT_UPPER_ARM:
+			case HITBOX_LEFT_UPPER_ARM:
+				return MenuVars.RagebotMPArms;
+			case HITBOX_LEFT_THIGH:
+			case HITBOX_RIGHT_THIGH:
+			case HITBOX_RIGHT_CALF:
+			case HITBOX_LEFT_CALF:
+				return MenuVars.RagebotMPLegs;
+			case HITBOX_RIGHT_FOOT:
+			case HITBOX_LEFT_FOOT:
+				return MenuVars.RagebotMPFeet;
+			default:
+				return false;
+			}
+		}
+
 };
 
 namespace Features { inline CRageBot Ragebot; };

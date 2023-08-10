@@ -44,6 +44,7 @@
 #include "../sdk/interfaces/iweaponsystem.h"
 #include "../sdk/interfaces/ikeyvaluessystem.h"
 #include "../sdk/interfaces/igameresources.h"
+#include "../sdk/interfaces/iphysicscollision.h"
 
 #include "displacement.h"
 
@@ -64,6 +65,7 @@ namespace Interfaces
 {
 	// Get
 	bool Setup();
+	bool CheckInterfaces( );
 	/* search and returns a pointer of specific interface given */
 	template <typename T>
 	T* Capture(const std::string_view szModuleName, const std::string_view szInterface);
@@ -116,4 +118,5 @@ namespace Interfaces
 	inline IWeaponSystem*			WeaponSystem;
 	inline IGlowObjectManager*		GlowManager;
 	inline IGameResources*			GameResources;
+	inline IPhysicsCollision*		PhysicsCollision;
 }

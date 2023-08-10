@@ -1,5 +1,5 @@
 #include "event_listener.h"
-
+#include "../utils/xorstr.h"
 // sequence:
 // weapon_fire -> bullet_impact -> player_hurt
 
@@ -107,9 +107,6 @@ void RoundStart( IGameEvent* pEvent ) {
 			break;
 		}
 
-		if ( Config::Get<bool>( Vars.MiscBuyBotOtherTaser ) )
-			buy += "buy taser; ";
-
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherArmor ) ) {
 			buy += "buy vesthelm; ";
 			buy += "buy vest; ";
@@ -130,6 +127,9 @@ void RoundStart( IGameEvent* pEvent ) {
 
 		if ( Config::Get<bool>( Vars.MiscBuyBotOtherFlashbang ) )
 			buy += "buy flashbang; ";
+
+		if ( Config::Get<bool>( Vars.MiscBuyBotOtherTaser ) )
+			buy += "buy taser; ";
 
 		if ( !buy.empty( ) )
 			Interfaces::Engine->ClientCmdUnrestricted( buy.c_str( ) );
@@ -259,11 +259,11 @@ void CEventListener::FireGameEvent( IGameEvent* pEvent ) {
 	const FNV1A_t uNameHash = FNV1A::Hash( pEvent->GetName( ) );
 
 	switch ( uNameHash ) {
-	case FNV1A::HashConst( _( "bullet_impact" ) ): BulletImpact( pEvent ); break;
-	case FNV1A::HashConst( _( "round_start" ) ): RoundStart( pEvent ); break;
-	case FNV1A::HashConst( _( "player_hurt" ) ): PlayerHurt( pEvent ); break;
-	case FNV1A::HashConst( _( "player_death" ) ): PlayerDeath( pEvent ); break;
-	case FNV1A::HashConst( _( "weapon_fire" ) ): WeaponFire( pEvent ); break;
+	case FNV1A::HashConst( "bullet_impact" ): BulletImpact( pEvent ); break;
+	case FNV1A::HashConst( "round_start" ): RoundStart( pEvent ); break;
+	case FNV1A::HashConst( "player_hurt" ): PlayerHurt( pEvent ); break;
+	case FNV1A::HashConst( "player_death" ): PlayerDeath( pEvent ); break;
+	case FNV1A::HashConst( "weapon_fire" ): WeaponFire( pEvent ); break;
 	default: break;
 	}
 }
