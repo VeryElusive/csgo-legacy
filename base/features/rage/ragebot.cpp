@@ -319,8 +319,11 @@ void AimTarget_t::ScanTarget( std::vector<EHitboxIndex>& hitboxes ) {
 
 	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), this->m_pRecord->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
+	const auto LBY{ this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate && this->m_pRecord->m_cAnimData.m_iFlags & FL_ONGROUND };
+
 	const auto forceBaim{ ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled
-		|| ( entry.m_iMissedShots > THIS.MenuVars.RagebotForceBaimAfterX && THIS.MenuVars.RagebotForceBaimAfterXINT ) ) };
+		|| ( entry.m_iMissedShots > THIS.MenuVars.RagebotForceBaimAfterX && THIS.MenuVars.RagebotForceBaimAfterXINT ) )
+		|| !LBY };
 
 	GetBestPoint( forceBaim, hitboxes );
 
@@ -762,7 +765,7 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 			const auto oldRecordLBY{ this->m_pRecord && this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate && this->m_pRecord->m_cAnimData.m_iFlags & FL_ONGROUND };
 
 			if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled
-				&& LBY )
+				&& !LBY )
 				continue;
 
 			int safepoints{ };

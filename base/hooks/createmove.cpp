@@ -319,8 +319,8 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( Interfaces::ClientState->nChokedCommands >= 15 - ctx.m_iTicksAllowed )
 		ctx.m_bSendPacket = true;
 
-	if ( !ctx.m_bFakeDucking && cmd.iButtons & IN_ATTACK && ctx.m_pWeapon && !ctx.m_pWeapon->IsGrenade( ) && ctx.m_bCanShoot )
-		ctx.m_bSendPacket = true;
+	if ( cmd.iButtons & IN_ATTACK )
+		ctx.m_bSendPacket = false;
 
 	if ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) )
 		&& ctx.m_bCanShoot ) {
@@ -330,9 +330,6 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 
 
 	ShouldShift( cmd );
-
-	if ( Features::Antiaim.m_bFlickNow )
-		ctx.m_bSendPacket = true;
 
 	if ( sameFrameCMD ) {
 		hadExtraTicks = true;
@@ -360,7 +357,8 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		}
 		else {
 			if ( ctx.m_iTicksAllowed
-				&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) {//Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled
+				&& Config::Get<bool>( Vars.ExploitsDoubletapDefensive )
+				&& ctx.m_pLocal->m_vecVelocity( ).Length2D( ) ) {//Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled
 
 				if ( !ctx.m_bSafeFromDefensive
 					&& ( ( Config::Get<bool>( Vars.ExploitsDefensiveInAir ) && Features::Misc.m_bWasJumping ) || ctx.m_bInPeek )
@@ -398,10 +396,15 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		KeepCommunication( );
 	}
 
-	const auto tb{ Features::Exploits.m_bWasDefensiveTick || Features::Exploits.m_iShiftAmount ? tbDefensive : tbReal };
+	auto tb{ Features::Exploits.m_bWasDefensiveTick || Features::Exploits.m_iShiftAmount ? tbDefensive : tbReal };
 
 	if ( ctx.m_bSendPacket ) {
 		Features::Antiaim.RunLocalModifications( cmd, tb );
+
+		if ( ctx.m_bFlicking ) {
+			Features::Exploits.m_bWasDefensiveTick = true;
+			tb = tbDefensive;
+		}
 
 		if ( tb > ctx.m_iHighestTickbase )
 			ctx.m_iHighestTickbase = tb;

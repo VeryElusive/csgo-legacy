@@ -378,46 +378,44 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 
 	Interfaces::Globals->flCurTime = to.m_flSimulationTime - TICKS_TO_TIME( current->m_iNewCmds );
 
-	for ( auto i{ 1 }; i <= current->m_iNewCmds; ++i ) {
-		// instead of incrementing at the end, like tickbase does in playerruncommand, do it here because SetSimulationTime is called in CBasePlayer::PostThink, before tickbase in incremented, meaning simtime is 1 below the final tickbase (aka its the same as when we animated)
-		Interfaces::Globals->flCurTime += Interfaces::Globals->flIntervalPerTick;
+	// instead of incrementing at the end, like tickbase does in playerruncommand, do it here because SetSimulationTime is called in CBasePlayer::PostThink, before tickbase in incremented, meaning simtime is 1 below the final tickbase (aka its the same as when we animated)
+	Interfaces::Globals->flCurTime += Interfaces::Globals->flIntervalPerTick;
 
-		const auto lerp{ i / static_cast< float >( current->m_iNewCmds ) };
+	const auto lerp{ 1 / static_cast< float >( current->m_iNewCmds ) };
 
-		player->m_flDuckAmount( ) = from->m_flDuckAmount + duckAmountDelta * lerp;
+	player->m_flDuckAmount( ) = from->m_flDuckAmount + duckAmountDelta * lerp;
 
-		if ( player->m_flDuckAmount( ) == 1.f )
-			player->m_fFlags( ) |= FL_DUCKING;
-		else
-			player->m_fFlags( ) &= ~FL_DUCKING;
+	if ( player->m_flDuckAmount( ) == 1.f )
+		player->m_fFlags( ) |= FL_DUCKING;
+	else
+		player->m_fFlags( ) &= ~FL_DUCKING;
 
-		if ( manualStandVel )
-			player->m_vecAbsVelocity( ) = { ( i & 1 ) ? 1.1f : -1.1f, 0.f, 0.f };
-		else
-			player->m_vecAbsVelocity( ) = ( from->m_vecVelocity + ( velocityDelta * lerp ) );
+	if ( manualStandVel )
+		player->m_vecAbsVelocity( ) = { 1.1f, 0.f, 0.f };
+	else
+		player->m_vecAbsVelocity( ) = ( from->m_vecVelocity + ( velocityDelta * lerp ) );
 
-		player->m_iEFlags( ) &= ~EFL_DIRTY_ABSVELOCITY;
+	player->m_iEFlags( ) &= ~EFL_DIRTY_ABSVELOCITY;
 
-		if ( i == current->m_iNewCmds )
-			player->m_angEyeAngles( ).y = current->m_angEyeAngles.y;
+	//if ( i == current->m_iNewCmds )
+	//	player->m_angEyeAngles( ).y = current->m_angEyeAngles.y;
 
-		if ( current->m_bFixJumpFall ) {
-			player->m_fFlags( ) &= ~FL_ONGROUND;
-			if ( !landed ) {
-				if ( TIME_TO_TICKS( Interfaces::Globals->flCurTime ) >= TIME_TO_TICKS( current->m_flLeftGroundTime ) ) {
-					player->m_fFlags( ) |= FL_ONGROUND;
-					landed = true;
-				}
+	if ( current->m_bFixJumpFall ) {
+		player->m_fFlags( ) &= ~FL_ONGROUND;
+		if ( !landed ) {
+			if ( TIME_TO_TICKS( Interfaces::Globals->flCurTime ) >= TIME_TO_TICKS( current->m_flLeftGroundTime ) ) {
+				player->m_fFlags( ) |= FL_ONGROUND;
+				landed = true;
 			}
 		}
-
-		if ( state->iLastUpdateFrame == Interfaces::Globals->iFrameCount )
-			state->iLastUpdateFrame = Interfaces::Globals->iFrameCount - 1;
-
-		player->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = true;
-		player->UpdateClientsideAnimations( );
-		player->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = false;
 	}
+
+	if ( state->iLastUpdateFrame == Interfaces::Globals->iFrameCount )
+		state->iLastUpdateFrame = Interfaces::Globals->iFrameCount - 1;
+
+	player->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = true;
+	player->UpdateClientsideAnimations( );
+	player->m_bClientSideAnimation( ) = ctx.m_bUpdatingAnimations = false;
 }
 
 void PlayerEntry::Rezik( LagRecord_t* current ) {

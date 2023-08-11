@@ -24,7 +24,7 @@ void draw_server_hitboxes( int index ) {
 
 	auto get_player_by_index = [ ]( int index ) -> CBasePlayer* {
 		typedef CBasePlayer* ( __fastcall* player_by_index )( int );
-		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 ? ? A1 ? ? ? ? 3B 48 18 7F 28" ) ) );
+		static auto player_index = reinterpret_cast< player_by_index >( MEM::FindPattern( _( "server.dll" ), _( "85 C9 7E 2A A1" ) ) );
 
 		if ( !player_index )
 			return false;
@@ -262,7 +262,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	case FRAME_RENDER_START: {
 		//Features::AnimSys.SetupFakeMatrix( );
 
-		/*for ( int i{ 1 }; i < 64; i++ ) {
+		for ( int i{ 1 }; i < 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 			if ( !player || player->IsDead( ) || !player->IsPlayer( ) )
 				continue;
@@ -270,7 +270,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			//player->SetAbsOrigin( player->m_vecOrigin( ) );
 
 			draw_server_hitboxes( i );
-		}*/
+		}
 	}break;
 	case FRAME_NET_UPDATE_START: {
 		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {
@@ -312,32 +312,6 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 		}
 
 		Features::Shots.ProcessShots( );
-		
-		{
-			static DWORD* KillFeedTime = nullptr;
-			if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
-				if ( !KillFeedTime )
-					KillFeedTime = MEM::FindHudElement<DWORD>( _( "CCSGO_HudDeathNotice" ) );
-
-				if ( KillFeedTime ) {
-					auto LocalDeathNotice = ( float* )( ( uintptr_t )KillFeedTime + 0x50 );
-
-					if ( LocalDeathNotice )
-						*LocalDeathNotice = Config::Get<bool>( Vars.MiscPreserveKillfeed ) ? FLT_MAX : 1.5f;
-
-					if ( ctx.m_bClearKillfeed ) {
-						using Fn = void( __thiscall* )( uintptr_t );
-						static auto clearNotices = ( Fn )Displacement::Sigs.ClearNotices;
-
-						clearNotices( ( uintptr_t )KillFeedTime - 0x14 );
-
-						ctx.m_bClearKillfeed = false;
-					}
-				}
-			}
-			else
-				KillFeedTime = 0;
-		}
 	}break;
 	default: break;
 

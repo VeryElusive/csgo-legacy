@@ -284,7 +284,6 @@ struct Variables_t {
 	// anti aim
 	C_ADD_VARIABLE( bool, AntiaimEnable, false );
 	C_ADD_VARIABLE( bool, AntiaimDesync, false );
-	C_ADD_VARIABLE( bool, AntiaimTrickLBY, false );
 	C_ADD_VARIABLE( bool, AntiAimManualDir, false );
 	C_ADD_VARIABLE( bool, AntiAimManualDirInd, false );
 	C_ADD_VARIABLE( int, AntiaimAtTargets, 0 );
@@ -298,18 +297,19 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, AntiaimFreestand, 0 );
 	C_ADD_VARIABLE( bool, AntiaimAntiBackStab, false );
 	C_ADD_VARIABLE( int, AntiaimFreestanding, 0 );
+	C_ADD_VARIABLE( int, AntiaimBreakLBYAngle, 0 );
+	C_ADD_VARIABLE( int, AntiaimNetworkedAngle, 0 );
+	C_ADD_VARIABLE( bool, AntiaimDistortion, false );
+	C_ADD_VARIABLE( bool, AntiaimStaticNetwork, false );
+	C_ADD_VARIABLE( bool, AntiaimStaticBreak, false );
+	C_ADD_VARIABLE( int, AntiaimDistortionRange, 0 );
+	C_ADD_VARIABLE( int, AntiaimDistortionSpeed, 0 );
+	C_ADD_VARIABLE( bool, AntiaimDistortionSpike, false );
 	C_ADD_VARIABLE( keybind_t, AntiaimFreestandingKey, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimInvert, { } );
-	C_ADD_VARIABLE( bool, AntiaimConstantInvert, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimRight, { } );
 	C_ADD_VARIABLE( keybind_t, AntiaimLeft, { } );
 	C_ADD_VARIABLE( Color, AntiaimManualCol, Color( 255, 255, 255 ) );
-
-	C_ADD_VARIABLE( bool, AntiaimFlickHead, false );
-	C_ADD_VARIABLE( bool, AntiaimConstantInvertFlick, false );
-	C_ADD_VARIABLE( int, AntiaimFlickAdd, 0 );
-	C_ADD_VARIABLE( int, AntiaimFlickSpeed, 0 );
-	C_ADD_VARIABLE( keybind_t, AntiaimFlickInvert, { } );
 
 	C_ADD_VARIABLE( int, AntiaimFakeLagLimit, 0 );
 	C_ADD_VARIABLE( int, AntiaimFakeLagVariance, 0 );

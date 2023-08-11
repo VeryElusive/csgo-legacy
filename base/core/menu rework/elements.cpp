@@ -144,23 +144,20 @@ void Menu::Register( ) {
 			auto& yawRange{ Config::Get<bool>( Vars.AntiaimYawRange ) };
 			generalGroup->Register( _( "Yaw speed" ), &Config::Get<int>( Vars.AntiaimYawSpeed ), 1, 60, SHOW( Config::Get<int>( Vars.AntiaimYawAdd ) == 2 || Config::Get<int>( Vars.AntiaimYawAdd ) == 3 ) );
 
-			generalGroup->Register( _( "Flick head" ), &Config::Get<bool>( Vars.AntiaimFlickHead ) );
-
-
-			generalGroup->Register( _( "Invert flick side" ), true, SHOW( Config::Get<bool>( Vars.AntiaimFlickHead ) ) );
-			generalGroup->Register( &Config::Get<keybind_t>( Vars.AntiaimFlickInvert ), SHOW( Config::Get<bool>( Vars.AntiaimFlickHead ) ) );
-			generalGroup->Register( _( "Constant flick invert" ), &Config::Get<bool>( Vars.AntiaimConstantInvertFlick ), SHOW( Config::Get<bool>( Vars.AntiaimFlickHead ) ) );
-			generalGroup->Register( _( "Flick amount" ), &Config::Get<int>( Vars.AntiaimFlickAdd ), 0, 180, SHOW( Config::Get<bool>( Vars.AntiaimFlickHead ) ) );
-			generalGroup->Register( _( "Flick speed" ), &Config::Get<int>( Vars.AntiaimFlickSpeed ), 2, 40, SHOW( Config::Get<bool>( Vars.AntiaimFlickHead ) ) );
-
 			generalGroup->Register( _( "At targets" ), &Config::Get<int>( Vars.AntiaimAtTargets ), 3, atTargets );
 
-			generalGroup->Register( _( "Desync" ), &Config::Get<bool>( Vars.AntiaimDesync ) );
+			generalGroup->Register( _( "Fake angles" ), &Config::Get<bool>( Vars.AntiaimDesync ) );
+			generalGroup->Register( _( "Break angle" ), &Config::Get<int>( Vars.AntiaimBreakLBYAngle ), -180, 180, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
+			generalGroup->Register( _( "Networked angle" ), &Config::Get<int>( Vars.AntiaimNetworkedAngle ), -180, 180, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
+			generalGroup->Register( _( "Static networked angle" ), &Config::Get<bool>( Vars.AntiaimStaticNetwork ) );
+			generalGroup->Register( _( "Static break angle" ), &Config::Get<bool>( Vars.AntiaimStaticBreak ) );
 
-			generalGroup->Register( _( "Avoid overlap" ), &Config::Get<bool>( Vars.AntiaimTrickLBY ) );
-			generalGroup->Register( _( "Constant desync invert" ), &Config::Get<bool>( Vars.AntiaimConstantInvert ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && !Config::Get<bool>( Vars.AntiaimTrickLBY ) ) );
-			generalGroup->Register( _( "Flip desync" ), true, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && !Config::Get<bool>( Vars.AntiaimConstantInvert ) ) );
-			generalGroup->Register( &Config::Get<keybind_t>( Vars.AntiaimInvert ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && !Config::Get<bool>( Vars.AntiaimConstantInvert ) ) );
+			generalGroup->Register( _( "Yaw randomisation" ), &Config::Get<bool>( Vars.AntiaimDistortion ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
+			generalGroup->Register( _( "Randomisation range" ), &Config::Get<int>( Vars.AntiaimDistortionRange ), 0, 360, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) ) );
+			generalGroup->Register( _( "Spike" ), &Config::Get<bool>( Vars.AntiaimDistortionSpike ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) ) );
+			generalGroup->Register( _( "Randomisation speed" ), &Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 40, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) && !Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) );
+
+			generalGroup->Register( _( "Avoid overlap" ), &Config::Get<bool>( Vars.AntiaimDistortion ) );
 
 			//generalGroup->Register( _( "Trick LBY" ), &Config::Get<bool>( Vars.AntiaimTrickLBY ) );
 			generalGroup->Register( _( "Anti backstab" ), &Config::Get<bool>( Vars.AntiaimAntiBackStab ) );

@@ -579,12 +579,6 @@ void CVisuals::KeybindsList( ) {
 
 	if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled )
 		addBind( _( "Force safe yaw" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).mode );
-	
-	if ( !Config::Get<bool>( Vars.AntiaimConstantInvertFlick ) && Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).enabled )
-		addBind( _( "Flick invert" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).mode );
-
-	if ( !Config::Get<bool>( Vars.AntiaimConstantInvert ) && Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
-		addBind( _( "Invert desync" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.AntiaimInvert ).mode );
 
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
 		addBind( _( "Slow walk" ), keyBindSize.x, binds, Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).mode );

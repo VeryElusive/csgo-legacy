@@ -91,13 +91,6 @@ case 8: if ( !Config::Get<bool>( Vars.##name##Machine ) ) goto jmp;break; }\
 
 // below is the worst usage of fucken memory. i am utterly ashamed that i created the menu without recoding that shitty fucken config sys
 
-MultiElement_t RegisterElements[ 4 ]{
-	{ &Config::Get<bool>( Vars.RagebotResolver ), "rezik" },
-	{ &Config::Get<bool>( Vars.RagebotLagcompensation ), "legcompenator" },
-	{ &Config::Get<bool>( Vars.AntiaimEnable ), "anit-am" },
-	{ &Config::Get<bool>( Vars.AntiaimConstantInvert ), "contant infurt" },
-};
-
 MultiElement_t weaponsLocal[ 2 ]{
 	{ &Config::Get<bool>( Vars.VisWeapIconLocal ), _( "Weapon Text" ) },
 	{ &Config::Get<bool>( Vars.VisWeapTextLocal ), _( "Weapon Icon" ) }

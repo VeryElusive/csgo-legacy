@@ -29,8 +29,6 @@ void CAntiAim::PickYaw( float& yaw ) {
 
 	const int& yawRange{ Config::Get<int>( Vars.AntiaimYawRange ) };
 
-	return;
-
 	switch ( Config::Get<int>( Vars.AntiaimYaw ) ) {
 	case 0: yaw += 0.f; break;// forward
 	case 1: yaw += 180.f; break;// backward
@@ -125,17 +123,41 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 	//if ( !Interfaces::ClientState->nChokedCommands )
 	ChokeCycleJitter = !ChokeCycleJitter;
 
-	if ( Config::Get<bool>( Vars.AntiaimConstantInvert ) )
-		Invert = !Invert;
-	else {
-		static auto old{ Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled };
-		if ( old != Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
-			Invert = old = Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled;
-	}
+	static auto old{ Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled };
+	if ( old != Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled )
+		Invert = old = Config::Get<keybind_t>( Vars.AntiaimInvert ).enabled;
 
 	auto yaw = cmd.viewAngles.y;
 
 	const auto side{ Freestanding( ) };
+
+	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
+
+	if ( m_flVelocityLengthXY <= 0.1f ) {
+		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
+			static bool reRoll{ };
+			static float random{ };
+			static float cur{ };
+
+			if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
+				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
+				cmd.viewAngles.y += random;
+			}
+			else {
+				if ( reRoll ) {
+					random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
+					reRoll = false;
+				}
+
+				cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
+
+				cmd.viewAngles.y += cur;
+
+				if ( std::abs( cur - random ) < 5.f )
+					reRoll = true;
+			}
+		}
+	}
 
 	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
 		if ( ManualSide == 1 ) {
@@ -166,15 +188,6 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 	}
 
 	AtTarget( yaw );
-
-	if ( m_bFlickNow ) {
-		if ( Config::Get<bool>( Vars.AntiaimConstantInvertFlick ) )
-			m_bInvertFlick = !m_bInvertFlick;
-		else
-			m_bInvertFlick = Config::Get<keybind_t>( Vars.AntiaimFlickInvert ).enabled;
-
-		yaw += ( m_bInvertFlick ? -Config::Get<int>( Vars.AntiaimFlickAdd ) : Config::Get<int>( Vars.AntiaimFlickAdd ) );
-	}
 
 	if ( m_bAntiBackstab )
 		return yaw;
@@ -312,16 +325,6 @@ void CAntiAim::FakeLag( int cmdNum ) {
 		else if ( ctx.m_bInPeek )
 			ctx.m_bSendPacket = true;
 	}
-
-	if ( m_bFlickNow )
-		m_bFlickNow = false;
-
-	if ( Config::Get<bool>( Vars.AntiaimFlickHead ) && !ctx.m_bFakeDucking ) {
-		if ( ++m_iFlickTimer > Config::Get<int>( Vars.AntiaimFlickSpeed ) ) {
-			m_bFlickNow = ctx.m_bSendPacket = true;
-			m_iFlickTimer = 0;
-		}
-	}
 }
 
 void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
@@ -367,86 +370,65 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 		if ( curUserCmd.iTickCount == INT_MAX )
 			continue;
 
-		//const auto backup{ Invert };
+		if ( i == 1 ) {
+			ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
+			ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+			ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+			ctx.m_pLocal->m_vecVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+			ctx.m_pLocal->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
 
-		if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
-			&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
-			if ( curLocalData.m_bCanAA ) {
-				const auto oldViewAngles{ curUserCmd.viewAngles };
+			if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
+				&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
+				if ( curLocalData.m_bCanAA ) {
+					const auto oldViewAngles{ curUserCmd.viewAngles };
 
-				curUserCmd.viewAngles.y = yaw;
+					curUserCmd.viewAngles.y = yaw;
 
-				//const auto backup{ Invert };
+					if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
+						if ( curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) < 0.1f ) {
 
-				// lby breaker
-				//if ( TICKS_TO_TIME( tickbase - ( totalCmds - i ) ) > Features::AnimSys.m_flLowerBodyRealignTimer && !did && curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) <= 0.1f ) {
-				//	did = true;
-				//	Invert = !Invert;
-				//}
-
-				if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) < 1.f ) {
-					/*if ( i == totalCmds - 1 ) {
-						Invert = !Invert;
-						cmd.flForwardMove = cmd.flSideMove = 0.f;
-					}*/
-
-					if ( lastCmd ) {
-						curUserCmd.flForwardMove = curUserCmd.flSideMove = 0.f;
+							if ( TICKS_TO_TIME( tickbase - ( totalCmds - i ) ) > Features::AnimSys.m_flLowerBodyRealignTimer && curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) <= 0.1f ) {
+								ctx.m_bFlicking = true;
+								curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimBreakLBYAngle );
+							}
+						}
 					}
-					else {
-						curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimYawRange );
 
-						Features::Misc.MicroMove( curUserCmd );
+					Features::Misc.MoveMINTFix(
+						curUserCmd, oldViewAngles,
+						curLocalData.PredictedNetvars.m_iFlags,
+						curLocalData.PredictedNetvars.m_MoveType
+					);
 
-						curLocalData.PredictedNetvars.m_vecVelocity = { curUserCmd.flSideMove,0,0 };
-					}
-				}
-				else {
-					// avoid overlap
-					if ( Config::Get<bool>( Vars.AntiaimTrickLBY ) )
-						Invert = Math::AngleDiff( oldLBY, yaw ) <= 0;
 				}
 
-				if ( !lastCmd && !inShot && Config::Get<bool>( Vars.AntiaimDesync ) )
-					curUserCmd.viewAngles.y += ( Invert ? -120.f : 120.f );
-
-				//Invert = backup;
-
-				Features::Misc.MoveMINTFix(
-					curUserCmd, oldViewAngles,
-					curLocalData.PredictedNetvars.m_iFlags,
-					curLocalData.PredictedNetvars.m_MoveType
-				);
-
+				Features::Misc.NormalizeMovement( curUserCmd );
 			}
 
-			Features::Misc.NormalizeMovement( curUserCmd );
-		}
-
-		//Invert = backup;
-
-		ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
-		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
-		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
-		ctx.m_pLocal->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
-
-		Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
-
-		if ( lastCmd ) {
 			if ( ctx.m_pLocal->m_MoveType( ) == MOVETYPE_WALK ) {
-				cmd.iButtons &= ~( IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT );
+				curUserCmd.iButtons &= ~( IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT );
 
-				if ( cmd.flForwardMove != 0.f )
-					cmd.iButtons |=
-					( Config::Get<bool>( Vars.MiscSlideWalk ) ? cmd.flForwardMove < 0.f : cmd.flForwardMove > 0.f )
+				if ( curUserCmd.flForwardMove != 0.f )
+					curUserCmd.iButtons |=
+					( Config::Get<bool>( Vars.MiscSlideWalk ) ? curUserCmd.flForwardMove < 0.f : curUserCmd.flForwardMove > 0.f )
 					? IN_FORWARD : IN_BACK;
 
-				if ( cmd.flSideMove ) {
-					cmd.iButtons |=
-						( Config::Get<bool>( Vars.MiscSlideWalk ) ? cmd.flSideMove < 0.f : cmd.flSideMove > 0.f )
+				if ( curUserCmd.flSideMove ) {
+					curUserCmd.iButtons |=
+						( Config::Get<bool>( Vars.MiscSlideWalk ) ? curUserCmd.flSideMove < 0.f : curUserCmd.flSideMove > 0.f )
 						? IN_MOVERIGHT : IN_MOVELEFT;
 				}
 			}
+
+			// doesnt do anything just want it for updating anims
+			curUserCmd.viewAngles.x += cmd.viewAngles.x;
+
+			Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
+		}
+		
+
+		if ( lastCmd ) {
+			curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
 			continue;
 		}
 
@@ -489,7 +471,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 
 	ctx.m_vecSetupBonesOrigin = ctx.m_pLocal->GetAbsOrigin( );
 
-	/* fake matrix */
+	/* fake matrix 
 	if ( !Config::Get<bool>( Vars.ChamDesync ) )
 		return;
 
@@ -530,7 +512,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 	ctx.m_cFakeData.init = true;
 	*animstate = backupState2;
 
-	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Size( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Size( ) * sizeof( matrix3x4_t ) );*/
 }
 
 // pasta reis courtesy of slazy

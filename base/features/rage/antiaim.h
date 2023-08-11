@@ -15,7 +15,6 @@ public:
 	bool Condition( CUserCmd& cmd, bool checkCmd = false );
 
 	int ManualSide{ };
-	bool m_bFlickNow{ };
 	bool Invert{ };
 
 private:
@@ -25,9 +24,6 @@ private:
 	void PickYaw( float& yaw );
 	void AtTarget( float& yaw );
 	//bool AutoDirection( float& yaw );
-
-	bool m_bInvertFlick{ };
-	int m_iFlickTimer{ };
 };
 
 namespace Features { inline CAntiAim Antiaim; };

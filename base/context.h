@@ -129,6 +129,7 @@ struct HAVOCCTX {
 	bool m_bUpdatingAnimations{ };
 	bool m_bProhibitSounds{ };
 	bool m_bUnload{ };
+	bool m_bFlicking{ };
 	//bool m_bSpawningCmds{ };
 	//bool m_bReadPackets{ };
 	//bool m_bRepredict{ };

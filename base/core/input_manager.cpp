@@ -54,7 +54,6 @@ void Inputsys::updateNeededKeys( ) {
 		DODAKEYBINDCUH( RagebotForceSafePointKey );
 		DODAKEYBINDCUH( ExploitsDoubletapKey );
 		DODAKEYBINDCUH( ExploitsHideshotsKey );
-		DODAKEYBINDCUH( AntiaimFlickInvert );
 		DODAKEYBINDCUH( DBGKeybind );
 		DODAKEYBINDCUH( RagebotForceYawSafetyKey );
 		DODAKEYBINDCUH( AntiaimFreestandingKey );
