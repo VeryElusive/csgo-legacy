@@ -123,8 +123,8 @@ void CRageBot::KnifeBot( CUserCmd& cmd ) {
 	if ( bestTarget ) {
 		const auto backup{ std::make_unique< LagBackup_t >( bestTarget->m_pPlayer ) };
 
-		bestTarget->m_pRecord->Apply( bestTarget->m_pPlayer, bestTarget->m_pRecord->m_iResolverSide );
-		bestTarget->m_pPlayer->SetAbsAngles( { 0, bestTarget->m_pRecord->m_cAnimData.m_arrSides.at( bestTarget->m_pRecord->m_iResolverSide ).m_cAnimState.flAbsYaw, 0 } );
+		bestTarget->m_pRecord->Apply( bestTarget->m_pPlayer );
+		bestTarget->m_pPlayer->SetAbsAngles( { 0, bestTarget->m_pRecord->m_cAnimData.m_arrSides.at( 0 ).m_cAnimState.flAbsYaw, 0 } );
 		
 		const auto hitboxSet{ bestTarget->m_pPlayer->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( bestTarget->m_pPlayer->m_nHitboxSet( ) ) };
 		const auto hitbox{ hitboxSet->GetHitbox( HITBOX_CHEST ) };
@@ -209,7 +209,7 @@ bool IsBackStab( CBasePlayer* player ) {
 
 void CRageBot::KnifeBotTargetPlayer( CUserCmd& cmd, KnifeTarget_t& target, LagRecord_t* record ) {
 	record->Apply( target.m_pPlayer );
-	target.m_pPlayer->SetAbsAngles( { 0,record->m_cAnimData.m_arrSides.at( record->m_iResolverSide ).m_cAnimState.flAbsYaw, 0 } );
+	target.m_pPlayer->SetAbsAngles( { 0,record->m_cAnimData.m_arrSides.at( 0 ).m_cAnimState.flAbsYaw, 0 } );
 	
 	const auto hitboxSet{ target.m_pPlayer->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( target.m_pPlayer->m_nHitboxSet( ) ) };
 	const auto hitbox{ hitboxSet->GetHitbox( HITBOX_CHEST ) };

@@ -131,33 +131,10 @@ float CAntiAim::BaseYaw( CUserCmd& cmd ) {
 
 	const auto side{ Freestanding( ) };
 
-	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
-
-	if ( m_flVelocityLengthXY <= 0.1f ) {
-		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
-			static bool reRoll{ };
-			static float random{ };
-			static float cur{ };
-
-			if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
-				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-				cmd.viewAngles.y += random;
-			}
-			else {
-				if ( reRoll ) {
-					random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
-					reRoll = false;
-				}
-
-				cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
-
-				cmd.viewAngles.y += cur;
-
-				if ( std::abs( cur - random ) < 5.f )
-					reRoll = true;
-			}
-		}
-	}
+	if ( ManualSide )
+		m_iChoiceSide = ManualSide;
+	else if ( Config::Get<int>( Vars.AntiaimFreestanding ) == 1 )
+		m_iChoiceSide = side;
 
 	if ( Config::Get<bool>( Vars.AntiAimManualDir ) ) {
 		if ( ManualSide == 1 ) {
@@ -328,6 +305,8 @@ void CAntiAim::FakeLag( int cmdNum ) {
 }
 
 void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
+	const auto oldCmdViewAngles{ cmd.viewAngles };
+
 	Pitch( cmd );
 
 	const auto animstate{ ctx.m_pLocal->m_pAnimState( ) };
@@ -343,6 +322,34 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 		yaw += Math::RandomFloat( -180 * amount, 180 * amount );
 	}
 
+	const auto m_flVelocityLengthXY{ ctx.m_pLocal->m_vecVelocity( ).Length2D( ) };
+
+	if ( m_flVelocityLengthXY <= 0.1f ) {
+		if ( Config::Get<bool>( Vars.AntiaimDistortion ) ) {
+			static bool reRoll{ };
+			static float random{ };
+			static float cur{ };
+
+			if ( Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) {
+				random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
+				yaw += random;
+			}
+			else {
+				if ( reRoll ) {
+					random = Math::RandomFloat( 0, Config::Get<int>( Vars.AntiaimDistortionRange ) );
+					reRoll = false;
+				}
+
+				cur = Math::Interpolate( cur, random, Config::Get<int>( Vars.AntiaimDistortionSpeed ) / 100.f );
+
+				yaw += cur;
+
+				if ( std::abs( cur - random ) < 5.f )
+					reRoll = true;
+			}
+		}
+	}
+
 	const auto inShot{ ctx.m_iLastShotNumber > Interfaces::ClientState->iLastOutgoingCommand
 		&& ctx.m_iLastShotNumber <= ( Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 ) };
 
@@ -354,7 +361,6 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 	std::memcpy( backupLayers, ctx.m_pLocal->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
 
 	bool did{ };
-	const auto oldLBY{ ctx.m_pLocal->m_flLowerBodyYawTarget( ) };
 
 	for ( auto i{ 1 }; i <= totalCmds; ++i ) {
 		const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
@@ -387,19 +393,32 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 					if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
 						if ( curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) < 0.1f ) {
 
-							if ( TICKS_TO_TIME( tickbase - ( totalCmds - i ) ) > Features::AnimSys.m_flLowerBodyRealignTimer && curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) <= 0.1f ) {
+							if ( TICKS_TO_TIME( tickbase - ( totalCmds - i ) ) > Features::AnimSys.m_flLowerBodyRealignTimer ) {
 								ctx.m_bFlicking = true;
+
+								if ( Config::Get<bool>( Vars.AntiaimStaticBreak ) ) {
+									curUserCmd.viewAngles.y = cmd.viewAngles.y;
+									if ( m_iChoiceSide == 1 )
+										curUserCmd.viewAngles.y += 90.f;
+									else if ( m_iChoiceSide == 2 )
+										curUserCmd.viewAngles.y -= 90.f;
+								}
+
 								curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimBreakLBYAngle );
 							}
 						}
 					}
+
+					// doesnt do anything just want it for updating anims
+					curUserCmd.viewAngles.x = cmd.viewAngles.x;
+
+					//Features::Misc.NormalizeMovement( curUserCmd );
 
 					Features::Misc.MoveMINTFix(
 						curUserCmd, oldViewAngles,
 						curLocalData.PredictedNetvars.m_iFlags,
 						curLocalData.PredictedNetvars.m_MoveType
 					);
-
 				}
 
 				Features::Misc.NormalizeMovement( curUserCmd );
@@ -420,15 +439,26 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 				}
 			}
 
-			// doesnt do anything just want it for updating anims
-			curUserCmd.viewAngles.x += cmd.viewAngles.x;
-
 			Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
 		}
 		
 
 		if ( lastCmd ) {
+			if ( Config::Get<bool>( Vars.AntiaimStaticNetwork ) ) {
+				curUserCmd.viewAngles.y = cmd.viewAngles.y;
+				if ( m_iChoiceSide == 1 )
+					curUserCmd.viewAngles.y += 90.f;
+				else if ( m_iChoiceSide == 2 )
+					curUserCmd.viewAngles.y -= 90.f;
+			}
+
 			curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
+
+			Features::Misc.MoveMINTFix(
+				curUserCmd, oldCmdViewAngles,
+				curLocalData.PredictedNetvars.m_iFlags,
+				curLocalData.PredictedNetvars.m_MoveType
+			);
 			continue;
 		}
 

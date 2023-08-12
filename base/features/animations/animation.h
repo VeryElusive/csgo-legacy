@@ -75,7 +75,7 @@ struct LagRecord_t {
 	bool m_bFixJumpFall{ };
 	float m_flLeftGroundTime{ };
 
-	int m_iResolverSide{ };
+	bool m_bLBYUpdate{ };
 
 	int m_iReceiveTick{ };
 	int m_iNewCmds{ 1 };
@@ -116,6 +116,7 @@ struct PlayerEntry {
 	Vector m_vecPreviousVelocity{ };
 
 	float m_flSpawnTime{ };
+	float m_flLowerBodyYawTarget{ };
 	//bool m_bStartingDuck{ };
 	//float m_flLastPacketTime{ };
 	//float m_flTrackSimulationTime{ };

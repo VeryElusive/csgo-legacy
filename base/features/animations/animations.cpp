@@ -214,6 +214,11 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	//	entry.Rezik( current );
 	//}
 
+	if ( entry.m_flLowerBodyYawTarget != entry.m_pPlayer->m_flLowerBodyYawTarget( ) ) {
+		current->m_bLBYUpdate = true;
+		entry.m_flLowerBodyYawTarget = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+	}
+
 	entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 	current->m_angEyeAngles.y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 
@@ -433,8 +438,6 @@ void PlayerEntry::Rezik( LagRecord_t* current ) {
 			
 		}*/
 	}
-	else if ( current->m_iNewCmds <= 1 )
-		current->m_iResolverSide = 0;
 }
 
 bool CAnimationSys::SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* bones, const int boneMask, const float time, const bool clampbonesinbbox ) {

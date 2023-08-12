@@ -16,7 +16,7 @@ public:
 
 	int ManualSide{ };
 	bool Invert{ };
-
+	int m_iChoiceSide{ };
 private:
 	bool ChokeCycleJitter{ };
 	bool m_bAntiBackstab{ };

@@ -247,6 +247,7 @@ void AimTarget_t::Fire( CUserCmd& cmd ) {
 				_( " | intersections: " ) + std::to_string( this->m_cPoint.m_iDesyncIntersections ) +
 				_( " | extrapolated: " ) + std::to_string( this->m_bExtrapolating ) +
 				_( " | moving: " ) + std::to_string( this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate != 0.f ) +
+				_( " | lby update: " ) + std::to_string( this->m_pRecord->m_bLBYUpdate ) +
 				_( " | validity: " ) + std::to_string( this->m_pRecord->Validity( ) )};
 
 			Features::Logger.Log( message, false );
@@ -319,7 +320,7 @@ void AimTarget_t::ScanTarget( std::vector<EHitboxIndex>& hitboxes ) {
 
 	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), this->m_pRecord->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
-	const auto LBY{ this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate && this->m_pRecord->m_cAnimData.m_iFlags & FL_ONGROUND };
+	const auto LBY{ this->m_pRecord->m_bLBYUpdate };
 
 	const auto forceBaim{ ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled
 		|| ( entry.m_iMissedShots > THIS.MenuVars.RagebotForceBaimAfterX && THIS.MenuVars.RagebotForceBaimAfterXINT ) )
@@ -761,8 +762,8 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 				&& ctx.m_iTicksAllowed )
 				continue;
 
-			const auto LBY{ record->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate && record->m_cAnimData.m_iFlags & FL_ONGROUND };
-			const auto oldRecordLBY{ this->m_pRecord && this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate && this->m_pRecord->m_cAnimData.m_iFlags & FL_ONGROUND };
+			const auto LBY{ record->m_bLBYUpdate };
+			const auto oldRecordLBY{ this->m_pRecord && this->m_pRecord->m_bLBYUpdate };
 
 			if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled
 				&& !LBY )

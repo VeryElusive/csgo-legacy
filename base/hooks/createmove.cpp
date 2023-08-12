@@ -322,6 +322,11 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( cmd.iButtons & IN_ATTACK )
 		ctx.m_bSendPacket = false;
 
+	if ( ctx.m_bFlicking ) {
+		ctx.m_bSendPacket = true;
+		ctx.m_bFlicking = false;
+	}
+
 	if ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) )
 		&& ctx.m_bCanShoot ) {
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
@@ -401,10 +406,10 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( ctx.m_bSendPacket ) {
 		Features::Antiaim.RunLocalModifications( cmd, tb );
 
-		if ( ctx.m_bFlicking ) {
-			Features::Exploits.m_bWasDefensiveTick = true;
-			tb = tbDefensive;
-		}
+		//if ( ctx.m_bFlicking ) {
+		//	Features::Exploits.m_bWasDefensiveTick = true;
+		//	tb = tbDefensive;
+		//}
 
 		if ( tb > ctx.m_iHighestTickbase )
 			ctx.m_iHighestTickbase = tb;
