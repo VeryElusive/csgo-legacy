@@ -226,7 +226,7 @@ void CVisuals::SkyboxChanger( ) {
 
 void CVisuals::Watermark( ) {
 	const auto name = _( "Havoc [beta] " );
-	const auto pstr = _( "Version: 0.3.7" );
+	const auto pstr = _( "Legacy" );
 
 	const auto name_size = Render::GetTextSize( name, Fonts::Menu );
 	const auto ping_size = Render::GetTextSize( pstr, Fonts::Menu );

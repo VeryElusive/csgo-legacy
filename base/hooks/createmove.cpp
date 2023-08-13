@@ -257,11 +257,10 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	//	ctx.m_bSendPacket = false;
 
 
-	// doing this before now
-	localData.SavePredVars( ctx.m_pLocal, cmd );
-
 	Features::EnginePrediction.RunCommand( cmd );
 	{
+		localData.SavePredVars( ctx.m_pLocal, cmd );
+
 		// after pred so we dont trigger ppl's lby detection
 		//Features::Misc.MicroMove( cmd );
 

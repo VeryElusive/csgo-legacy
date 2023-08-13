@@ -287,6 +287,9 @@ void CAntiAim::FakeLag( int cmdNum ) {
 	if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) < 0.1f )
 		maxChoke = 1;
 
+	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
+		maxChoke = 15;
+
 	const auto& localData = ctx.m_cLocalData.at( Interfaces::ClientState->iLastOutgoingCommand % 150 );
 
 	if ( Interfaces::ClientState->nChokedCommands >= maxChoke )
@@ -412,7 +415,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 						}
 					}
 
-					// doesnt do anything just want it for updating anims
+					// doesnt do anything to aa just want it for updating anims
 					curUserCmd.viewAngles.x = cmd.viewAngles.x;
 
 					//Features::Misc.NormalizeMovement( curUserCmd );
@@ -441,6 +444,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 						? IN_MOVERIGHT : IN_MOVELEFT;
 				}
 			}
+
 
 			Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
 		}

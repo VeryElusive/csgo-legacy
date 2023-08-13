@@ -151,7 +151,7 @@ void CAnimationSys::RunAnimationSystem( ) {
 					Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, side.m_pMatrix,
 						BONE_USED_BY_SERVER, record->m_cAnimData.m_flSimulationTime, false );
 
-					std::memcpy( entry->m_matMatrix, record->m_cAnimData.m_cSideData.m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+					std::memcpy( entry->m_matMatrix, side.m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 					std::memcpy( entry->m_pPlayer->m_CachedBoneData( ).Base( ), entry->m_matMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 				}
 			}, std::ref( entry ) );
@@ -217,13 +217,7 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 	Interfaces::ClientState->bIsHLTV = true;
 	Interfaces::Globals->flFrameTime = Interfaces::Globals->flIntervalPerTick;
 
-	const auto backupYaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
-
-	entry.m_pPlayer->m_angEyeAngles( ).y = Math::NormalizeEyeAngles( entry.m_pPlayer->m_angEyeAngles( ).y );
-
 	InterpolateFromLastData( entry.m_pPlayer, current, entry.m_optPreviousData );
-
-	entry.m_pPlayer->m_angEyeAngles( ).y = backupYaw;
 
 	auto& sideData{ current->m_cAnimData.m_cSideData }; {
 		sideData.m_cAnimState = *entry.m_pPlayer->m_pAnimState( );
@@ -332,8 +326,6 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 	const auto duckAmountDelta{ to.m_flDuckAmount - from->m_flDuckAmount };
 	const auto velocityDelta{ to.m_vecVelocity - from->m_vecVelocity };
 
-	bool landed{ };
-
 	Interfaces::Globals->flCurTime = to.m_flSimulationTime - TICKS_TO_TIME( current->m_iNewCmds );
 
 	// instead of incrementing at the end, like tickbase does in playerruncommand, do it here because SetSimulationTime is called in CBasePlayer::PostThink, before tickbase in incremented, meaning simtime is 1 below the final tickbase (aka its the same as when we animated)
@@ -353,20 +345,17 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 	else
 		player->m_vecAbsVelocity( ) = ( from->m_vecVelocity + ( velocityDelta * lerp ) );
 
+	if ( current->m_bAccurateVelocity )
+		player->m_vecAbsVelocity( ) = current->m_cAnimData.m_vecVelocity;
+
 	player->m_iEFlags( ) &= ~EFL_DIRTY_ABSVELOCITY;
 
-	//if ( i == current->m_iNewCmds )
-	//	player->m_angEyeAngles( ).y = current->m_angEyeAngles.y;
-
-	if ( current->m_bFixJumpFall ) {
+	// TODO:
+	/*if ( current->m_bFixJumpFall ) {
 		player->m_fFlags( ) &= ~FL_ONGROUND;
-		if ( !landed ) {
-			if ( TIME_TO_TICKS( Interfaces::Globals->flCurTime ) >= TIME_TO_TICKS( current->m_flLeftGroundTime ) ) {
-				player->m_fFlags( ) |= FL_ONGROUND;
-				landed = true;
-			}
-		}
-	}
+		if ( TIME_TO_TICKS( Interfaces::Globals->flCurTime ) >= TIME_TO_TICKS( current->m_flLeftGroundTime ) )
+			player->m_fFlags( ) |= FL_ONGROUND;
+	}*/
 
 	if ( state->iLastUpdateFrame == Interfaces::Globals->iFrameCount )
 		state->iLastUpdateFrame = Interfaces::Globals->iFrameCount - 1;

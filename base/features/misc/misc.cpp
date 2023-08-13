@@ -328,44 +328,9 @@ void CMisc::SlowWalk( CUserCmd& cmd ) {
 	if ( !ctx.m_pWeaponData )
 		return;
 
-	int    ticks{ }, max{ 16 };
-
 	if ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) {
-		Vector velocity{ ctx.m_pLocal->m_vecVelocity( ) };
-
-		// calculate friction.
-		float friction = Displacement::Cvars.sv_friction->GetFloat( ) * ctx.m_pLocal->m_surfaceFriction( );
-
-		for ( ; ticks < 15; ++ticks ) {
-			// calculate speed.
-			float speed = velocity.Length( );
-
-			// if too slow return.
-			if ( speed <= 0.1f )
-				break;
-
-			// bleed off some speed, but if we have less than the bleed, threshold, bleed the threshold amount.
-			float control = std::max( speed, Displacement::Cvars.sv_stopspeed->GetFloat( ) );
-
-			// calculate the drop amount.
-			float drop = control * friction * Interfaces::Globals->flIntervalPerTick;
-
-			// scale the velocity.
-			float newspeed = std::max( 0.f, speed - drop );
-
-			if ( newspeed != speed ) {
-				// determine proportion of old speed we are using.
-				newspeed /= speed;
-
-				// adjust velocity according to proportion.
-				velocity *= newspeed;
-			}
-		}
-
-		// zero forwardmove and sidemove.
-		if ( ticks > ( ( max - 1 ) - Interfaces::ClientState->nChokedCommands ) || !Interfaces::ClientState->nChokedCommands ) {
-			cmd.flForwardMove = cmd.flSideMove = 0.f;
-		}
+		if ( !Interfaces::ClientState->nChokedCommands || Interfaces::ClientState->nChokedCommands >= 10 )
+			LimitSpeed( cmd, 0 );
 	}
 }
 

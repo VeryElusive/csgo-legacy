@@ -146,20 +146,18 @@ void Menu::Register( ) {
 
 			generalGroup->Register( _( "At targets" ), &Config::Get<int>( Vars.AntiaimAtTargets ), 3, atTargets );
 
+			
 			generalGroup->Register( _( "Fake angles" ), &Config::Get<bool>( Vars.AntiaimDesync ) );
 			generalGroup->Register( _( "Break angle" ), &Config::Get<int>( Vars.AntiaimBreakLBYAngle ), -180, 180, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
 			generalGroup->Register( _( "Networked angle" ), &Config::Get<int>( Vars.AntiaimNetworkedAngle ), -180, 180, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
-			generalGroup->Register( _( "Static networked angle" ), &Config::Get<bool>( Vars.AntiaimStaticNetwork ) );
-			generalGroup->Register( _( "Static break angle" ), &Config::Get<bool>( Vars.AntiaimStaticBreak ) );
-
+			generalGroup->Register( _( "Static networked angle" ), &Config::Get<bool>( Vars.AntiaimStaticNetwork ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
+			generalGroup->Register( _( "Static break angle" ), &Config::Get<bool>( Vars.AntiaimStaticBreak ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
+			
 			generalGroup->Register( _( "Yaw randomisation" ), &Config::Get<bool>( Vars.AntiaimDistortion ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) ) );
 			generalGroup->Register( _( "Randomisation range" ), &Config::Get<int>( Vars.AntiaimDistortionRange ), 0, 360, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) ) );
 			generalGroup->Register( _( "Spike" ), &Config::Get<bool>( Vars.AntiaimDistortionSpike ), SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) ) );
-			generalGroup->Register( _( "Randomisation speed" ), &Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 40, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) && !Config::Get<bool>( Vars.AntiaimDistortionSpike ) ) );
+			generalGroup->Register( _( "Randomisation speed" ), &Config::Get<int>( Vars.AntiaimDistortionSpeed ), 1, 40, SHOW( Config::Get<bool>( Vars.AntiaimDesync ) && Config::Get<bool>( Vars.AntiaimDistortion ) ) );
 
-			generalGroup->Register( _( "Avoid overlap" ), &Config::Get<bool>( Vars.AntiaimDistortion ) );
-
-			//generalGroup->Register( _( "Trick LBY" ), &Config::Get<bool>( Vars.AntiaimTrickLBY ) );
 			generalGroup->Register( _( "Anti backstab" ), &Config::Get<bool>( Vars.AntiaimAntiBackStab ) );
 
 			generalGroup->Register( _( "Freestanding type" ), &Config::Get<int>( Vars.AntiaimFreestanding ), 4, freestandingType );
@@ -462,7 +460,7 @@ void Menu::Register( ) {
 			movementGroup->Register( _( "Infinite Stamina" ), &Config::Get<bool>( Vars.MiscInfiniteStamina ) );
 			movementGroup->Register( _( "Quick stop" ), &Config::Get<bool>( Vars.MiscQuickStop ) );
 			movementGroup->Register( _( "Slide walk" ), &Config::Get<bool>( Vars.MiscSlideWalk ) );
-			movementGroup->Register( _( "Slow walk" ), &Config::Get<bool>( Vars.MiscSlowWalk ) );
+			movementGroup->Register( _( "Fake walk" ), &Config::Get<bool>( Vars.MiscSlowWalk ) );
 			movementGroup->Register( &Config::Get<keybind_t>( Vars.MiscSlowWalkKey ) );
 
 			movementGroup->Register( _( "Fake duck" ), &Config::Get<bool>( Vars.MiscFakeDuck ), SHOW( Config::Get<bool>( Vars.MiscInfiniteStamina ) ) );

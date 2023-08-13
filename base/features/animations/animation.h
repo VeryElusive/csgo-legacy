@@ -63,7 +63,10 @@ struct LagRecord_t {
 		m_flCycle( player->m_flCycle( ) ),
 		m_iNewCmds( TIME_TO_TICKS( player->m_flSimulationTime( ) - player->m_flOldSimulationTime( ) ) ),
 		m_iReceiveTick( Interfaces::ClientState->iServerTick ),
-		m_bDormant( player->IsDormant( ) ) { }
+		m_bDormant( player->IsDormant( ) ) {
+		if ( m_iNewCmds <= 0 )
+			m_iNewCmds = 1;
+	}
 
 	AnimData_t m_cAnimData;
 
