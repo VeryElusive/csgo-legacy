@@ -1,8 +1,17 @@
 #include "ragebot.h"
 
 bool CRageBot::ExtrapolatePlayer( PlayerEntry& entry, float yaw, int resolverSide, int amount, Vector previousVelocity ) {
-	if ( yaw == -1 )
-		yaw = entry.m_flPreviousYaws.back( ).m_flYaw;
+	if ( yaw == -1
+		&& entry.m_pRecords.size( ) ) {
+		if ( Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
+			yaw = ExtrapolateYawFromRecords( entry.m_pRecords, amount );
+
+			if ( yaw == -1 )
+				entry.m_pRecords.back( )->m_angEyeAngles.y;
+		}
+		else
+			yaw = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+	}
 
 	PreviousExtrapolationData_t previous{ entry.m_pPlayer->m_flDuckAmount( ), entry.m_pPlayer->m_fFlags( ) };
 	auto angles{ entry.m_pRecords.back( )->m_angEyeAngles };
@@ -21,7 +30,7 @@ bool CRageBot::ExtrapolatePlayer( PlayerEntry& entry, float yaw, int resolverSid
 
 
 	if ( std::abs( dir - prevDir ) >= 5.f ) {
-
+		return false;
 	}
 	else {
 		if ( std::abs( entry.m_optPreviousData->m_vecVelocity.Length2D( ) - previousVelocity.Length2D( ) ) < 10.f )
@@ -32,7 +41,7 @@ bool CRageBot::ExtrapolatePlayer( PlayerEntry& entry, float yaw, int resolverSid
 
 	for ( int i{ 1 }; i <= amount; ++i ) {
 		SimulatePlayer( entry.m_pPlayer, entry.m_pPlayer->m_flSimulationTime( ) + TICKS_TO_TIME( i ),
-			angles, 0, i == amount, previous, 
+			angles, 0, i == amount, previous,
 			direction, assumedSpeed, false );
 
 		previous = { entry.m_pPlayer->m_flDuckAmount( ), entry.m_pPlayer->m_fFlags( ) };
@@ -65,7 +74,7 @@ bool CRageBot::ExtrapolatePlayer( CBasePlayer* player, float baseTime, int amoun
 
 	for ( int i{ 1 }; i <= amount; ++i ) {
 		SimulatePlayer( player, baseTime + TICKS_TO_TIME( i ),
-			angles, 0, i == amount, previous, 
+			angles, 0, i == amount, previous,
 			direction, assumedSpeed, local );
 
 		previous = { player->m_flDuckAmount( ), player->m_fFlags( ) };
@@ -100,8 +109,8 @@ void CRageBot::SimulatePlayer( CBasePlayer* player, float time, QAngle angles, i
 	else if ( !local )
 		player->m_flNextAttack( ) = 0.f;
 
-	if ( ( player->m_flDuckAmount( ) > 0.0f && player->m_flDuckAmount( ) >= previous.m_flDuckAmount )
-		|| curFlags & FL_DUCKING || curFlags & FL_ANIMDUCKING )
+	if ( ( player->m_flDuckAmount( ) > previous.m_flDuckAmount )
+		|| curFlags & FL_DUCKING )
 		cmd.iButtons |= IN_DUCK;
 
 	// walking
@@ -156,7 +165,7 @@ void CRageBot::SimulatePlayer( CBasePlayer* player, float time, QAngle angles, i
 		cmd.viewAngles.Normalize( );
 	}
 
-	const auto originalplayercommand{ !player->CurrentCommand( ) ? CUserCmd( ) : *player->CurrentCommand( ) };
+	//const auto originalplayercommand{ !player->CurrentCommand( ) ? CUserCmd( ) : *player->CurrentCommand( ) };
 	//const auto pPredictionPlayer{ *( *reinterpret_cast< CBasePlayer*** >( Displacement::Sigs.pPredictionPlayer ) ) };
 	//const auto originalrandomseed{ *( *reinterpret_cast< unsigned int** >( Displacement::Sigs.uPredictionRandomSeed ) ) };
 
@@ -171,10 +180,9 @@ void CRageBot::SimulatePlayer( CBasePlayer* player, float time, QAngle angles, i
 	Interfaces::Prediction->bInPrediction = true;
 	Interfaces::MoveHelper->SetHost( player );
 
-	if ( player->CurrentCommand( ) )
-		player->CurrentCommand( ) = &cmd;
+	//if ( player->CurrentCommand( ) )
+	//	player->CurrentCommand( ) = &cmd;
 
-	// TODO:
 	//*( *reinterpret_cast< unsigned int** >( Displacement::Sigs.uPredictionRandomSeed ) ) = ( ( int( __thiscall* )( int ) )Displacement::Sigs.MD5PseudoRandom )( cmd.iCommandNumber ) & 0x7fffffff;
 	//*( *reinterpret_cast< CBasePlayer*** >( Displacement::Sigs.pPredictionPlayer ) ) = player;
 
@@ -228,8 +236,8 @@ void CRageBot::SimulatePlayer( CBasePlayer* player, float time, QAngle angles, i
 		Features::AnimSys.UpdateLocal( cmd.viewAngles, false, cmd );
 	}
 
-	if ( player->CurrentCommand( ) )
-		*player->CurrentCommand( ) = originalplayercommand;
+	//if ( player->CurrentCommand( ) )
+	//	*player->CurrentCommand( ) = originalplayercommand;
 	//*( *reinterpret_cast< unsigned int** >( Displacement::Sigs.uPredictionRandomSeed ) ) = originalrandomseed;
 	//*( *reinterpret_cast< CBasePlayer*** >( Displacement::Sigs.pPredictionPlayer ) ) = pPredictionPlayer;
 
@@ -238,4 +246,59 @@ void CRageBot::SimulatePlayer( CBasePlayer* player, float time, QAngle angles, i
 
 	Interfaces::Globals->flCurTime = backupCurtime;
 	Interfaces::Globals->flFrameTime = backupFrametime;
+}
+
+float CRageBot::ExtrapolateYawFromRecords( std::vector<std::shared_ptr<LagRecord_t>>& records, int extrapolationAmount ) {
+	const auto& begin{ records.rbegin( ) };
+	auto positionDetected{ begin };
+	int bestMatches{ 1 };
+
+	for ( auto it{ begin + 1 }; it != records.rend( ); ++it ) {
+		auto record{ it->get( ) };
+
+		if ( it == records.rend( ) )
+			break;
+
+		if ( begin->get( )->m_iReceiveTick - record->m_iReceiveTick < extrapolationAmount )
+			continue;
+
+		int matches{ };
+		for ( int i{ }; i < records.size( ); ++i ) {
+			if ( ( it + i + 1 ) == records.rend( ) )
+				break;
+
+			const auto angleDiffIt{ Math::AngleDiff( ( it + i + 1 )->get( )->m_angEyeAngles.y, ( it + i )->get( )->m_angEyeAngles.y ) };
+			const auto angleDiffStart{ Math::AngleDiff( ( begin + i + 1 )->get( )->m_angEyeAngles.y, ( begin + i )->get( )->m_angEyeAngles.y ) };
+
+			if ( std::abs( angleDiffIt - angleDiffStart < 20.f ) )
+				++matches;
+			else
+				break;
+
+			if ( matches >= 3 )
+				break;
+		}
+
+		if ( matches > bestMatches ) {
+			bestMatches = matches;
+			positionDetected = it;
+			if ( bestMatches >= 3 )
+				break;
+		}
+	}
+
+	float ret = positionDetected->get( )->m_angEyeAngles.y;
+	if ( positionDetected != begin ) {
+		const auto posDetectedTime = positionDetected->get( )->m_iReceiveTick;
+		for ( auto it{ positionDetected }; it != begin; --it ) {
+			if ( posDetectedTime + extrapolationAmount < it->get( )->m_iReceiveTick )
+				break;
+			ret = it->get( )->m_angEyeAngles.y;
+		}
+		ret += Math::AngleDiff( positionDetected->get( )->m_angEyeAngles.y, begin->get( )->m_angEyeAngles.y );
+	}
+	else
+		return -1;
+
+	return Math::NormalizeEyeAngles( ret );
 }

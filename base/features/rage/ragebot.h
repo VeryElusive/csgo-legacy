@@ -88,7 +88,6 @@ struct AimPoint_t {
 
 	Vector m_vecPoint{ };
 	int m_iHitgroup{ };
-	uint8_t m_iDesyncIntersections{ };
 	int m_flDamage{ };
 
 	bool m_bValid{ };
@@ -129,7 +128,6 @@ struct AimTarget_t {
 	void GetBestPoint( bool forceBaim, std::vector<EHitboxIndex>& hitboxes );
 	void Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* hitbox, float scale, std::vector<EHitboxIndex>& hitboxes );
 	void ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitboxes );
-	int SafePoint( Vector aimpoint, int index );
 	int HitChance( const QAngle& ang, int hitchance );
 	void Fire( CUserCmd& cmd );
 };
@@ -150,6 +148,7 @@ public:
 	bool m_bShouldStop{ };
 	std::vector<std::pair<float, float>> m_vecPrecomputedSeeds{ };
 
+	float ExtrapolateYawFromRecords( std::vector< std::shared_ptr<LagRecord_t>>& records, int extrapolationAmount );
 	bool ExtrapolatePlayer( PlayerEntry& entry, float yaw, int resolverSide, int amount, Vector previousVelocity );
 	bool ExtrapolatePlayer( CBasePlayer* player, float baseTime, int amount, QAngle angles, Vector previousVelocity, bool local );
 

@@ -6,10 +6,10 @@
 struct Shot_t {
 	Shot_t( CBasePlayer* player,
 		std::shared_ptr< LagRecord_t > record,
-		int hitgroup, bool safe, 
+		int hitgroup, 
 		Vector start, Vector end, bool extrapolated ) : m_pPlayer( player ), m_pRecord( record ), m_iHitgroup( hitgroup ), 
 		m_vecStart( start ), m_flFireTime( Interfaces::Globals->flRealTime ), 
-		m_vecPredEnd( end ), m_bSafepoint( safe ),
+		m_vecPredEnd( end ),
 		m_bExtrapolated( extrapolated )
 	{
 	}
@@ -20,7 +20,6 @@ struct Shot_t {
 	int m_iHitgroup{ };
 	Vector m_vecStart{ };
 	Vector m_vecPredEnd{ };
-	bool m_bSafepoint{ };
 	float m_flFireTime{ };
 	bool m_bExtrapolated{ };
 
@@ -39,9 +38,9 @@ class CShots {
 public:
 	void AddShot( CBasePlayer* player,
 		std::shared_ptr< LagRecord_t > record,
-		int hitgroup, bool safe,
+		int hitgroup,
 		Vector start, Vector end, bool extrapolated ) {
-		m_vecShots.emplace_back( player, record, hitgroup, safe, start, end, extrapolated );
+		m_vecShots.emplace_back( player, record, hitgroup, start, end, extrapolated );
 	}
 
 	void ProcessShots( );

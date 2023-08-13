@@ -35,7 +35,7 @@ struct AnimData_t {
 		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * 13 );
 	}
 
-	std::array< SideData_t, 3> m_arrSides{ };
+	SideData_t m_cSideData{ };
 
 	int m_iFlags{ };
 
@@ -68,7 +68,6 @@ struct LagRecord_t {
 	AnimData_t m_cAnimData;
 
 	bool m_bBrokeLC{ true };
-	bool m_bMultiMatrix{ };
 	bool m_bDormant{ };
 	bool m_bAccurateVelocity{ };
 
@@ -104,7 +103,6 @@ struct PlayerEntry {
 	CBasePlayer* m_pPlayer{ };
 	std::optional < AnimData_t > m_optPreviousData{ };
 	std::vector< std::shared_ptr<LagRecord_t>> m_pRecords{ };
-	std::vector<PreviousYaw_t > m_flPreviousYaws{ };
 	//std::array<float, 50> m_arrPreviousYaws{ };
 	//std::vector< Interpolated_t > m_pInterpolatedData{ };
 
@@ -147,8 +145,8 @@ public:
 	void RunAnimationSystem( );
 	void AnimatePlayerThread( PlayerEntry& entry );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
-	void UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side );
-	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from, int side );
+	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
+	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from );
 	//FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
 	bool SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* bones, const int mask, const float time, const bool clampbonesinbbox );

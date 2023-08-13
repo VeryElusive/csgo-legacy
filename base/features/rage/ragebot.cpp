@@ -3,7 +3,7 @@
 #include "../visuals/visuals.h"
 
 #define THIS Features::Ragebot
-#define RECORD_MATRIX( record ) record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix
+#define RECORD_MATRIX( record ) record->m_cAnimData.m_cSideData.m_pMatrix
 
 void CRageBot::Main( CUserCmd& cmd, bool shoot ) {
 	m_bShouldStop = false;
@@ -203,7 +203,7 @@ void AimTarget_t::Fire( CUserCmd& cmd ) {
 			auto& entry{ Features::AnimSys.m_arrEntries.at( this->m_pPlayer->Index( ) - 1 ) };
 
 			Features::Shots.AddShot( this->m_pPlayer, this->m_pRecord,
-				this->m_cPoint.m_iHitgroup, this->m_cPoint.m_iDesyncIntersections >= 3, ctx.m_vecEyePos, this->m_cPoint.m_vecPoint, this->m_bExtrapolating );
+				this->m_cPoint.m_iHitgroup, ctx.m_vecEyePos, this->m_cPoint.m_vecPoint, this->m_bExtrapolating );
 
 			if ( Config::Get<bool>( Vars.MiscHitMatrix ) ) {
 				if ( Config::Get<int>( Vars.MiscShotVisualizationType ) == 0 )
@@ -244,7 +244,6 @@ void AimTarget_t::Fire( CUserCmd& cmd ) {
 				_( " | pred damage: " ) + std::to_string( static_cast< int >( this->m_cPoint.m_flDamage ) ).c_str( ) +
 				_( " | hitchance: " ) + std::to_string( chance ).c_str( ) +
 				_( " | backtrack: " ) + std::to_string( Interfaces::ClientState->iServerTick - this->m_pRecord->m_iReceiveTick ) + _( " ticks" ) +
-				_( " | intersections: " ) + std::to_string( this->m_cPoint.m_iDesyncIntersections ) +
 				_( " | extrapolated: " ) + std::to_string( this->m_bExtrapolating ) +
 				_( " | moving: " ) + std::to_string( this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate != 0.f ) +
 				_( " | lby update: " ) + std::to_string( this->m_pRecord->m_bLBYUpdate ) +
@@ -318,7 +317,7 @@ void AimTarget_t::ScanTarget( std::vector<EHitboxIndex>& hitboxes ) {
 
 	auto& entry{ Features::AnimSys.m_arrEntries.at( this->m_pPlayer->Index( ) - 1 ) };
 
-	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), this->m_pRecord->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), this->m_pRecord->m_cAnimData.m_cSideData.m_pMatrix, this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
 	const auto LBY{ this->m_pRecord->m_bLBYUpdate };
 
@@ -451,26 +450,6 @@ bool intersectHitbox( Vector end, mstudiobbox_t* hitbox, matrix3x4_t* matrix ) {
 	return ClipRayToHitbox( { ctx.m_vecEyePos, end }, hitbox, hitbox_matrix, tr ) > -1;
 }
 
-int AimTarget_t::SafePoint( Vector aimpoint, int index ) {
-	const auto hitboxSet{ this->m_pPlayer->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( this->m_pPlayer->m_nHitboxSet( ) ) };
-	const auto hitbox{ hitboxSet->GetHitbox( index ) };
-	if ( !hitbox )
-		return 0;
-
-	const auto dir{ ( aimpoint - ctx.m_vecEyePos ).Normalized( ) };
-	const auto end{ ctx.m_vecEyePos + dir * ctx.m_pWeaponData->flRange };
-
-	int hits{ };
-	for ( int i{ }; i < DESYNC_MATRIX_COUNT; i++ ) {
-	if ( intersectHitbox( end, hitbox, this->m_pRecord->m_cAnimData.m_arrSides.at( i ).m_pMatrix ) )
-			hits++;
-	}
-
-	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), RECORD_MATRIX( this->m_pRecord ), this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
-
-	return hits;
-}
-
 void AimTarget_t::ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitboxes ) {
 	const auto data{ Features::Autowall.FireBullet( ctx.m_pLocal, this->m_pPlayer, ctx.m_pWeaponData,
 		ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER,
@@ -504,22 +483,13 @@ void AimTarget_t::ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitbo
 	if ( std::find( hitboxes.begin( ), hitboxes.end( ), data.hitbox ) == hitboxes.end( ) )
 		return;
 
-	point.m_iDesyncIntersections = SafePoint( point.m_vecPoint, data.hitbox );
-
-	if ( Config::Get<keybind_t>( Vars.RagebotForceSafePointKey ).enabled && point.m_iDesyncIntersections < DESYNC_MATRIX_COUNT )
-		return;
-
 	point.m_bValid = true;
 
 	if ( !this->m_cPoint.m_bValid )
 		this->m_cPoint = point;
 	// points are ordered in the best place to shoot at
-	else if ( point.m_iDesyncIntersections >= this->m_cPoint.m_iDesyncIntersections ) {
-		if ( point.m_flDamage > this->m_cPoint.m_flDamage )
-			this->m_cPoint = point;
-		else if ( point.m_iDesyncIntersections > this->m_cPoint.m_iDesyncIntersections )
-			this->m_cPoint = point;
-	}
+	if ( point.m_flDamage > this->m_cPoint.m_flDamage )
+		this->m_cPoint = point;
 }
 
 void AimTarget_t::Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* hitbox, float scale, std::vector<EHitboxIndex>& hitboxes ) {
@@ -654,14 +624,14 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 		}
 
 		const auto newRecord{ std::make_shared< LagRecord_t >( entry.m_pPlayer ) };
-		auto& side{ newRecord->m_cAnimData.m_arrSides.at( 0 ) };
+		auto& side{ newRecord->m_cAnimData.m_cSideData };
 
 		Features::AnimSys.SetupBonesRebuilt( entry.m_pPlayer, side.m_pMatrix,
 			BONE_USED_BY_SERVER, newRecord->m_cAnimData.m_flSimulationTime + TICKS_TO_TIME( extrapolationCapped ), false );
 
 		// TODO: should i bother setting up all sides
 		for ( int i{ 1 }; i < 3; ++i )
-			std::memcpy( newRecord->m_cAnimData.m_arrSides.at( i ).m_pMatrix, side.m_pMatrix, entry.m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+			std::memcpy( newRecord->m_cAnimData.m_cSideData.m_pMatrix, side.m_pMatrix, entry.m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 
 		this->m_pRecord = newRecord;
 
@@ -670,6 +640,7 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 		backupExtrapolationData.restore( entry.m_pPlayer );
 	}
 	else 
+		// TODO: use prevdata instead.
 		this->m_pRecord = entry.m_pRecords.back( );
 
 	if ( !this->m_pRecord->Validity( )
@@ -689,8 +660,6 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 
 void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 	const auto backup{ new LagBackup_t( this->m_pPlayer ) };
-
-	int bestSafepoints{ };
 
 	if ( !Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
 	EXTRAPOLATE:
@@ -736,7 +705,6 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 		if ( dmg > 0 ) {
 			this->m_iBestDamage = dmg;
 			this->m_pRecord = oldestRecord;
-
 		}
 
 		//bool first{ };
@@ -769,8 +737,6 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 				&& !LBY )
 				continue;
 
-			int safepoints{ };
-
 			const auto dmg{ this->QuickScan( record, hitgroups ) };
 			if ( hitgroups.size( ) > 1 ) {
 				hitgroups = { ( idx == WEAPON_SCAR20 || idx == WEAPON_G3SG1 || idx == WEAPON_AWP )
@@ -802,24 +768,15 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 				|| this->m_iBestDamage - dmg <= 10 ) {
 				const auto point{ Math::VectorTransform( ( head->vecBBMin + head->vecBBMax ) / 2.f, RECORD_MATRIX( record )[ head->iBone ] ) };
 
-				if ( dmg >= this->m_iBestDamage + 10 ) {
+				if ( dmg >= this->m_iBestDamage + 10 )
 					this->m_pRecord = record;
-
-					// reset them
-					bestSafepoints = SafePoint( point, HITBOX_HEAD );
-				}
 				else if ( LBY ) {
 					if ( !oldRecordLBY ) {
 						this->m_pRecord = record;
-						bestSafepoints = SafePoint( point, HITBOX_HEAD );
 					}
 					else {
-						safepoints = SafePoint( point, HITBOX_HEAD );
-
-						if ( safepoints > bestSafepoints ) {
-							bestSafepoints = safepoints;
+						if ( dmg > this->m_iBestDamage )
 							this->m_pRecord = record;
-						}
 					}
 
 					/*else if ( safepoints == bestSafepoints
@@ -828,9 +785,6 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 						< std::abs( Math::AngleDiff( this->m_flYaw, this->m_pRecord->m_angEyeAngles.y ) ) )
 						this->m_pRecord = record;*/
 				}
-
-				if ( safepoints == 3 )
-					break;
 
 				if ( dmg > this->m_iBestDamage )
 					this->m_iBestDamage = dmg;

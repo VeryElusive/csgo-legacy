@@ -27,7 +27,6 @@ inline void PlayerEntry::OnNewRound( ) {
 inline void PlayerEntry::OutOfDormancy( ) {
 	this->m_optPreviousData.reset( );
 	this->m_pRecords.clear( );
-	this->m_flPreviousYaws.clear( );
 	// idc about matrix itll just get updated anyway before render
 
 	this->m_iLastNewCmds = 0;
@@ -280,7 +279,7 @@ FORCEINLINE void LagRecord_t::Apply( CBasePlayer* ent, int side ) {
 	//ent->m_iEFlags( ) |= EFL_DIRTY_ABSTRANSFORM;
 	ent->SetAbsOrigin( this->m_cAnimData.m_vecOrigin );
 
-	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_cAnimData.m_arrSides.at( side ).m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_cAnimData.m_cSideData.m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
 	//ent->SetAbsAngles( { 0.f, this->m_cAnimData.m_arrSides.at( side ).m_flAbsYaw, 0.f } );// we dont need this so remove when i cleanup
 }

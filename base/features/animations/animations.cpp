@@ -127,50 +127,31 @@ void CAnimationSys::RunAnimationSystem( ) {
 		for ( auto& entry : *updatedPlayers ) {
 			sdk::g_thread_pool->enqueue( [ ]( PlayerEntry* entry ) {
 				if ( !entry->m_bRecordAdded ) {
-					const auto& side{ entry->m_optPreviousData->m_arrSides.at( 0 ) };
+					auto& side{ entry->m_optPreviousData->m_cSideData };
 					entry->m_pPlayer->SetAbsAngles( { 0, side.m_cAnimState.flAbsYaw, 0 } );
 					entry->m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
 
 					std::memcpy( entry->m_pPlayer->m_AnimationLayers( ), entry->m_optPreviousData->m_pLayers, 0x38 * 13 );
 
-					Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, entry->m_matMatrix,
+					Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, side.m_pMatrix,
 						BONE_USED_BY_SERVER, entry->m_optPreviousData->m_flSimulationTime, true );
 
+					std::memcpy( entry->m_matMatrix, side.m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 					std::memcpy( entry->m_pPlayer->m_CachedBoneData( ).Base( ), entry->m_matMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 				}
 				else {
 					const auto& record{ entry->m_pRecords.back( ) };
-					if ( record->m_bMultiMatrix ) {
-						for ( int i{ }; i < 3; ++i ) {
-							auto& side{ record->m_cAnimData.m_arrSides.at( i ) };
+					auto& side{ record->m_cAnimData.m_cSideData };
 
-							entry->m_pPlayer->SetAbsAngles( { 0, side.m_cAnimState.flAbsYaw, 0 } );
-							entry->m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
+					entry->m_pPlayer->SetAbsAngles( { 0, side.m_cAnimState.flAbsYaw, 0 } );
+					entry->m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
 
-							*entry->m_pPlayer->m_pAnimState( ) = side.m_cAnimState;
+					std::memcpy( entry->m_pPlayer->m_AnimationLayers( ), record->m_cAnimData.m_pLayers, 0x38 * 13 );
 
-							std::memcpy( entry->m_pPlayer->m_AnimationLayers( ), record->m_cAnimData.m_pLayers, 0x38 * 13 );
+					Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, side.m_pMatrix,
+						BONE_USED_BY_SERVER, record->m_cAnimData.m_flSimulationTime, false );
 
-							Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, side.m_pMatrix,
-								BONE_USED_BY_SERVER, record->m_cAnimData.m_flSimulationTime, false );
-						}
-					}
-					else {
-						auto& side{ record->m_cAnimData.m_arrSides.at( 0 ) };
-
-						entry->m_pPlayer->SetAbsAngles( { 0, side.m_cAnimState.flAbsYaw, 0 } );
-						entry->m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
-
-						std::memcpy( entry->m_pPlayer->m_AnimationLayers( ), record->m_cAnimData.m_pLayers, 0x38 * 13 );
-
-						Features::AnimSys.SetupBonesRebuilt( entry->m_pPlayer, side.m_pMatrix,
-							BONE_USED_BY_SERVER, record->m_cAnimData.m_flSimulationTime, false );
-
-						for ( int i{ 1 }; i < 3; ++i )
-							std::memcpy( record->m_cAnimData.m_arrSides.at( i ).m_pMatrix, side.m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
-					}
-
-					std::memcpy( entry->m_matMatrix, record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+					std::memcpy( entry->m_matMatrix, record->m_cAnimData.m_cSideData.m_pMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 					std::memcpy( entry->m_pPlayer->m_CachedBoneData( ).Base( ), entry->m_matMatrix, entry->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 				}
 			}, std::ref( entry ) );
@@ -214,7 +195,7 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	//	entry.Rezik( current );
 	//}
 
-	if ( entry.m_flLowerBodyYawTarget != entry.m_pPlayer->m_flLowerBodyYawTarget( ) ) {
+	if ( entry.m_flLowerBodyYawTarget != entry.m_pPlayer->m_flLowerBodyYawTarget( ) || current->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate ) {
 		current->m_bLBYUpdate = true;
 		entry.m_flLowerBodyYawTarget = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 	}
@@ -222,36 +203,13 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 	current->m_angEyeAngles.y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 
-	if ( !entry.m_pPlayer->IsTeammate( )
-		&& !entry.m_bBot
-		&& entry.m_optPreviousData.has_value( )
-		/* && current->m_iNewCmds > 1 */ // smooth decay into 0 mat diff
-		&& !ctx.m_pLocal->IsDead( ) ) {
-		UpdateSide( entry, current, 1 );
-
-		*entry.m_pPlayer->m_pAnimState( ) = backupState;
-
-		UpdateSide( entry, current, 2 );
-
-		*entry.m_pPlayer->m_pAnimState( ) = backupState;
-
-		current->m_bMultiMatrix = true;
-	}
-
-	UpdateSide( entry, current, 0 );
+	UpdateSide( entry, current );
 	entry.m_pPlayer->m_flNextAttack( ) = backupFlash;
-
-	if ( !current->m_bMultiMatrix ) {
-		for ( int i{ 1 }; i < 3; ++i ) {
-			current->m_cAnimData.m_arrSides.at( i ) = current->m_cAnimData.m_arrSides.at( 0 );
-			current->m_cAnimData.m_arrSides.at( i ).m_bFilled = false;
-		}
-	}
 
 	entry.m_vecUpdatedOrigin = entry.m_pPlayer->GetAbsOrigin( );
 }
 
-void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side ) {
+void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current ) {
 	const auto backupCurtime{ Interfaces::Globals->flCurTime };
 	const auto backupFrametime{ Interfaces::Globals->flFrameTime };
 	const auto backupHLTV{ Interfaces::ClientState->bIsHLTV };
@@ -261,18 +219,13 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int si
 
 	const auto backupYaw{ entry.m_pPlayer->m_angEyeAngles( ).y };
 
-	if ( side == 1 )
-		entry.m_pPlayer->m_angEyeAngles( ).y += 120.f;
-	else if ( side == 2 )
-		entry.m_pPlayer->m_angEyeAngles( ).y -= 120.f;
-
 	entry.m_pPlayer->m_angEyeAngles( ).y = Math::NormalizeEyeAngles( entry.m_pPlayer->m_angEyeAngles( ).y );
 
-	InterpolateFromLastData( entry.m_pPlayer, current, entry.m_optPreviousData, side );
+	InterpolateFromLastData( entry.m_pPlayer, current, entry.m_optPreviousData );
 
 	entry.m_pPlayer->m_angEyeAngles( ).y = backupYaw;
 
-	auto& sideData{ current->m_cAnimData.m_arrSides.at( side ) }; {
+	auto& sideData{ current->m_cAnimData.m_cSideData }; {
 		sideData.m_cAnimState = *entry.m_pPlayer->m_pAnimState( );
 
 		sideData.m_flPoseParameter = entry.m_pPlayer->m_flPoseParameter( );
@@ -294,7 +247,7 @@ void CAnimationSys::UpdateSide( PlayerEntry& entry, LagRecord_t* current, int si
 	Interfaces::Globals->flFrameTime = backupFrametime;
 }
 
-void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from, int side ) {
+void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from ) {
 	const auto state{ player->m_pAnimState( ) };
 	if ( !from.has_value( ) ) {
 		std::memcpy( player->m_AnimationLayers( ), current->m_cAnimData.m_pLayers, 0x38 * 13 );
@@ -348,8 +301,8 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 	}
 
 	/* restore */
-	if ( from->m_arrSides.at( side ).m_bFilled )
-		*state = from->m_arrSides.at( side ).m_cAnimState;
+	if ( from->m_cSideData.m_bFilled )
+		*state = from->m_cSideData.m_cAnimState;
 
 	const auto& layer6{ from->m_pLayers[ 6 ] };
 	const auto& layer7{ from->m_pLayers[ 7 ] };

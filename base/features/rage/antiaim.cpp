@@ -284,6 +284,9 @@ void CAntiAim::FakeLag( int cmdNum ) {
 	if ( Interfaces::Engine->IsVoiceRecording( ) )
 		maxChoke = 1;
 
+	if ( ctx.m_pLocal->m_vecVelocity( ).Length2D( ) < 0.1f )
+		maxChoke = 1;
+
 	const auto& localData = ctx.m_cLocalData.at( Interfaces::ClientState->iLastOutgoingCommand % 150 );
 
 	if ( Interfaces::ClientState->nChokedCommands >= maxChoke )

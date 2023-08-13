@@ -496,7 +496,7 @@ void CChams::OnSceneEnd( ) {
 						continue;
 
 					std::memcpy(
-						matrix, record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix,
+						matrix, record->m_cAnimData.m_cSideData.m_pMatrix,
 						player->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t )
 					);
 
