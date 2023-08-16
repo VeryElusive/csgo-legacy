@@ -118,6 +118,7 @@ struct PlayerEntry {
 
 	float m_flSpawnTime{ };
 	float m_flLowerBodyYawTarget{ };
+	float m_flLowerBodyRealignTimer{ };
 	//bool m_bStartingDuck{ };
 	//float m_flLastPacketTime{ };
 	//float m_flTrackSimulationTime{ };

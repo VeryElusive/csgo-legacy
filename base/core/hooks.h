@@ -207,6 +207,7 @@ namespace Hooks
 	inline HWND hWindow = nullptr;
 	inline RecvVarProxyFn m_bClientSideAnimation;
 	inline RecvVarProxyFn m_flSimulationTime;
+	inline RecvVarProxyFn m_flLowerBodyYawTarget;
 	inline RecvVarProxyFn m_flAbsYaw;
 	inline RecvVarProxyFn m_hWeapon;
 	inline RecvVarProxyFn m_flCycle;
@@ -296,6 +297,7 @@ namespace Hooks
 
 	void	CDECL		m_bClientSideAnimationHook( const CRecvProxyData* data, void* entity, void* output );
 	void	CDECL		m_flSimulationTimeHook( const CRecvProxyData* data, void* entity, void* output );
+	void	CDECL		m_flLowerBodyYawTargetHook( const CRecvProxyData* data, void* entity, void* output );
 	void	CDECL		m_flAbsYawHook( const CRecvProxyData* data, void* entity, void* output );
 	void	CDECL		m_hWeaponHook( const CRecvProxyData* data, void* entity, void* output );
 	void	CDECL		m_flCycle_Recv( const CRecvProxyData* data, void* entity, void* output );

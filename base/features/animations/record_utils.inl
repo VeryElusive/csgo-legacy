@@ -65,6 +65,37 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 			this->m_bFixJumpFall = this->m_flLeftGroundTime >= this->m_cAnimData.m_flSimulationTime - TICKS_TO_TIME( this->m_iNewCmds );
 	}*/
 
+	/* choked fix */
+	if ( curLayers[ 11 ].flPlaybackRate > 0.f
+		&& prevLayers[ 11 ].flPlaybackRate > 0.f
+		&& prevLayers[ 11 ].nSequence == curLayers[ 11 ].nSequence ) {
+
+		this->m_iNewCmds = 0;
+
+		auto simCycle{ prevLayers[ 11 ].flCycle };
+		auto targetCycle{ curLayers[ 11 ].flCycle };
+		auto simPlayBackRate{ prevLayers[ 11 ].flPlaybackRate * Interfaces::Globals->flIntervalPerTick };
+
+		if ( curLayers[ 11 ].flPlaybackRate != simCycle ) {
+			if ( simCycle > targetCycle )
+				targetCycle += 1.f;
+		}
+
+		do {
+			++this->m_iNewCmds;
+
+			// IsLayerSequenceCompleted takes old playback into account
+			if ( simCycle + simPlayBackRate >= 1.f )
+				simPlayBackRate = curLayers[ 11 ].flPlaybackRate * Interfaces::Globals->flIntervalPerTick;
+
+			simCycle += simPlayBackRate;
+		} while ( simCycle < targetCycle );
+
+		if ( simCycle > curLayers[ 11 ].flCycle
+			&& simCycle - curLayers[ 11 ].flCycle > simPlayBackRate * 0.5f )
+			--this->m_iNewCmds;
+	}
+
 	auto chokedTime{ TICKS_TO_TIME( this->m_iNewCmds ) };
 
 	/* velo fix */

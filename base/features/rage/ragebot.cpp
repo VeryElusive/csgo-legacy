@@ -690,6 +690,10 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 			&& ctx.m_iTicksAllowed )
 			continue;
 
+		if ( Config::Get<keybind_t>( Vars.RagebotForceYawSafetyKey ).enabled
+			&& !record->m_bLBYUpdate )
+			continue;
+
 		oldestRecord = record;
 	}
 
@@ -768,15 +772,19 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 				|| this->m_iBestDamage - dmg <= 10 ) {
 				const auto point{ Math::VectorTransform( ( head->vecBBMin + head->vecBBMax ) / 2.f, RECORD_MATRIX( record )[ head->iBone ] ) };
 
-				if ( dmg >= this->m_iBestDamage + 10 )
+				if ( dmg >= this->m_iBestDamage + 10 ) {
+					this->m_iBestDamage = dmg;
 					this->m_pRecord = record;
+				}
 				else if ( LBY ) {
 					if ( !oldRecordLBY ) {
 						this->m_pRecord = record;
 					}
 					else {
-						if ( dmg > this->m_iBestDamage )
+						if ( dmg > this->m_iBestDamage ) {
 							this->m_pRecord = record;
+							this->m_iBestDamage = dmg;
+						}
 					}
 
 					/*else if ( safepoints == bestSafepoints
@@ -785,9 +793,9 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 						< std::abs( Math::AngleDiff( this->m_flYaw, this->m_pRecord->m_angEyeAngles.y ) ) )
 						this->m_pRecord = record;*/
 				}
-
-				if ( dmg > this->m_iBestDamage )
-					this->m_iBestDamage = dmg;
+				else if ( LBY == oldRecordLBY 
+					&& this->m_pRecord == oldestRecord )
+					this->m_pRecord = record;
 			}
 		}
 	}

@@ -411,6 +411,8 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 								}
 
 								curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimBreakLBYAngle );
+								if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, cmd.viewAngles.y ) ) <= 35.f )
+									curUserCmd.viewAngles.y = ctx.m_pLocal->m_pAnimState( )->flAbsYaw + 40.f;
 							}
 						}
 					}

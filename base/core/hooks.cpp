@@ -94,9 +94,9 @@ bool Hooks::Setup( ) {
 
 
 	m_bClientSideAnimation = PropManager::Get( ).Hook( m_bClientSideAnimationHook, _( "DT_BaseAnimating" ), _( "m_bClientSideAnimation" ) );
-
-	// ADDME!
 	m_flSimulationTime = PropManager::Get( ).Hook( m_flSimulationTimeHook, _( "DT_BaseEntity" ), _( "m_flSimulationTime" ) );
+
+	//m_flLowerBodyYawTarget = PropManager::Get( ).Hook( m_flLowerBodyYawTargetHook, _( "DT_CSPlayer" ), _( "m_flLowerBodyYawTarget" ) );
 	//m_flAbsYaw = PropManager::Get( ).Hook( m_flAbsYawHook, _( "DT_CSRagdoll" ), _( "m_flAbsYaw" ) );
 	//m_hWeapon = PropManager::Get( ).Hook( m_hWeaponHook, _( "DT_BaseViewModel" ), _( "m_hWeapon" ) );
 	//m_flCycle = PropManager::Get( ).Hook( m_flCycle_Recv, _( "DT_BaseViewModel" ), _( "m_flCycle" ) );
@@ -251,6 +251,7 @@ bool Hooks::Setup( ) {
 void Hooks::Restore( ) {
 	PropManager::Get( ).Hook( m_bClientSideAnimation, _( "DT_BaseAnimating" ), _( "m_bClientSideAnimation" ) );
 	PropManager::Get( ).Hook( m_flSimulationTime, _( "DT_BaseEntity" ), _( "m_flSimulationTime" ) );
+	//PropManager::Get( ).Hook( m_flLowerBodyYawTarget, _( "DT_CSPlayer" ), _( "m_flLowerBodyYawTarget" ) );
 	//PropManager::Get( ).Hook( m_flAbsYaw, _( "DT_CSRagdoll" ), _( "m_flAbsYaw" ) );
 	//PropManager::Get( ).Hook( m_hWeapon, _( "DT_BaseViewModel" ), _( "m_hWeapon" ) );
 	//PropManager::Get( ).Hook( m_flCycle, _( "DT_BaseViewModel" ), _( "m_flCycle" ) );

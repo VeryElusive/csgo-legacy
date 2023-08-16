@@ -104,8 +104,10 @@ void CAnimationSys::RunAnimationSystem( ) {
 			//	&& std::max( player->m_flSimulationTime( ), entry.m_pRecords.back( )->m_cAnimData.m_flSimulationTime )
 			//	+ ctx.m_flAvgOutLatency < flDeadtime };
 
-			entry.m_bRecordAdded = ( ( !Config::Get<bool>( Vars.RagebotLagcompensation ) || !entry.m_pRecords.size( )
-				|| player->m_flSimulationTime( ) > entry.m_pRecords.back( )->m_cAnimData.m_flSimulationTime
+			const auto oldSimTime{ entry.m_pRecords.size( ) ? entry.m_pRecords.back( )->m_cAnimData.m_flSimulationTime : player->m_flOldSimulationTime( ) };
+
+			entry.m_bRecordAdded = ( ( !Config::Get<bool>( Vars.RagebotLagcompensation )
+				|| player->m_flSimulationTime( ) > oldSimTime
 				/* || noRecords*/ )
 				&& !player->IsTeammate( ) );
 
@@ -195,13 +197,27 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	//	entry.Rezik( current );
 	//}
 
-	if ( entry.m_flLowerBodyYawTarget != entry.m_pPlayer->m_flLowerBodyYawTarget( ) || current->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate ) {
+	if ( entry.m_pPlayer->m_flLowerBodyYawTarget( ) != entry.m_flLowerBodyYawTarget 
+		|| current->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate
+		|| entry.m_pPlayer->m_flSimulationTime( ) > entry.m_flLowerBodyRealignTimer ) {
 		current->m_bLBYUpdate = true;
+
+		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+		current->m_angEyeAngles.y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
+
+		// their yaw was within 35 deg of this
+		if ( entry.m_pPlayer->m_flLowerBodyYawTarget( ) == entry.m_flLowerBodyYawTarget ) {
+			if ( current->m_cAnimData.m_vecVelocity.Length2D( ) > 0.1f ) {
+				entry.m_flLowerBodyRealignTimer = entry.m_pPlayer->m_flSimulationTime( ) + 0.22f;
+			}
+			else {
+				if ( Interfaces::Globals->flCurTime > entry.m_flLowerBodyRealignTimer )
+					entry.m_flLowerBodyRealignTimer = entry.m_pPlayer->m_flSimulationTime( ) + 1.1f;
+			}
+		}
+
 		entry.m_flLowerBodyYawTarget = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 	}
-
-	entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
-	current->m_angEyeAngles.y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 
 	UpdateSide( entry, current );
 	entry.m_pPlayer->m_flNextAttack( ) = backupFlash;
@@ -326,19 +342,14 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 	const auto duckAmountDelta{ to.m_flDuckAmount - from->m_flDuckAmount };
 	const auto velocityDelta{ to.m_vecVelocity - from->m_vecVelocity };
 
-	Interfaces::Globals->flCurTime = to.m_flSimulationTime - TICKS_TO_TIME( current->m_iNewCmds );
+	Interfaces::Globals->flCurTime = to.m_flSimulationTime;// -TICKS_TO_TIME( current->m_iNewCmds );
 
 	// instead of incrementing at the end, like tickbase does in playerruncommand, do it here because SetSimulationTime is called in CBasePlayer::PostThink, before tickbase in incremented, meaning simtime is 1 below the final tickbase (aka its the same as when we animated)
-	Interfaces::Globals->flCurTime += Interfaces::Globals->flIntervalPerTick;
+	//Interfaces::Globals->flCurTime += Interfaces::Globals->flIntervalPerTick;
 
 	const auto lerp{ 1 / static_cast< float >( current->m_iNewCmds ) };
 
 	player->m_flDuckAmount( ) = from->m_flDuckAmount + duckAmountDelta * lerp;
-
-	if ( player->m_flDuckAmount( ) == 1.f )
-		player->m_fFlags( ) |= FL_DUCKING;
-	else
-		player->m_fFlags( ) &= ~FL_DUCKING;
 
 	if ( manualStandVel )
 		player->m_vecAbsVelocity( ) = { 1.1f, 0.f, 0.f };

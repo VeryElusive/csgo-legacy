@@ -318,13 +318,11 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( Interfaces::ClientState->nChokedCommands >= 15 - ctx.m_iTicksAllowed )
 		ctx.m_bSendPacket = true;
 
-	if ( cmd.iButtons & IN_ATTACK )
-		ctx.m_bSendPacket = false;
-
 	if ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) )
 		&& ctx.m_bCanShoot ) {
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
 		ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
+		ctx.m_bSendPacket = false;
 	}
 
 
