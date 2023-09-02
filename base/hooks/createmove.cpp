@@ -318,19 +318,25 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	if ( Interfaces::ClientState->nChokedCommands >= 15 - ctx.m_iTicksAllowed )
 		ctx.m_bSendPacket = true;
 
-	if ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) )
-		&& ctx.m_bCanShoot ) {
-		ctx.m_iLastShotNumber = cmd.iCommandNumber;
-		ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
-		ctx.m_bSendPacket = false;
-	}
-
 
 	ShouldShift( cmd );
 
 	if ( sameFrameCMD ) {
 		hadExtraTicks = true;
 		ctx.m_bSendPacket = false;
+	}
+
+	if ( ctx.m_bForceUnchoke ) {
+		ctx.m_bSendPacket = true;
+		ctx.m_bForceUnchoke = false;
+	}
+
+	if ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) )
+		&& ctx.m_bCanShoot ) {
+		ctx.m_iLastShotNumber = cmd.iCommandNumber;
+		ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
+		ctx.m_bSendPacket = false;
+		ctx.m_bForceUnchoke = true;
 	}
 
 	const auto resetTHISTick{ Features::Exploits.m_bResetNextTick || ( hadExtraTicks && ctx.m_bSendPacket ) };
@@ -396,15 +402,11 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 	auto tb{ Features::Exploits.m_bWasDefensiveTick || Features::Exploits.m_iShiftAmount ? tbDefensive : tbReal };
 
 	if ( ctx.m_bSendPacket ) {
-		Features::Antiaim.RunLocalModifications( cmd, tb );
 
 		//if ( ctx.m_bFlicking ) {
 		//	Features::Exploits.m_bWasDefensiveTick = true;
 		//	tb = tbDefensive;
 		//}
-
-		if ( tb > ctx.m_iHighestTickbase )
-			ctx.m_iHighestTickbase = tb;
 
 		hadExtraTicks = false;
 	}

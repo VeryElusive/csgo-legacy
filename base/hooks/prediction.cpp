@@ -48,3 +48,19 @@ CUserCmd* FASTCALL Hooks::hkGetUserCmd( uint8_t* ecx, uint8_t* edx, int slot, in
 
 	return ret;
 }
+
+void FASTCALL Hooks::hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper ) {
+	static auto oRunCommand{ DTR::RunCommand.GetOriginal<decltype( &hkRunCommand )>( ) };
+
+	if ( player != ctx.m_pLocal )
+		return oRunCommand( ecx, edx, player, cmd, moveHelper );
+
+	if ( cmd->iTickCount == INT_MAX ) {
+		cmd->bHasBeenPredicted = true;
+
+		return;// Features::EnginePrediction.StoreNetvars( player->m_nTickBase( ) );
+	}
+
+	oRunCommand( ecx, edx, player, cmd, moveHelper );
+
+}

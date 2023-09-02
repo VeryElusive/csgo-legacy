@@ -8,7 +8,7 @@
 
 class CAntiAim {
 public:
-	void Pitch( CUserCmd& cmd );
+	float Pitch( );
 	void FakeLag( int cmdNum );
 	void RunLocalModifications( CUserCmd& cmd, int tickbase );
 	float BaseYaw( CUserCmd& cmd );

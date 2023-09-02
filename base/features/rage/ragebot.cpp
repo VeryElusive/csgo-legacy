@@ -3,7 +3,7 @@
 #include "../visuals/visuals.h"
 
 #define THIS Features::Ragebot
-#define RECORD_MATRIX( record ) record->m_cAnimData.m_cSideData.m_pMatrix
+#define RECORD_MATRIX( record ) record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix
 
 void CRageBot::Main( CUserCmd& cmd, bool shoot ) {
 	m_bShouldStop = false;
@@ -317,18 +317,66 @@ void AimTarget_t::ScanTarget( std::vector<EHitboxIndex>& hitboxes ) {
 
 	auto& entry{ Features::AnimSys.m_arrEntries.at( this->m_pPlayer->Index( ) - 1 ) };
 
-	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), this->m_pRecord->m_cAnimData.m_cSideData.m_pMatrix, this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), RECORD_MATRIX( this->m_pRecord ), this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
 	const auto LBY{ this->m_pRecord->m_bLBYUpdate };
 
 	const auto forceBaim{ ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled
 		|| ( entry.m_iMissedShots > THIS.MenuVars.RagebotForceBaimAfterX && THIS.MenuVars.RagebotForceBaimAfterXINT ) )
-		|| !LBY };
+		/* || !LBY*/ };
 
 	GetBestPoint( forceBaim, hitboxes );
 
 	backup->Apply( this->m_pPlayer );
 	delete backup;
+}
+
+int ClipRayToHitbox( const Ray_t& ray, mstudiobbox_t* box, matrix3x4_t& mat, CGameTrace& tr ) {
+	int retval = -1;
+
+	__asm {
+		mov ecx, ray
+		mov edx, box
+		push tr
+		push mat
+		call Displacement::Sigs.ClipRayToHitbox
+		mov retval, eax
+		add esp, 8
+	}
+
+	return retval;
+}
+
+bool intersectHitbox( Vector end, mstudiobbox_t* hitbox, matrix3x4_t* matrix ) {
+	matrix3x4_t transform;
+	transform.SetAngles( hitbox->angOffsetOrientation.y, hitbox->angOffsetOrientation.x, hitbox->angOffsetOrientation.y );
+	auto hitbox_matrix = matrix[ hitbox->iBone ] * ( transform );
+
+	Trace_t tr;
+	tr.flFraction = 1.f;
+	tr.bStartSolid = false;
+
+	return ClipRayToHitbox( { ctx.m_vecEyePos, end }, hitbox, hitbox_matrix, tr ) > -1;
+}
+
+int AimTarget_t::SafePoint( Vector aimpoint, int index ) {
+	const auto hitboxSet{ this->m_pPlayer->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( this->m_pPlayer->m_nHitboxSet( ) ) };
+	const auto hitbox{ hitboxSet->GetHitbox( index ) };
+	if ( !hitbox )
+		return 0;
+
+	const auto dir{ ( aimpoint - ctx.m_vecEyePos ).Normalized( ) };
+	const auto end{ ctx.m_vecEyePos + dir * ctx.m_pWeaponData->flRange };
+
+	int hits{ };
+	for ( int i{ }; i < DESYNC_MATRIX_COUNT; i++ ) {
+		if ( intersectHitbox( end, hitbox, this->m_pRecord->m_cAnimData.m_arrSides.at( i ).m_pMatrix ) )
+			hits++;
+	}
+
+	std::memcpy( this->m_pPlayer->m_CachedBoneData( ).Base( ), RECORD_MATRIX( this->m_pRecord ), this->m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+
+	return hits;
 }
 
 int OffsetDelta( CBasePlayer* player, LagRecord_t* record ) {
@@ -422,34 +470,6 @@ void AimTarget_t::GetBestPoint( bool forceBaim, std::vector<EHitboxIndex>& hitbo
 	}
 }
 
-int ClipRayToHitbox( const Ray_t& ray, mstudiobbox_t* box, matrix3x4_t& mat, CGameTrace& tr ) {
-	int retval = -1;
-
-	__asm {
-		mov ecx, ray
-		mov edx, box
-		push tr
-		push mat
-		call Displacement::Sigs.ClipRayToHitbox
-		mov retval, eax
-		add esp, 8
-	}
-
-	return retval;
-}
-
-bool intersectHitbox( Vector end, mstudiobbox_t* hitbox, matrix3x4_t* matrix ) {
-	matrix3x4_t transform;
-	transform.SetAngles( hitbox->angOffsetOrientation.y, hitbox->angOffsetOrientation.x, hitbox->angOffsetOrientation.y );
-	auto hitbox_matrix = matrix[ hitbox->iBone ] * ( transform );
-
-	Trace_t tr;
-	tr.flFraction = 1.f;
-	tr.bStartSolid = false;
-
-	return ClipRayToHitbox( { ctx.m_vecEyePos, end }, hitbox, hitbox_matrix, tr ) > -1;
-}
-
 void AimTarget_t::ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitboxes ) {
 	const auto data{ Features::Autowall.FireBullet( ctx.m_pLocal, this->m_pPlayer, ctx.m_pWeaponData,
 		ctx.m_pWeapon->m_iItemDefinitionIndex( ) == WEAPON_TASER,
@@ -483,13 +503,21 @@ void AimTarget_t::ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitbo
 	if ( std::find( hitboxes.begin( ), hitboxes.end( ), data.hitbox ) == hitboxes.end( ) )
 		return;
 
+	point.m_iIntersections = SafePoint( point.m_vecPoint, data.hitbox );
+
+	if ( Config::Get<keybind_t>( Vars.RagebotForceSafePointKey ).enabled && point.m_iIntersections < DESYNC_MATRIX_COUNT )
+		return;
+
 	point.m_bValid = true;
 
 	if ( !this->m_cPoint.m_bValid )
 		this->m_cPoint = point;
-	// points are ordered in the best place to shoot at
-	if ( point.m_flDamage > this->m_cPoint.m_flDamage )
-		this->m_cPoint = point;
+	else if ( point.m_iIntersections >= this->m_cPoint.m_iIntersections ) {
+		if ( point.m_flDamage > this->m_cPoint.m_flDamage )
+			this->m_cPoint = point;
+		else if ( point.m_iIntersections > this->m_cPoint.m_iIntersections )
+			this->m_cPoint = point;
+	}
 }
 
 void AimTarget_t::Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* hitbox, float scale, std::vector<EHitboxIndex>& hitboxes ) {
@@ -624,14 +652,14 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 		}
 
 		const auto newRecord{ std::make_shared< LagRecord_t >( entry.m_pPlayer ) };
-		auto& side{ newRecord->m_cAnimData.m_cSideData };
+		auto& side{ newRecord->m_cAnimData.m_arrSides.at( 0 ) };
 
 		Features::AnimSys.SetupBonesRebuilt( entry.m_pPlayer, side.m_pMatrix,
 			BONE_USED_BY_SERVER, newRecord->m_cAnimData.m_flSimulationTime + TICKS_TO_TIME( extrapolationCapped ), false );
 
 		// TODO: should i bother setting up all sides
 		for ( int i{ 1 }; i < 3; ++i )
-			std::memcpy( newRecord->m_cAnimData.m_cSideData.m_pMatrix, side.m_pMatrix, entry.m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+			std::memcpy( newRecord->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, side.m_pMatrix, entry.m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
 
 		this->m_pRecord = newRecord;
 

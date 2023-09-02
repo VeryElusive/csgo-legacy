@@ -307,6 +307,67 @@ void CPlayerESP::DrawSkeleton( VisualPlayerEntry& entry ) {
 
 		Render::Line( bone1, bone2, last );
 	}
+
+	if ( Config::Get<bool>( Vars.ChamBacktrack ) ) {
+		Color Col{ Config::Get<Color>( Vars.ChamBacktrackCol ) };
+
+		const auto& records = Features::AnimSys.m_arrEntries.at( entry.ent->Index( ) - 1 ).m_pRecords;
+		auto matrix{ new matrix3x4_t[ 256 ] };
+		bool valid{ };
+		if ( !records.empty( ) ) {
+			for ( auto it{ records.rbegin( ) }; it != records.rend( ); it = std::next( it ) ) {
+				const auto& record{ *it };
+
+				if ( record->m_bBrokeLC )
+					break;
+
+				if ( record->m_bFirst )
+					continue;
+
+				const auto validity{ record->Validity( ) };
+				if ( !validity )// **( int** ) Displacement::Sigs.numticks * 2 )
+					continue;
+
+				if ( validity < 5
+					&& ctx.m_iTicksAllowed )
+					continue;
+
+				if ( ( record->m_cAnimData.m_vecOrigin - entry.ent->GetAbsOrigin( ) ).Length( ) < 2.f )
+					continue;
+
+				std::memcpy(
+					matrix, record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix,
+					entry.ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t )
+				);
+
+				valid = true;
+			}
+
+			if ( valid ) {
+				for ( size_t n{ }; n < hdr->nBones; ++n ) {
+					auto* bone = hdr->GetBone( n );
+					if ( !bone || !( bone->iFlags & 256 ) || bone->iParent == -1 ) {
+						continue;
+					}
+
+					auto BonePos = [ & ]( int n ) -> Vector {
+						return {
+							matrix[ n ][ 0 ][ 3 ],
+							matrix[ n ][ 1 ][ 3 ],
+							matrix[ n ][ 2 ][ 3 ]
+						};
+					};
+
+					if ( !Math::WorldToScreen( BonePos( n ), bone1 ) || !Math::WorldToScreen( BonePos( bone->iParent ), bone2 ) )
+						continue;
+
+					Render::Line( bone1, bone2, Col );
+				}
+			}
+		}
+
+		delete[ ] matrix;
+	}
 }
 
 void RotateTriangle( std::array<Vector2D, 3>& points, float rotation ) {

@@ -5,20 +5,14 @@
 // check if we are able to be resolved from animlayers, and balance adjust then just flip desync
 // also force balance adjust to be triggered when stopping or randomly when we are standing
 
-void CAntiAim::Pitch( CUserCmd& cmd ) {
-	if ( Condition( cmd, true ) )
-		return;
-
-	if ( Interfaces::ClientState->nChokedCommands < 1 && Config::Get<bool>( Vars.AntiaimDesync ) )
-		ctx.m_bSendPacket = false;
-
+float CAntiAim::Pitch( ) {
 	const auto cond{ ctx.m_bSafeFromDefensive && Features::Exploits.m_bWasDefensiveTick ? Config::Get<int>( Vars.AntiaimSafePitch ) : Config::Get<int>( Vars.AntiaimPitch ) };
 
 	switch ( cond ) {
-	case 1: cmd.viewAngles.x = -89.f; break;// up
-	case 2: cmd.viewAngles.x =  89.f; break;// down
-	case 3: cmd.viewAngles.x =  0.f;  break;// zero
-	case 4: cmd.viewAngles.x = Math::RandomFloat( -89.f, 89 );  break;// random
+	case 1: return -89.f;// up
+	case 2: return  89.f;// down
+	case 3: return  0.f ;// zero
+	case 4: return Math::RandomFloat( -89.f, 89 );// random
 	default: break;
 	}
 }
@@ -311,9 +305,7 @@ void CAntiAim::FakeLag( int cmdNum ) {
 }
 
 void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
-	const auto oldCmdViewAngles{ cmd.viewAngles };
-
-	Pitch( cmd );
+	const auto pitch{ Pitch( ) };
 
 	const auto animstate{ ctx.m_pLocal->m_pAnimState( ) };
 	const auto totalCmds{ Interfaces::ClientState->nChokedCommands + 1 };
@@ -382,6 +374,8 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 		if ( curUserCmd.iTickCount == INT_MAX )
 			continue;
 
+		const auto oldViewAngles{ curUserCmd.viewAngles };
+
 		if ( i == 1 ) {
 			ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
 			ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
@@ -392,9 +386,9 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 			if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
 				&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
 				if ( curLocalData.m_bCanAA ) {
-					const auto oldViewAngles{ curUserCmd.viewAngles };
 
 					curUserCmd.viewAngles.y = yaw;
+					curUserCmd.viewAngles.x = pitch;// not needed just using it for local anims
 
 					if ( Config::Get<bool>( Vars.AntiaimDesync ) ) {
 						if ( curLocalData.PredictedNetvars.m_vecVelocity.Length2D( ) < 0.1f ) {
@@ -403,7 +397,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 								ctx.m_bFlicking = true;
 
 								if ( Config::Get<bool>( Vars.AntiaimStaticBreak ) ) {
-									curUserCmd.viewAngles.y = cmd.viewAngles.y;
+									curUserCmd.viewAngles.y = ctx.m_angOriginalViewangles.y;
 									if ( m_iChoiceSide == 1 )
 										curUserCmd.viewAngles.y += 90.f;
 									else if ( m_iChoiceSide == 2 )
@@ -411,14 +405,12 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 								}
 
 								curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimBreakLBYAngle );
-								if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, cmd.viewAngles.y ) ) <= 35.f )
+								if ( std::abs( Math::AngleDiff( ctx.m_pLocal->m_pAnimState( )->flAbsYaw, ctx.m_angOriginalViewangles.y ) ) <= 35.f )
 									curUserCmd.viewAngles.y = ctx.m_pLocal->m_pAnimState( )->flAbsYaw + 40.f;
 							}
 						}
 					}
 
-					// doesnt do anything to aa just want it for updating anims
-					curUserCmd.viewAngles.x = cmd.viewAngles.x;
 
 					//Features::Misc.NormalizeMovement( curUserCmd );
 
@@ -447,6 +439,10 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 				}
 			}
 
+			ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
+			ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+			ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+			ctx.m_pLocal->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
 
 			Features::AnimSys.UpdateLocal( curUserCmd.viewAngles, lastCmd, curUserCmd );
 		}
@@ -461,14 +457,16 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 					curUserCmd.viewAngles.y -= 90.f;
 			}
 
+			curUserCmd.viewAngles.x = pitch;
 			curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
 
 			Features::Misc.MoveMINTFix(
-				curUserCmd, oldCmdViewAngles,
+				curUserCmd, oldViewAngles,
 				curLocalData.PredictedNetvars.m_iFlags,
 				curLocalData.PredictedNetvars.m_MoveType
 			);
-			continue;
+
+			Features::Misc.NormalizeMovement( curUserCmd );
 		}
 
 		Interfaces::Input->pVerifiedCommands[ j ].userCmd = curUserCmd;
@@ -510,7 +508,6 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 
 	ctx.m_vecSetupBonesOrigin = ctx.m_pLocal->GetAbsOrigin( );
 
-	/* fake matrix 
 	if ( !Config::Get<bool>( Vars.ChamDesync ) )
 		return;
 
@@ -523,18 +520,16 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 
 	std::memcpy( ctx.m_pLocal->m_AnimationLayers( ), backupLayers, 13 * sizeof CAnimationLayer );
 
-	for ( auto i{ 1 }; i <= totalCmds; ++i ) {
-		const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
+	const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + 1 ) % 150 };
 
-		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
-		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
+	auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+	auto& curLocalData{ ctx.m_cLocalData.at( j ) };
 
-		ctx.m_pLocal->m_nTickBase( ) = tickbase - ( totalCmds - i );
-		ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
-		ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
+	ctx.m_pLocal->m_nTickBase( ) = tickbase - totalCmds + 1;
+	ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
+	ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
 
-		Features::AnimSys.UpdateLocal( cmd.viewAngles, true, curUserCmd );
-	}
+	Features::AnimSys.UpdateLocal( Interfaces::Input->pVerifiedCommands[ Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 ].userCmd.viewAngles, true, curUserCmd );
 
 	ctx.m_pLocal->SetAbsAngles( { 0.f, animstate->flAbsYaw, 0.f } );
 
@@ -551,7 +546,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 	ctx.m_cFakeData.init = true;
 	*animstate = backupState2;
 
-	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Size( ) * sizeof( matrix3x4_t ) );*/
+	std::memcpy( ctx.m_pLocal->m_CachedBoneData( ).Base( ), ctx.m_matRealLocalBones, ctx.m_pLocal->m_CachedBoneData( ).Size( ) * sizeof( matrix3x4_t ) );
 }
 
 // pasta reis courtesy of slazy

@@ -35,7 +35,7 @@ struct AnimData_t {
 		memcpy( m_pLayers, player->m_AnimationLayers( ), 0x38 * 13 );
 	}
 
-	SideData_t m_cSideData{ };
+	std::array< SideData_t, 3> m_arrSides{ };
 
 	int m_iFlags{ };
 
@@ -119,6 +119,8 @@ struct PlayerEntry {
 	float m_flSpawnTime{ };
 	float m_flLowerBodyYawTarget{ };
 	float m_flLowerBodyRealignTimer{ };
+	float m_flFirstShotEyeYaw{ };
+	float m_flFirstShotTime{ };
 	//bool m_bStartingDuck{ };
 	//float m_flLastPacketTime{ };
 	//float m_flTrackSimulationTime{ };
@@ -149,8 +151,9 @@ public:
 	void RunAnimationSystem( );
 	void AnimatePlayerThread( PlayerEntry& entry );
 	void AnimatePlayer( LagRecord_t* current, PlayerEntry& entry );
-	void UpdateSide( PlayerEntry& entry, LagRecord_t* current );
-	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from );
+	void UpdateSide( PlayerEntry& entry, LagRecord_t* current, int side );
+	void Resolver( PlayerEntry& entry, LagRecord_t* current );
+	void InterpolateFromLastData( CBasePlayer* player, LagRecord_t* current, std::optional < AnimData_t >& from, int side );
 	//FORCEINLINE void SetupInterp( LagRecord_t* to, PlayerEntry& entry );
 
 	bool SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* bones, const int mask, const float time, const bool clampbonesinbbox );

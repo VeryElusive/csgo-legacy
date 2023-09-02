@@ -89,6 +89,7 @@ struct AimPoint_t {
 	Vector m_vecPoint{ };
 	int m_iHitgroup{ };
 	int m_flDamage{ };
+	int m_iIntersections{ };
 
 	bool m_bValid{ };
 };
@@ -129,6 +130,7 @@ struct AimTarget_t {
 	void Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* hitbox, float scale, std::vector<EHitboxIndex>& hitboxes );
 	void ScanPoint( AimPoint_t& point, std::vector<EHitboxIndex>& hitboxes );
 	int HitChance( const QAngle& ang, int hitchance );
+	int SafePoint( Vector aimpoint, int index );
 	void Fire( CUserCmd& cmd );
 };
 

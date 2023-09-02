@@ -237,6 +237,7 @@
     <ClCompile Include="core\menu rework\controls\listbox.cpp" />
     <ClCompile Include="core\menu rework\controls\text_input.cpp" />
     <ClCompile Include="features\visuals\weather.cpp" />
+    <ClCompile Include="features\animations\resolver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="features\animations\record_utils.inl" />

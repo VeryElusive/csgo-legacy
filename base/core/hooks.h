@@ -249,6 +249,7 @@ namespace Hooks
 	void __vectorcall	HkAnimStateUpdate( void*, void*, float, float, float, void* );
 	bool	FASTCALL	hkShouldSkipAnimFrame( void* ecx, uint32_t ebx );
 	void	FASTCALL	hkClampBonesInBBox( CBasePlayer* ecx, uint32_t ebx, matrix3x4_t* bones, int boneMask );
+	void	FASTCALL	hkRunCommand( void* ecx, void* edx, CBasePlayer* player, CUserCmd* cmd, IMoveHelper* moveHelper );
 	QAngle* FASTCALL	hkGetEyeAngles( CBasePlayer* ecx, void* edx );
 	void	FASTCALL	hkAccumulateLayers( CBasePlayer* const ecx, const std::uintptr_t edx, int a0, int a1, float a2, int a3 );
 	bool	FASTCALL	hkIsBoneAvailable( void* ecx, uint32_t, int a1 );

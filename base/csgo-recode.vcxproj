@@ -185,6 +185,7 @@
     <ClCompile Include="core\menu rework\menu.cpp" />
     <ClCompile Include="features\animations\animations.cpp" />
     <ClCompile Include="features\animations\local_animations.cpp" />
+    <ClCompile Include="features\animations\resolver.cpp" />
     <ClCompile Include="features\animations\setupbones\bonesetup.cpp" />
     <ClCompile Include="features\animations\setupbones\setupbones.cpp" />
     <ClCompile Include="features\misc\engine_prediction.cpp" />

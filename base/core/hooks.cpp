@@ -31,8 +31,8 @@ bool Hooks::Setup( ) {
 	if ( !DTR::CreateMoveProxy.Create( MEM::GetVFunc( Interfaces::Client, VTABLE::CREATEMOVE ), &hkCreateMoveProxy ) )
 		return false;
 
-	//if ( !DTR::DrawModel.Create( MEM::GetVFunc( Interfaces::StudioRender, VTABLE::DRAWMODEL ), &hkDrawModel ) )
-	//	return false;
+	if ( !DTR::DrawModel.Create( MEM::GetVFunc( Interfaces::StudioRender, VTABLE::DRAWMODEL ), &hkDrawModel ) )
+		return false;
 
 	if ( !DTR::Paint.Create( MEM::GetVFunc( Interfaces::EngineVGui, VTABLE::VGUI_PAINT ), &HkPaint ) )
 		return false;
@@ -67,8 +67,11 @@ bool Hooks::Setup( ) {
 	//if ( !DTR::EmitSound.Create( MEM::GetVFunc( Interfaces::EngineSound, VTABLE::EMITSOUND ), &hkEmitSound ) )
 	//	return false;
 
-	//if ( !DTR::SceneEnd.Create( MEM::GetVFunc( Interfaces::RenderView, 9 ), &hkSceneEnd ) )
-	//	return false;
+	if ( !DTR::SceneEnd.Create( MEM::GetVFunc( Interfaces::RenderView, 9 ), &hkSceneEnd ) )
+		return false;
+
+	if ( !DTR::RunCommand.Create( MEM::GetVFunc( Interfaces::Prediction, VTABLE::RUNCOMMAND ), &hkRunCommand ) )
+		return false;
 
 	void* pClientStateSwap = ( void* ) ( uint32_t( Interfaces::ClientState ) + 8 );
 	if ( !DTR::PacketEnd.Create( MEM::GetVFunc( pClientStateSwap, 6 ), &Hooks::hkPacketEnd ) )

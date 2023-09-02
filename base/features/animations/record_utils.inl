@@ -20,6 +20,7 @@ inline void PlayerEntry::OnNewRound( ) {
 	OutOfDormancy( );
 
 	this->m_iMissedShots = 0;
+	this->m_flFirstShotTime = 0.f;
 
 	this->m_flSpawnTime = this->m_pPlayer->m_flSpawnTime( );
 }
@@ -122,8 +123,10 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 	if ( std::abs( curVel.z ) < 0.001f )
 		curVel.z = 0.f;
 
-	if ( curLayers[ 6 ].flPlaybackRate == 0.f )
+	if ( curLayers[ 6 ].flPlaybackRate == 0.f ) {
+		this->m_bAccurateVelocity = true;
 		curVel = { 0, 0, 0 };
+	}
 	else if ( this->m_cAnimData.m_iFlags & FL_ONGROUND ) {
 		curVel.z = 0.f;
 
@@ -182,7 +185,7 @@ inline uint8_t LagRecord_t::Validity( ) {
 	if ( ctx.m_bFakeDucking )
 		delay = 15 - Interfaces::ClientState->nChokedCommands;
 
-	const auto serverCurtime{ TICKS_TO_TIME( Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + 1 ) };
+	const auto serverCurtime{ TICKS_TO_TIME( Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + 2 ) };
 	const auto flDeadtime{ static_cast< int >( serverCurtime - Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
 
 	if ( this->m_cAnimData.m_flSimulationTime < flDeadtime )
@@ -277,7 +280,7 @@ FORCEINLINE void LagRecord_t::Apply( CBasePlayer* ent, int side ) {
 	//ent->m_iEFlags( ) |= EFL_DIRTY_ABSTRANSFORM;
 	ent->SetAbsOrigin( this->m_cAnimData.m_vecOrigin );
 
-	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_cAnimData.m_cSideData.m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
+	std::memcpy( ent->m_CachedBoneData( ).Base( ), this->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, ent->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t ) );
 
 	//ent->SetAbsAngles( { 0.f, this->m_cAnimData.m_arrSides.at( side ).m_flAbsYaw, 0.f } );// we dont need this so remove when i cleanup
 }

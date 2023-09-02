@@ -212,54 +212,6 @@ void CMisc::MoveMINTFix( CUserCmd& cmd, QAngle wish_angles, int flags, int move_
 	//cmd.flUpMove = std::clamp<float>( cmd.flUpMove, -320.f, 320.f );
 }
 
-bool CMisc::MicroMove( CUserCmd& cmd ) {
-	if ( !Config::Get<bool>( Vars.AntiaimEnable )
-		|| !Config::Get<bool>( Vars.AntiaimDesync )
-		|| cmd.iButtons & IN_JUMP
-		|| !( ctx.m_pLocal->m_fFlags( ) & FL_ONGROUND ) )
-		return false;
-
-	const auto accel{ Displacement::Cvars.sv_accelerate->GetFloat( ) };
-	const auto maxAccelSpeed{ ( accel * Interfaces::Globals->flIntervalPerTick * std::max( 250.f, ctx.m_pLocal->m_flMaxSpeed( ) ) * ctx.m_pLocal->m_surfaceFriction( ) * 2.f ) };// *2 for safety
-
-	if ( ctx.m_pLocal->m_vecVelocity( ).Length2DSqr( ) > maxAccelSpeed )
-		return false;
-
-	float duck_amount{ };
-	if ( cmd.iButtons & IN_DUCK )
-		duck_amount = std::min(
-			1.f,
-			ctx.m_pLocal->m_flDuckAmount( )
-			+ ( Interfaces::Globals->flIntervalPerTick * 0.8f ) * ctx.m_pLocal->m_flDuckSpeed( )
-		);
-	else
-		duck_amount =
-		ctx.m_pLocal->m_flDuckAmount( )
-		- std::max( 1.5f, ctx.m_pLocal->m_flDuckSpeed( ) ) * Interfaces::Globals->flIntervalPerTick;
-
-	float move{ };
-	if ( cmd.iButtons & IN_DUCK
-		|| ctx.m_pLocal->m_flDuckAmount( )
-		|| ctx.m_pLocal->m_fFlags( ) & FL_DUCKING )
-		move = 1.1f / ( ( ( duck_amount * 0.34f ) + 1.f ) - duck_amount );
-	else
-		move = 1.1f;
-
-	if ( std::abs( cmd.flForwardMove ) > move
-		|| std::abs( cmd.flSideMove ) > move )
-		return false;
-
-	static bool sw = false;
-	sw = !sw;
-
-	if ( !sw )
-		move *= -1.f;
-
-	cmd.flSideMove = move;
-
-	return true;
-}
-
 void CMisc::AutoStrafer( CUserCmd& cmd ) {
 	if ( !Config::Get<bool>( Vars.MiscAutostrafe ) )
 		return;

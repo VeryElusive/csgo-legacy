@@ -89,8 +89,15 @@ void CShots::ProcessShots( ) {
 						MASK_SHOT_PLAYER, shot.m_pPlayer, &trace
 					);
 
-					Features::AnimSys.m_arrEntries.at( shot.m_pPlayer->Index( ) - 1 ).m_iMissedShots++;
+					auto& entry{ Features::AnimSys.m_arrEntries.at( shot.m_pPlayer->Index( ) - 1 ) };
+					entry.m_iMissedShots++;
+
+					if ( Interfaces::Globals->flRealTime > entry.m_flFirstShotTime + 15.f )
+						entry.m_flFirstShotEyeYaw = shot.m_pRecord->m_angEyeAngles.y;
+
+					entry.m_flFirstShotTime = Interfaces::Globals->flRealTime;
 					Features::Logger.Log( _( "hit incorrect hitbox due to resolver" ), false );
+
 				}
 				else
 					Features::Logger.Log( _( "hit incorrect hitbox due to spread" ), false );
@@ -103,7 +110,14 @@ void CShots::ProcessShots( ) {
 		else {
 
 			if ( trace.pHitEntity == shot.m_pPlayer ) {
-				Features::AnimSys.m_arrEntries.at( shot.m_pPlayer->Index( ) - 1 ).m_iMissedShots++;
+				auto& entry{ Features::AnimSys.m_arrEntries.at( shot.m_pPlayer->Index( ) - 1 ) };
+				entry.m_iMissedShots++;
+
+				if ( Interfaces::Globals->flRealTime > entry.m_flFirstShotTime + 15.f )
+					entry.m_flFirstShotEyeYaw = shot.m_pRecord->m_angEyeAngles.y;
+
+				entry.m_flFirstShotTime = Interfaces::Globals->flRealTime;
+
 				Features::Logger.Log( _( "missed shot due to resolver" ), true );
 			}
 			else {

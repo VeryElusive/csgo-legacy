@@ -262,7 +262,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	case FRAME_RENDER_START: {
 		//Features::AnimSys.SetupFakeMatrix( );
 
-		/*for ( int i{ 1 }; i < 64; i++ ) {
+		for ( int i{ 1 }; i < 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 			if ( !player || player->IsDead( ) || !player->IsPlayer( ) )
 				continue;
@@ -270,7 +270,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			//player->SetAbsOrigin( player->m_vecOrigin( ) );
 
 			draw_server_hitboxes( i );
-		}*/
+		}
 	}break;
 	case FRAME_NET_UPDATE_START: {
 		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {
@@ -350,25 +350,15 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot, bf_write* buf, int from, int to, bool is_new_command ) {
 	static auto oWriteUserCmdDeltaToBuffer = DTR::WriteUserCmdDeltaToBuffer.GetOriginal<decltype( &hkWriteUserCmdDeltaToBuffer )>( );
 
+	if ( Config::Get<keybind_t>( Vars.RagebotForceBaimKey ).enabled )
+		return true;
+
 	if ( from == -1 ) {
 		const auto moveMsg{ reinterpret_cast< MoveMsg_t* >( *reinterpret_cast< std::uintptr_t* >(
 			reinterpret_cast< std::uintptr_t >( _AddressOfReturnAddress( ) ) - sizeof( std::uintptr_t ) ) - 0x58u ) };
 
 		moveMsg->m_iBackupCmds = 0;
 		moveMsg->m_iNewCmds = std::min( 16, Interfaces::ClientState->nChokedCommands + 1 );
-
-		auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + moveMsg->m_iNewCmds };
-
-		// TODO: make this run at the end and dont call writeusercmd ourself, just makes it look neater, doesnt change performance and technically runs shit that is unnecessary
-		for ( to = Interfaces::ClientState->iLastOutgoingCommand + 1; to <= nextCmdNumber; ++to ) {
-			if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
-				Features::Logger.Log( _( "FAILED WUCTB" ), true );
-				ctx.m_iSentCmds.push_back( nextCmdNumber );
-				return false;
-			}
-
-			from = to;
-		}
 
 		if ( ctx.m_iTicksAllowed > 0 ) {
 			const auto newCmds{ std::min( Interfaces::ClientState->nChokedCommands + 1 + ctx.m_iTicksAllowed, 16 ) };
@@ -378,11 +368,11 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 
 			const auto& idx{ ctx.m_pWeapon->m_iItemDefinitionIndex( ) };
 
-			const auto dontShift{ ctx.m_bSafeFromDefensive && Features::Exploits.m_bRealCmds 
+			const auto dontShift{ ctx.m_bSafeFromDefensive && Features::Exploits.m_bRealCmds
 				&& ( /*( !ctx.m_pLocal->CanShoot( ) && idx != WEAPON_SSG08 && idx != WEAPON_AWP )
 					|| */( Features::Misc.AutoPeeking && Config::Get<bool>( Vars.ExploitsDoubletapExtended ) && Config::Get<bool>( Vars.ExploitsDoubletapDefensive ) ) ) };
 
-			//ctx.m_flFixedCurtime = backup;
+					//ctx.m_flFixedCurtime = backup;
 
 			if ( dontShift )
 				ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
@@ -390,7 +380,9 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 			if ( Features::Exploits.m_iShiftAmount && !dontShift )
 				Features::Exploits.Shift( buf, moveMsg );
 			else if ( Features::Exploits.m_bWasDefensiveTick )
-					Features::Exploits.BreakLC( buf, ctx.m_iTicksAllowed, moveMsg );
+				Features::Exploits.BreakLC( buf, ctx.m_iTicksAllowed, moveMsg );
+			//else if ( Config::Get<bool>( Vars.ExploitsBreakCBB ) )
+			//	Features::Exploits.BreakCBB( buf, moveMsg );
 			else if ( Features::Exploits.m_iRechargeCmd != Interfaces::ClientState->iLastOutgoingCommand ) {
 				const auto newCmds{ std::min( moveMsg->m_iNewCmds + ctx.m_iTicksAllowed, 16 ) };
 
@@ -400,12 +392,37 @@ bool FASTCALL Hooks::hkWriteUserCmdDeltaToBuffer( void* ecx, void* edx, int slot
 			}
 		}
 
-		nextCmdNumber = Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1;
+		const auto tickbase{ Features::Exploits.AdjustTickbase( moveMsg->m_iNewCmds ) + Interfaces::ClientState->nChokedCommands };
+
+		if ( tickbase + 1 > ctx.m_iHighestTickbase ) {
+			ctx.m_bSafeFromDefensive = false;
+			ctx.m_iHighestTickbase = tickbase;
+		}
+		else
+			ctx.m_bSafeFromDefensive = true;
+
+		auto nextCmdNumber{ Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 };
+
+		if ( ctx.m_pLocal && !ctx.m_pLocal->IsDead( ) ) {
+			auto& localData{ ctx.m_cLocalData.at( nextCmdNumber % 150 ) };
+			if ( auto command{ Interfaces::Input->GetUserCmd( nextCmdNumber ) }; command )
+				Features::Antiaim.RunLocalModifications( *command, localData.m_iTickbase );
+		}
+
+		for ( to = Interfaces::ClientState->iLastOutgoingCommand + 1; to <= Interfaces::ClientState->iLastOutgoingCommand + moveMsg->m_iNewCmds; ++to ) {
+			if ( !oWriteUserCmdDeltaToBuffer( ecx, edx, slot, buf, from, to, true ) ) {
+				Features::Logger.Log( _( "FAILED WUCTB" ), true );
+				ctx.m_iSentCmds.push_back( nextCmdNumber );
+				return false;
+			}
+
+			from = to;
+		}
 
 		ctx.m_cLocalData.at( nextCmdNumber % 150 ).m_iTickCount = Interfaces::Globals->iTickCount;
 
 		ctx.m_iSentCmds.push_back( nextCmdNumber );
 	}
-	
+
 	return true;
 }

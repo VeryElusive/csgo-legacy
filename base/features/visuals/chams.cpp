@@ -4,11 +4,8 @@
 #include "../../context.h"
 
 void CChams::InitMaterials( ) {
-	RegularMat = CreateMaterial(
-		_( "HAVOC_regular.vmt" ),
-		_( "VertexLitGeneric" ),
-		_(
-			R"#("VertexLitGeneric" {
+	std::ofstream( "csgo\\materials\\HAVOC_regular.vmt" ) << R"#("VertexLitGeneric"
+			{
 					"$basetexture" "vgui/white_additive"
 					"$ignorez"      "0"
 					"$model"		"1"
@@ -17,15 +14,13 @@ void CChams::InitMaterials( ) {
 					"$halflambert"	"1"
 					"$nofog"		"1"
 					"$wireframe"	"0"
-				})#"
-		)
-	);
+			}
+			)#";
 
-	FlatMat = CreateMaterial(
-		_( "vuln_solid.vmt" ),
-		_( "UnlitGeneric" ),
-		_(
-			R"#("UnlitGeneric" {
+	RegularMat = Interfaces::MaterialSystem->FindMaterial( _( "HAVOC_regular" ), TEXTURE_GROUP_MODEL );
+
+	std::ofstream( "csgo\\materials\\HAVOC_flat.vmt" ) << R"#("UnlitGeneric"
+			{
 					"$basetexture" "vgui/white_additive"
 					"$ignorez"      "0"
 					"$model"		"1"
@@ -35,19 +30,14 @@ void CChams::InitMaterials( ) {
 					"$halflambert"	"1"
 					"$nofog"		"1"
 					"$wireframe"	"0"
-				})#"
-		)
-	);
+			}
+			)#";
 
-	GlowMat = Interfaces::MaterialSystem->FindMaterial( _( "dev/glow_armsrace" ), nullptr );
+	FlatMat = Interfaces::MaterialSystem->FindMaterial( _( "HAVOC_flat" ), TEXTURE_GROUP_MODEL );
 
-	MetallicMat = CreateMaterial(
-		_( "HAVOC_metallic.vmt" ),
-		_( "VertexLitGeneric" ),
-		_(
-			R"#("VertexLitGeneric"
-            {
-                    "$basetexture"                "vgui/white_additive"
+	std::ofstream( "csgo\\materials\\HAVOC_metallic.vmt" ) << R"#("VertexLitGeneric"
+			{
+					"$basetexture"                "vgui/white_additive"
                     "$ignorez"                    "0"
                     "$phong"                    "1"
                     "$BasemapAlphaPhongMask"    "1"
@@ -67,30 +57,37 @@ void CChams::InitMaterials( ) {
                     "$rimlight"                    "1"
                     "$rimlightexponent"            "2"
                     "$rimlightboost"            "0"
-            }
-            )#"
-		)
-	);
+			}
+			)#";
 
-	GalaxyMat = CreateMaterial(
-		_( "HAVOC_galaxy.vmt" ),
-		_( "VertexLitGeneric" ),
-		_( R"#("VertexLitGeneric" {
-			"$basetexture" "dev\snowfield"
-			"$additive" "1"
+	MetallicMat = Interfaces::MaterialSystem->FindMaterial( _( "HAVOC_metallic" ), TEXTURE_GROUP_MODEL );
 
-			"Proxies"
+	std::ofstream( "csgo\\materials\\HAVOC_galaxy.vmt" ) << R"#("VertexLitGeneric"
 			{
-				"TextureScroll"
+				"$basetexture" "dev\snowfield"
+				"$additive" "1"
+				"$model"		"1"
+				"$flat"			"1"
+				"$nocull"		"1"
+				"$selfillum"	"1"
+				"$halflambert"	"1"
+				"$nofog"		"1"
+
+				"Proxies"
 				{
-					"textureScrollVar" "$baseTextureTransform"
-					"textureScrollRate" "0.05"
-					"textureScrollAngle" "0.0"
+					"TextureScroll"
+					{
+						"textureScrollVar" "$baseTextureTransform"
+						"textureScrollRate" "0.05"
+						"textureScrollAngle" "0.0"
+					}
 				}
 			}
-		}
-		)#" )
-	);
+			)#";
+
+	GalaxyMat = Interfaces::MaterialSystem->FindMaterial( _( "HAVOC_galaxy" ), TEXTURE_GROUP_MODEL );
+
+	GlowMat = Interfaces::MaterialSystem->FindMaterial( _( "dev/glow_armsrace" ), nullptr );
 
 	if ( !RegularMat || RegularMat->IsErrorMaterial( ) )
 		return;
@@ -114,15 +111,6 @@ void CChams::InitMaterials( ) {
 	RegularMat->IncrementReferenceCount( );
 
 	init = true;
-}
-
-IMaterial* CChams::CreateMaterial( 
-	const std::string_view name, const std::string_view shader, const std::string_view material 
-) const {
-	CKeyValues* pKeyValues = new CKeyValues( shader.data( ) );
-	pKeyValues->LoadFromBuffer( name.data( ), material.data( ) );
-
-	return Interfaces::MaterialSystem->CreateMaterial( name.data( ), pKeyValues );
 }
 
 void CChams::OverrideMaterial(
@@ -488,7 +476,7 @@ void CChams::OnSceneEnd( ) {
 					if ( !validity )// **( int** ) Displacement::Sigs.numticks * 2 )
 						continue;
 
-					if ( validity < 3
+					if ( validity < 5
 						&& ctx.m_iTicksAllowed )
 						continue;
 
@@ -496,7 +484,7 @@ void CChams::OnSceneEnd( ) {
 						continue;
 
 					std::memcpy(
-						matrix, record->m_cAnimData.m_cSideData.m_pMatrix,
+						matrix, record->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix,
 						player->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4_t )
 					);
 
