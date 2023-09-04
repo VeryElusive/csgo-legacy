@@ -11,6 +11,7 @@
 #include "core/displacement.h"
 #include "core/event_listener.h"
 #include "features/misc/logger.h"
+#include "core/lua/scripting.h"
 #include <tchar.h>
 
 __forceinline void memsetINLINED( unsigned char* dest, char src, size_t size ) {

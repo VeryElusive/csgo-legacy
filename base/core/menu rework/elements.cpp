@@ -1,4 +1,5 @@
 #include "menu.h"
+#include "../lua/scripting.h"
 #include "../../features/misc/logger.h"
 #include "abuse.h"
 
@@ -34,6 +35,16 @@ void __cdecl CreateConfig( ) {
 void __cdecl ResetMenuSize( ) {
 	Menu::m_vecSize = { 800, 650 };
 	Features::Logger.Log( _( "Reset menu size." ), true );
+}
+
+void __cdecl LoadDaLua( ) {
+	Features::Logger.Log( _( "loaded da lua." ), true );
+	Scripting::Load( "test.lua" );
+}
+
+void __cdecl UnLoadDaLua( ) {
+	Features::Logger.Log( _( "unloaded da lua." ), true );
+	Scripting::Unload( "test.lua" );
 }
 
 void __cdecl Unload( ) {
@@ -494,6 +505,9 @@ void Menu::Register( ) {
 
 		configGroup->Register( "Load", LoadConfig );
 		configGroup->Register( "Save", SaveConfig );
+
+		configGroup->Register( "Load lua test", LoadDaLua );
+		configGroup->Register( "Unload lua test", UnLoadDaLua );
 	}
 }
 

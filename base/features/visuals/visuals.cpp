@@ -1,7 +1,10 @@
 #include "visuals.h"
 #include "../animations/animation.h"
+#include "../../core/lua/scripting.h"
 
 void CVisuals::Main( ) {
+	Scripting::DoCallback( FNV1A::HashConst( "paint" ) );
+
 	if ( !ctx.m_pLocal )
 		return;
 

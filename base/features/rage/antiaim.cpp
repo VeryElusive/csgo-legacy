@@ -366,7 +366,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
 		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
 
-		const auto lastCmd{ curUserCmd.iCommandNumber == cmd.iCommandNumber };
+		const auto lastCmd{ i == totalCmds };
 
 		if ( curLocalData.m_flSpawnTime != ctx.m_pLocal->m_flSpawnTime( ) )
 			continue;
@@ -456,6 +456,8 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 				else if ( m_iChoiceSide == 2 )
 					curUserCmd.viewAngles.y -= 90.f;
 			}
+			else
+				curUserCmd.viewAngles.y = yaw;
 
 			curUserCmd.viewAngles.x = pitch;
 			curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
@@ -529,7 +531,7 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 	ctx.m_pLocal->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
 	ctx.m_pLocal->m_vecAbsVelocity( ) = curLocalData.PredictedNetvars.m_vecVelocity;
 
-	Features::AnimSys.UpdateLocal( Interfaces::Input->pVerifiedCommands[ Interfaces::ClientState->iLastOutgoingCommand + Interfaces::ClientState->nChokedCommands + 1 ].userCmd.viewAngles, true, curUserCmd );
+	Features::AnimSys.UpdateLocal( Interfaces::Input->pCommands[ ( Interfaces::ClientState->iLastOutgoingCommand + totalCmds ) % 150 ].viewAngles, true, curUserCmd );
 
 	ctx.m_pLocal->SetAbsAngles( { 0.f, animstate->flAbsYaw, 0.f } );
 
