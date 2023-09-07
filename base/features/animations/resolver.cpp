@@ -1,4 +1,5 @@
 #include "animation.h"
+#include "../../core/lua/scripting.h"
 
 void Animate( CBasePlayer* player ) {
 	const auto backupCurtime{ Interfaces::Globals->flCurTime };
@@ -56,6 +57,9 @@ void CAnimationSys::Resolver( PlayerEntry& entry, LagRecord_t* current ) {
 		entry.m_flLowerBodyYawTarget = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 		return;
 	}
+
+	Scripting::DoCallback( FNV1A::HashConst( "resolver" ), entry.m_iMissedShots, entry.m_flFirstShotTime );
+	return;
 
 	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) )
 		return;

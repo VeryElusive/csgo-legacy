@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -23,7 +23,9 @@
     <ClInclude Include="core\input_manager.h" />
     <ClInclude Include="core\interfaces.h" />
     <ClInclude Include="core\lua\scripting.h" />
+    <ClInclude Include="core\lua\wrappers\entity.h" />
     <ClInclude Include="core\lua\wrappers\render.h" />
+    <ClInclude Include="core\lua\wrappers\util.h" />
     <ClInclude Include="core\menu rework\controls\argument_types.h" />
     <ClInclude Include="core\menu rework\controls\containers.h" />
     <ClInclude Include="core\menu rework\abuse.h" />

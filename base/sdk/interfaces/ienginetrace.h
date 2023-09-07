@@ -101,7 +101,7 @@ public:
 		return (flFraction > 0.97f);
 	}
 
-private:
+
 	CGameTrace(const CGameTrace& other)
 	{
 		this->vecStart = other.vecStart;
