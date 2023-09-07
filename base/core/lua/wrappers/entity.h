@@ -67,6 +67,14 @@ namespace Wrappers::Entity {
 			return *reinterpret_cast< Vector* >( uintptr_t( m_pPlayer ) + offset );
 		}
 
+		bool IsAlive( ) {
+			return !m_pPlayer->IsDead( );
+		}
+
+		bool IsDormant( ) {
+			return m_pPlayer->Dormant( );
+		}
+
 		int GetLayerSequenceActivity( int layer ) {
 			if ( !m_pPlayer )
 				return 0;

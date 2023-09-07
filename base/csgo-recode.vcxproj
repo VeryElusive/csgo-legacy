@@ -24,6 +24,7 @@
     <ClInclude Include="core\interfaces.h" />
     <ClInclude Include="core\lua\scripting.h" />
     <ClInclude Include="core\lua\wrappers\entity.h" />
+    <ClInclude Include="core\lua\wrappers\interfaces.h" />
     <ClInclude Include="core\lua\wrappers\render.h" />
     <ClInclude Include="core\lua\wrappers\util.h" />
     <ClInclude Include="core\menu rework\controls\argument_types.h" />

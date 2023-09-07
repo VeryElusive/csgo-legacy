@@ -33,7 +33,7 @@ public:
 		this->r = static_cast< std::uint8_t >( r );
 		this->g = static_cast< std::uint8_t >( g );
 		this->b = static_cast< std::uint8_t >( b );
-		this->a = static_cast< std::uint8_t >( b );
+		this->a = static_cast< std::uint8_t >( a );
 	}
 
 	/* float color constructor (in: 0.0 - 1.0) */
@@ -47,10 +47,10 @@ public:
 	/* output color to given variables */
 	void Get(std::uint8_t& r, std::uint8_t& g, std::uint8_t& b, std::uint8_t& a) const
 	{
-		r = r;
-		g = g;
-		b = b;
-		a = a;
+		r = this->r;
+		g = this->g;
+		b = this->b;
+		//a = this->a;
 	}
 
 	/* convert color to directx argb */
@@ -356,7 +356,7 @@ public:
 		return Color(r, g, b, flAlpha);
 	}
 
-	std::uint8_t r, g, b, a;
+	std::uint8_t r, g, b, a = 255;
 };
 
 class FloatColor {
