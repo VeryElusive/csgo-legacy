@@ -72,6 +72,7 @@ void Scripting::Load( std::string fileName ) {
 
 	utilsTable[ _( "trace_bullet" ) ] = sol::overload( &Wrappers::Utils::FireBullet );
 	utilsTable[ _( "trace_line" ) ] = sol::overload( &Wrappers::Utils::TraceLine );
+	utilsTable[ _( "get_local_eye_position" ) ] = sol::overload( &Wrappers::Utils::GetLocalEyePosition );
 
 	// INTERFACES:
 	entityList[ _( "get_local_index" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetLocalIndex );
@@ -146,6 +147,7 @@ void Scripting::Load( std::string fileName ) {
 	entity_ut[ _( "get_layer_sequence_activity" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetLayerSequenceActivity );
 	entity_ut[ _( "animate" ) ] = sol::overload( &Wrappers::Entity::CPlayer::AnimatePlayer );
 	entity_ut[ _( "setupbones" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetupBones );
+	entity_ut[ _( "get_hitbox_position" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetHitboxPosition );
 
 	auto player_entry_t_ut{ state->m_cState.new_usertype<PlayerEntry>( _( "player_entry_t" ), sol::no_constructor ) };
 	player_entry_t_ut[ _( "get_previous_anim_data" ) ] = sol::overload( &PlayerEntry::GetPreviousAnimData );

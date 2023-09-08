@@ -424,7 +424,11 @@ void PlayerEntry::Rezik( LagRecord_t* current ) {
 }
 
 bool CAnimationSys::SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* bones, const int boneMask, const float time, const bool clampbonesinbbox ) {
-
+	bool allocated{ };
+	if ( !bones ) {
+		allocated = true;
+		bones = new matrix3x4a_t[ 256 ];
+	}
 
 	auto hdr{ player->m_pStudioHdr( ) };
 	if ( !hdr )
@@ -457,6 +461,11 @@ bool CAnimationSys::SetupBonesRebuilt( CBasePlayer* const player, matrix3x4a_t* 
 	player->m_fEffects( ) = backupEffects;
 	player->m_iOcclusionFlags( ) = backupOcclusionFlags;
 	player->m_iOcclusionFrame( ) = backupOcclusionFrame;
+
+	if ( allocated ) {
+		std::memcpy( player->m_CachedBoneData( ).Base( ), bones, player->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+		delete[ ] bones;
+	}
 
 	/*
 	//Interfaces::MDLCache->BeginLock( );

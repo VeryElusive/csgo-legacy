@@ -489,6 +489,8 @@ void Menu::Register( ) {
 			betaGroup->Register( _( "Disable yaw extrapolation" ), &Config::Get<bool>( Vars.DBGLC1 ) );
 			betaGroup->Register( _( "Extrapolate players" ), &Config::Get<bool>( Vars.DBGExtrap ) );
 			betaGroup->Register( _( "No ping reducer" ), &Config::Get<bool>( Vars.DBGNoPingReducer ) );
+			betaGroup->Register( "Load test.lua", LoadDaLua );
+			betaGroup->Register( "Unload test.lua", UnLoadDaLua );
 			//betaGroup->Register( _( "Record options" ), 2, recordOptions );
 			//betaGroup->Register( _( "Smoother gameplay" ), &Config::Get<bool>( Vars.DBGNoLatch ) );
 		}
@@ -505,9 +507,6 @@ void Menu::Register( ) {
 
 		configGroup->Register( "Load", LoadConfig );
 		configGroup->Register( "Save", SaveConfig );
-
-		configGroup->Register( "Load lua test", LoadDaLua );
-		configGroup->Register( "Unload lua test", UnLoadDaLua );
 	}
 }
 

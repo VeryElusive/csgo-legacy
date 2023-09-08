@@ -4,7 +4,7 @@
 namespace Wrappers::Utils {
 	PenetrationData FireBullet( CBasePlayer* const shooter, CBasePlayer* const target,
 		const bool isTaser, const Vector src, const Vector dst, bool penetrate ) {
-		if ( !shooter->GetWeapon( ) )
+		if ( !shooter->GetWeapon( ) || !shooter->GetWeapon( )->GetCSWeaponData( ) )
 			return { };
 
 		return Features::Autowall.FireBullet( shooter, target, shooter->GetWeapon( )->GetCSWeaponData( ), isTaser, src, dst, penetrate );
@@ -20,5 +20,9 @@ namespace Wrappers::Utils {
 		);
 
 		return trace;
+	}
+
+	Vector GetLocalEyePosition( ) {
+		return ctx.m_vecEyePos;
 	}
 }

@@ -112,12 +112,27 @@ namespace Wrappers::Entity {
 			Interfaces::Globals->flFrameTime = backupFrametime;
 		}
 
-		void SetupBones( matrix3x4a_t* matrix ) {
-			if ( !matrix || !m_pPlayer )
+		void SetupBones( ) {
+			if ( !m_pPlayer )
 				return;
 
-			Features::AnimSys.SetupBonesRebuilt( m_pPlayer, matrix,
+			Features::AnimSys.SetupBonesRebuilt( m_pPlayer, nullptr,
 				BONE_USED_BY_SERVER, m_pPlayer->m_flSimulationTime( ), false );
+		}
+
+		Vector GetHitboxPosition( int index ) {
+			if ( !m_pPlayer )
+				return { 0,0,0 };
+
+			const auto hitboxSet{ m_pPlayer->m_pStudioHdr( )->pStudioHdr->GetHitboxSet( m_pPlayer->m_nHitboxSet( ) ) };
+			if ( !hitboxSet )
+				return { 0,0,0 };
+
+			const auto hitbox{ hitboxSet->GetHitbox( index ) };
+			if ( !hitbox )
+				return { 0,0,0 };
+
+			return Math::VectorTransform( ( hitbox->vecBBMin + hitbox->vecBBMax ) / 2.f, m_pPlayer->m_CachedBoneData( ).Base( )[ hitbox->iBone ] );
 		}
 
 		operator CBasePlayer* ( ) {
