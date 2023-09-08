@@ -17,6 +17,12 @@ bool Config::Setup( )
 			return false;
 	}
 
+	if ( !std::filesystem::is_directory( fsPathLua ) )
+	{
+		std::filesystem::remove( fsPathLua );
+		if ( !std::filesystem::create_directories( fsPathLua ) )
+			return false;
+	}
 	return true;
 }
 

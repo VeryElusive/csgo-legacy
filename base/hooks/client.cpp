@@ -262,7 +262,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 	case FRAME_RENDER_START: {
 		//Features::AnimSys.SetupFakeMatrix( );
 
-		for ( int i{ 1 }; i < 64; i++ ) {
+		/*for ( int i{ 1 }; i < 64; i++ ) {
 			const auto player{ static_cast< CBasePlayer* >( Interfaces::ClientEntityList->GetClientEntity( i ) ) };
 			if ( !player || player->IsDead( ) || !player->IsPlayer( ) )
 				continue;
@@ -270,7 +270,7 @@ void FASTCALL Hooks::hkFrameStageNotify( IBaseClientDll* thisptr, int edx, EClie
 			//player->SetAbsOrigin( player->m_vecOrigin( ) );
 
 			draw_server_hitboxes( i );
-		}
+		}*/
 	}break;
 	case FRAME_NET_UPDATE_START: {
 		if ( ctx.m_pLocal && ctx.m_pLocal->m_hViewModel( ) ) {

@@ -74,6 +74,7 @@ namespace Config // @credits: ducarii
 	// Values
 	/* default configs path */
 	const std::filesystem::path fsPath = GetWorkingPath() / ("Config");
+	const std::filesystem::path fsPathLua = GetWorkingPath() / ("Scripts");
 	/* all user config filenames */
 	inline std::deque<std::string> vecFileNames = { };
 	/* configuration variables */

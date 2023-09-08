@@ -139,7 +139,7 @@ namespace Wrappers::Entity {
 			return m_pPlayer;
 		}
 
-	private:
+	//private:
 		CBasePlayer* m_pPlayer;
 	};
 

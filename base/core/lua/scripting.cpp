@@ -178,9 +178,10 @@ void Scripting::Load( std::string fileName ) {
 	animation_data_t_ut[ _( "duck_amount" ) ] = &AnimData_t::m_flDuckAmount;
 
 
-	auto pathToFile = "C:\\Users\\Admin\\Documents\\Havoc\\Scripts\\test.lua";
+	std::string pathAsString = Config::fsPathLua.string( ) + "\\test.lua";
+	const char* pathAsChar = pathAsString.c_str( );
 
-	auto result = state->m_cState.load_file( pathToFile );
+	auto result = state->m_cState.load_file( pathAsChar );
 
 	// oo, no bueno :/
 	if ( !result.valid( ) ) {
