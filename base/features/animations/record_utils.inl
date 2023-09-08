@@ -10,6 +10,7 @@ inline void PlayerEntry::OnPlayerChange( CBasePlayer* player ) {
 		this->m_bBot = playerInfo->bFakePlayer;
 
 	this->m_pPlayer = player;
+	this->m_iPlayerIndex = player->Index( );
 	this->m_flSpawnTime = 0;
 }
 

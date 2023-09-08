@@ -48,6 +48,7 @@ struct AnimData_t {
 	Vector m_vecMaxs{ };
 	Vector m_vecVelocity{ };
 
+	bool m_bLBYUpdate{ };
 
 	CAnimationLayer m_pLayers[ 13 ];
 
@@ -104,6 +105,8 @@ struct PreviousYaw_t {
 
 struct PlayerEntry {
 	CBasePlayer* m_pPlayer{ };
+	int m_iPlayerIndex{ };
+
 	std::optional < AnimData_t > m_optPreviousData{ };
 	std::vector< std::shared_ptr<LagRecord_t>> m_pRecords{ };
 	//std::array<float, 50> m_arrPreviousYaws{ };
@@ -144,6 +147,10 @@ struct PlayerEntry {
 	FORCEINLINE void OnNewRound( );
 	FORCEINLINE void OnPlayerChange( CBasePlayer* player );
 	void Rezik( LagRecord_t* current );
+
+	AnimData_t GetPreviousAnimData( ) {
+		return m_optPreviousData.value( );
+	}
 };
 
 class CAnimationSys {

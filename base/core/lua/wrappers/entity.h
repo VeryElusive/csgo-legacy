@@ -67,8 +67,16 @@ namespace Wrappers::Entity {
 			return *reinterpret_cast< Vector* >( uintptr_t( m_pPlayer ) + offset );
 		}
 
+		bool Valid( ) {
+			return m_pPlayer != nullptr;
+		}
+
 		bool IsAlive( ) {
 			return !m_pPlayer->IsDead( );
+		}
+
+		bool IsPlayer( ) {
+			return !m_pPlayer->IsPlayer( );
 		}
 
 		bool IsDormant( ) {

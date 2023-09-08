@@ -220,7 +220,9 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	//	entry.Rezik( current );
 	//}
 
-	Resolver( entry, current );
+	if ( Config::Get<bool>( Vars.RagebotResolver ) )
+		Resolver( entry, current );
+
 	current->m_angEyeAngles = entry.m_pPlayer->m_angEyeAngles( );
 
 	if ( !entry.m_pPlayer->IsTeammate( )
@@ -332,6 +334,9 @@ void CAnimationSys::InterpolateFromLastData( CBasePlayer* player, LagRecord_t* c
 	/* restore */
 	if ( from->m_arrSides.at( side ).m_bFilled )
 		*state = from->m_arrSides.at( side ).m_cAnimState;
+
+	if ( side == 0 && !from->m_bLBYUpdate && current->m_bLBYUpdate )
+		state->flAbsYaw = player->m_angEyeAngles( ).y;
 
 	const auto& layer6{ from->m_pLayers[ 6 ] };
 	const auto& layer7{ from->m_pLayers[ 7 ] };

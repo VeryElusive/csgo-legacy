@@ -44,6 +44,7 @@ void CAnimationSys::Resolver( PlayerEntry& entry, LagRecord_t* current ) {
 		|| current->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate
 		|| entry.m_pPlayer->m_flSimulationTime( ) > entry.m_flLowerBodyRealignTimer ) {
 		current->m_bLBYUpdate = true;
+		current->m_cAnimData.m_bLBYUpdate = true;
 
 		entry.m_pPlayer->m_angEyeAngles( ).y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
 		current->m_angEyeAngles.y = entry.m_pPlayer->m_flLowerBodyYawTarget( );
@@ -58,14 +59,14 @@ void CAnimationSys::Resolver( PlayerEntry& entry, LagRecord_t* current ) {
 		return;
 	}
 
-	Scripting::DoCallback( FNV1A::HashConst( "resolver" ), entry.m_iMissedShots, entry.m_flFirstShotTime );
-	return;
-
 	if ( !ctx.m_pLocal || ctx.m_pLocal->IsDead( ) )
 		return;
 
 	if ( !entry.m_optPreviousData.has_value( ) )
 		return;
+
+	Scripting::DoCallback( FNV1A::HashConst( "resolver" ), entry, current->m_cAnimData );
+	return;
 
 	if ( Interfaces::Globals->flRealTime > entry.m_flFirstShotTime + 15.f )
 		entry.m_iMissedShots = 0;

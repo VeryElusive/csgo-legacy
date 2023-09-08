@@ -449,26 +449,30 @@ void CAntiAim::RunLocalModifications( CUserCmd& cmd, int tickbase ) {
 		
 
 		if ( lastCmd ) {
-			if ( Config::Get<bool>( Vars.AntiaimStaticNetwork ) ) {
-				curUserCmd.viewAngles.y = cmd.viewAngles.y;
-				if ( m_iChoiceSide == 1 )
-					curUserCmd.viewAngles.y += 90.f;
-				else if ( m_iChoiceSide == 2 )
-					curUserCmd.viewAngles.y -= 90.f;
+			if ( curLocalData.PredictedNetvars.m_MoveType != MOVETYPE_LADDER
+				&& curLocalData.m_MoveType != MOVETYPE_LADDER ) {
+				if ( curLocalData.m_bCanAA ) {
+					if ( Config::Get<bool>( Vars.AntiaimStaticNetwork ) ) {
+						curUserCmd.viewAngles.y = cmd.viewAngles.y;
+						if ( m_iChoiceSide == 1 )
+							curUserCmd.viewAngles.y += 90.f;
+						else if ( m_iChoiceSide == 2 )
+							curUserCmd.viewAngles.y -= 90.f;
+					}
+					else
+						curUserCmd.viewAngles.y = yaw;
+
+					curUserCmd.viewAngles.x = pitch;
+					curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
+
+					Features::Misc.MoveMINTFix(
+						curUserCmd, oldViewAngles,
+						curLocalData.PredictedNetvars.m_iFlags,
+						curLocalData.PredictedNetvars.m_MoveType
+					);
+				}
+				Features::Misc.NormalizeMovement( curUserCmd );
 			}
-			else
-				curUserCmd.viewAngles.y = yaw;
-
-			curUserCmd.viewAngles.x = pitch;
-			curUserCmd.viewAngles.y += Config::Get<int>( Vars.AntiaimNetworkedAngle );
-
-			Features::Misc.MoveMINTFix(
-				curUserCmd, oldViewAngles,
-				curLocalData.PredictedNetvars.m_iFlags,
-				curLocalData.PredictedNetvars.m_MoveType
-			);
-
-			Features::Misc.NormalizeMovement( curUserCmd );
 		}
 
 		Interfaces::Input->pVerifiedCommands[ j ].userCmd = curUserCmd;
