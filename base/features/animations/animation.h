@@ -71,7 +71,7 @@ struct LagRecord_t {
 
 	AnimData_t m_cAnimData;
 
-	bool m_bBrokeLC{ true };
+	//bool m_bBrokeLC{ true };
 	bool m_bDormant{ };
 	bool m_bAccurateVelocity{ };
 
@@ -93,6 +93,7 @@ struct LagRecord_t {
 
 	FORCEINLINE void FinalAdjustments( CBasePlayer* player, const std::optional <AnimData_t>& previous );
 	FORCEINLINE uint8_t Validity( );
+	FORCEINLINE bool BreakingLagcompensation( LagRecord_t* previous );
 	FORCEINLINE void Apply( CBasePlayer* ent, int side = 0 );
 };
 

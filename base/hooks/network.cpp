@@ -121,7 +121,7 @@ int FASTCALL Hooks::hkSendDatagram( INetChannel* thisptr, int edx, bf_write* pDa
 	const int iOldInReliableState = thisptr->iInReliableState;
 	const int iOldInSequenceNr = thisptr->iInSequenceNr;
 
-	const float flMaxLatency = std::max( 0.f, std::clamp( 0.5f, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) - pNetChannelInfo->GetLatency( FLOW_OUTGOING ) );
+	const float flMaxLatency = std::max( 0.f, std::clamp( float( Config::Get<int>( Vars.MiscFakePingAmount ) / 1000.f ), 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) - pNetChannelInfo->GetLatency( FLOW_OUTGOING ) - pNetChannelInfo->GetLatency( FLOW_OUTGOING ) );
 	Features::Misc.AddLatencyToNetChannel( thisptr, flMaxLatency );
 
 	const int iReturn = oSendDatagram( thisptr, edx, pDatagram );

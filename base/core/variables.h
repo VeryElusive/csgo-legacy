@@ -186,6 +186,7 @@ struct Variables_t {
 	C_ADD_VARIABLE( int, MiscPlayerModelCT, 0 );
 	C_ADD_VARIABLE( bool, MiscPreserveKillfeed, false );
 	C_ADD_VARIABLE( bool, MiscFakePing, false );
+	C_ADD_VARIABLE( int, MiscFakePingAmount, 0 );
 	C_ADD_VARIABLE( int, MiscWeaponVolume, 100 );
 	C_ADD_VARIABLE( bool, MiscWorldHitmarker, 0 );
 	C_ADD_VARIABLE( bool, MiscScreenHitmarker, 0 );

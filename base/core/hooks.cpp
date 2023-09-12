@@ -147,7 +147,7 @@ bool Hooks::Setup( ) {
 	Displacement::Sigs.oUpdateAnimationState = reinterpret_cast< uintptr_t >( DTR::AnimStateUpdate.GetOriginal< tmp >( ) );
 
 	if ( !DTR::GlowEffectSpectator.Create(
-		( byte* ) ( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 8B 5D 0C 56 57 85 DB 74 47 " ) ) ),
+		( byte* ) ( MEM::FindPattern( CLIENT_DLL, _( "55 8B EC 83 EC 14 53 8B 5D 0C 56 57 85 DB 74 47" ) ) ),
 		&Hooks::hkGlowEffectSpectator ) )
 		return false;*/
 

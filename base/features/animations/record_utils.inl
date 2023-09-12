@@ -181,6 +181,13 @@ inline void LagRecord_t::FinalAdjustments( CBasePlayer* player, const std::optio
 	}
 }
 
+inline bool LagRecord_t::BreakingLagcompensation( LagRecord_t* previous ) {
+	if ( !previous )
+		return false;
+
+	return ( this->m_cAnimData.m_vecOrigin - previous->m_cAnimData.m_vecOrigin ).LengthSqr( ) > 4096.f;
+}
+
 inline uint8_t LagRecord_t::Validity( ) {
 	int delay{ };
 	if ( ctx.m_bFakeDucking )
@@ -194,7 +201,7 @@ inline uint8_t LagRecord_t::Validity( ) {
 
 	const auto curtime{ ctx.m_flFixedCurtime + TICKS_TO_TIME( 1 ) };
 
-	const auto correct{ std::clamp( ctx.m_flOutLatency + ctx.m_flInLatency + ctx.m_flLerpTime, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
+	const auto correct{ std::clamp( ctx.m_flOutLatency + ctx.m_flLerpTime, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
 	auto delta{ correct - ( curtime - this->m_cAnimData.m_flSimulationTime ) };
 	// pred not right
 	if ( std::fabsf( delta ) >= 0.2f )

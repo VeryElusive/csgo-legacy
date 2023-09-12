@@ -195,7 +195,10 @@ void AimTarget_t::Fire( CUserCmd& cmd ) {
 
 			cmd.viewAngles = angle - ctx.m_pLocal->m_aimPunchAngle( ) * Displacement::Cvars.weapon_recoil_scale->GetFloat( );
 
-			cmd.iTickCount = TIME_TO_TICKS( this->m_pRecord->m_cAnimData.m_flSimulationTime + ctx.m_flLerpTime );
+			if ( m_bAbuseRecord )
+				cmd.iTickCount = 0;
+			else
+				cmd.iTickCount = TIME_TO_TICKS( this->m_pRecord->m_cAnimData.m_flSimulationTime + ctx.m_flLerpTime );
 
 			if ( !THIS.MenuVars.RagebotSilentAim )
 				Interfaces::Engine->SetViewAngles( angle );
@@ -246,6 +249,7 @@ void AimTarget_t::Fire( CUserCmd& cmd ) {
 				_( " | backtrack: " ) + std::to_string( Interfaces::ClientState->iServerTick - this->m_pRecord->m_iReceiveTick ) + _( " ticks" ) +
 				_( " | extrapolated: " ) + std::to_string( this->m_bExtrapolating ) +
 				_( " | moving: " ) + std::to_string( this->m_pRecord->m_cAnimData.m_pLayers[ 6 ].flPlaybackRate != 0.f ) +
+				_( " | AB: " ) + std::to_string( m_bAbuseRecord ) +
 				_( " | lby update: " ) + std::to_string( this->m_pRecord->m_bLBYUpdate ) +
 				_( " | validity: " ) + std::to_string( this->m_pRecord->Validity( ) )};
 
@@ -626,6 +630,108 @@ void AimTarget_t::Multipoint( EHitboxIndex index, Vector center, mstudiobbox_t* 
 	ScanPoint( point, hitboxes );
 }
 
+LagRecord_t* AimTarget_t::GetAbuseRecord( PlayerEntry& entry ) {
+	const auto curtime{ ctx.m_flFixedCurtime + TICKS_TO_TIME( 1 ) };
+	const auto correct{ std::clamp( ctx.m_flOutLatency + ctx.m_flLerpTime, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
+	const auto flTargetTime{ curtime - correct };
+	const auto serverCurtime{ TICKS_TO_TIME( Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + 1 ) };
+	const auto flDeadtime{ static_cast< int >( serverCurtime - Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
+
+	std::shared_ptr< LagRecord_t > prevRecord{ };
+	std::shared_ptr< LagRecord_t > record{ };
+	for ( auto it{ entry.m_pRecords.rbegin( ) }; it != entry.m_pRecords.rend( ); it = std::next( it ) ) {
+		//if ( record->m_cAnimData.m_flSimulationTime < flDeadtime )
+		//	continue;
+
+		prevRecord = record;
+		record = *it;
+
+		if ( record->m_cAnimData.m_flSimulationTime <= flTargetTime )
+			break;
+	}
+
+	LagRecord_t* ret{ new LagRecord_t( *record ) };
+
+	float frac{ 0.f };
+	if ( prevRecord &&
+		( record->m_cAnimData.m_flSimulationTime < flTargetTime ) &&
+		( record->m_cAnimData.m_flSimulationTime < prevRecord->m_cAnimData.m_flSimulationTime ) ) {
+		// we didn't find the exact time but have a valid previous record
+		// so interpolate between these two records;
+
+		if ( prevRecord->m_cAnimData.m_flSimulationTime <= record->m_cAnimData.m_flSimulationTime ) {
+			delete ret;
+			return nullptr;
+		}
+
+		if ( flTargetTime >= prevRecord->m_cAnimData.m_flSimulationTime ) {
+			delete ret;
+			return nullptr;
+		}
+
+		// calc fraction between both records
+		frac = ( flTargetTime - record->m_cAnimData.m_flSimulationTime ) /
+			( prevRecord->m_cAnimData.m_flSimulationTime - record->m_cAnimData.m_flSimulationTime );
+
+		// should never extrapolate
+		if ( frac > 1 || frac < 0 ) {
+			delete ret;
+			return nullptr;
+		}
+
+		ret->m_cAnimData.m_vecOrigin = Math::Lerp( frac, record->m_cAnimData.m_vecOrigin, prevRecord->m_cAnimData.m_vecOrigin );
+		ret->m_cAnimData.m_vecMins = Math::Lerp( frac, record->m_cAnimData.m_vecMins, prevRecord->m_cAnimData.m_vecMins );
+		ret->m_cAnimData.m_vecMaxs = Math::Lerp( frac, record->m_cAnimData.m_vecMaxs, prevRecord->m_cAnimData.m_vecMaxs );
+
+		ret->Apply( entry.m_pPlayer );
+
+		if ( record->m_cAnimData.m_arrSides.at( 1 ).m_cAnimState.flAbsYaw != record->m_cAnimData.m_arrSides.at( 2 ).m_cAnimState.flAbsYaw ) {
+			for ( int i{ }; i < 3; ++i ) {
+				const auto ang{ Math::Lerp( frac, record->m_cAnimData.m_arrSides.at( i ).m_cAnimState.flAbsYaw, prevRecord->m_cAnimData.m_arrSides.at( i ).m_cAnimState.flAbsYaw ) };
+
+				auto& side{ ret->m_cAnimData.m_arrSides.at( i ) };
+
+				entry.m_pPlayer->SetAbsAngles( { 0, ang, 0 } );
+				entry.m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
+				*entry.m_pPlayer->m_pAnimState( ) = side.m_cAnimState;
+
+				std::memcpy( entry.m_pPlayer->m_AnimationLayers( ), record->m_cAnimData.m_pLayers, 0x38 * 13 );
+
+				Features::AnimSys.SetupBonesRebuilt( entry.m_pPlayer, side.m_pMatrix,
+					BONE_USED_BY_SERVER, curtime, false );
+			}
+		}
+		else {
+			const auto ang{ Math::Lerp( frac, record->m_cAnimData.m_arrSides.at( 0 ).m_cAnimState.flAbsYaw, prevRecord->m_cAnimData.m_arrSides.at( 0 ).m_cAnimState.flAbsYaw ) };
+
+			auto& side{ ret->m_cAnimData.m_arrSides.at( 0 ) };
+
+			entry.m_pPlayer->SetAbsAngles( { 0, ang, 0 } );
+			entry.m_pPlayer->m_flPoseParameter( ) = side.m_flPoseParameter;
+			*entry.m_pPlayer->m_pAnimState( ) = side.m_cAnimState;
+
+			std::memcpy( entry.m_pPlayer->m_AnimationLayers( ), record->m_cAnimData.m_pLayers, 0x38 * 13 );
+
+			Features::AnimSys.SetupBonesRebuilt( entry.m_pPlayer, side.m_pMatrix,
+				BONE_USED_BY_SERVER, curtime, false );
+
+			for ( int i{ 1 }; i < 3; ++i )
+				std::memcpy( ret->m_cAnimData.m_arrSides.at( i ).m_pMatrix, side.m_pMatrix, 256 * sizeof( matrix3x4a_t ) );
+		}
+
+		/*for ( int i{ }; i < 3; ++i ) {
+			auto& mat{ ret->m_cAnimData.m_arrSides.at( i ).m_pMatrix };
+
+			for ( std::size_t j{ }; j < 256; ++j ) {
+				auto& boneNew{ mat[ j ] };
+
+				boneNew.SetOrigin( boneNew.GetOrigin( ) + delta );
+			}
+		}*/
+	}
+
+	return ret;
+}
 
 void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 	int delay{ };
@@ -697,15 +803,18 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 		return;
 	}
 
-	if ( const auto& record{ entry.m_pRecords.back( ) }; record->m_bBrokeLC /* || ( entry.m_pPlayer->m_vecOrigin( ) - entry.m_pRecords.back( )->m_cAnimData.m_vecOrigin ).LengthSqr( ) > 4096.f*/ )
-		goto EXTRAPOLATE;
+	//if ( const auto& record{ entry.m_pRecords.back( ) }; record->m_bBrokeLC /* || ( entry.m_pPlayer->m_vecOrigin( ) - entry.m_pRecords.back( )->m_cAnimData.m_vecOrigin ).LengthSqr( ) > 4096.f*/ )
+	//	goto EXTRAPOLATE;
 
 	std::shared_ptr< LagRecord_t > oldestRecord{ };
+	LagRecord_t* previous{ };
 	for ( auto it{ entry.m_pRecords.rbegin( ) }; it != entry.m_pRecords.rend( ); it = std::next( it ) ) {
 		const auto& record{ *it };
 
-		if ( record->m_bBrokeLC )
+		if ( record->BreakingLagcompensation( previous ) )
 			break;
+
+		previous = record.get( );
 
 		if ( record->m_bFirst )
 			continue;
@@ -747,8 +856,10 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 			if ( record == oldestRecord )
 				break;
 
-			if ( record->m_bBrokeLC )
+			if ( record->BreakingLagcompensation( previous ) )
 				break;
+
+			previous = record.get( );
 
 			if ( record->m_bFirst )
 				continue;
@@ -828,10 +939,29 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 		}
 	}
 	else {
-		this->m_pDbgLog = ctx.m_strDbgLogs.emplace_back( std::make_shared< std::string >( _( "NO" ) ) );
-		if ( Config::Get<bool>( Vars.DBGExtrap ) )
-			goto EXTRAPOLATE;
+		//this->m_pDbgLog = ctx.m_strDbgLogs.emplace_back( std::make_shared< std::string >( _( "NO" ) ) );
+		//if ( Config::Get<bool>( Vars.DBGExtrap ) )
+		//	goto EXTRAPOLATE;
+
+		auto record{ GetAbuseRecord( entry ) };
+		if ( !record )
+			goto END;
+
+		this->m_pRecord = std::make_shared<LagRecord_t>( *record );
+		//*this->m_pRecord = *record;
+
+		const auto dmg{ this->QuickScan( this->m_pRecord, hitgroups ) };
+		if ( dmg < 1 )
+			this->m_pRecord = nullptr;
+		else {
+			this->m_iBestDamage = dmg;
+			this->m_bAbuseRecord = true;
+		}
+
+		delete record;
 	}
+
+END:
 
 	backup->Apply( entry.m_pPlayer );
 

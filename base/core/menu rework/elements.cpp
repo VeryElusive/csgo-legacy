@@ -384,7 +384,7 @@ void Menu::Register( ) {
 			chamsGroup->Register( &Config::Get<Color>( Vars.ChamWeaponOverlayCol ) );
 			chamsGroup->Register( _( "Weapon overlay material" ), &Config::Get<int>( Vars.ChamWeaponOverlayMat ), 5, materials );
 
-			chamsGroup->Register( _( "Weapon glow strength" ), &Config::Get<int>( Vars.ChamWeaponGlow ), 0.f, 100.f );
+			chamsGroup->Register( _( "Weapon glow strength" ), &Config::Get<int>( Vars.ChamWeaponGlow ), 0, 1000 );
 		}
 	}
 
@@ -408,6 +408,7 @@ void Menu::Register( ) {
 			generalGroup->Register( _( "Preserve killfeed" ), &Config::Get<bool>( Vars.MiscPreserveKillfeed ) );
 			generalGroup->Register( _( "Force crosshair" ), &Config::Get<bool>( Vars.MiscForceCrosshair ) );
 			generalGroup->Register( _( "Fake ping" ), &Config::Get<bool>( Vars.MiscFakePing ) );
+			generalGroup->Register( _( "Fake ping amount" ), &Config::Get<int>( Vars.MiscFakePingAmount ), 0, 500, SHOW( Config::Get<bool>( Vars.MiscFakePing ) ) );
 			generalGroup->Register( _( "Weapon volume" ), &Config::Get<int>( Vars.MiscWeaponVolume ), 0, 100 );
 
 			static MultiElement_t hitMarkers[ 2 ]{

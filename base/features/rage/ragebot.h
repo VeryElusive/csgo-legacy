@@ -113,6 +113,7 @@ struct AimTarget_t {
 
 	unsigned int m_iBestDamage{ };
 
+	bool m_bAbuseRecord{ };
 	bool m_bExtrapolating{ };
 
 	AimPoint_t m_cPoint{ };
@@ -124,6 +125,7 @@ struct AimTarget_t {
 	void GetBestLagRecord( PlayerEntry& entry );
 	void CompareTarget( AimTarget_t& target );
 	void SetupMatrices( std::shared_ptr< LagRecord_t > record, float yaw = 0.f );
+	LagRecord_t* GetAbuseRecord( PlayerEntry& entry );
 	int QuickScan( std::shared_ptr< LagRecord_t > record, std::vector<int>& hitgroups );
 	void ScanTarget( std::vector<EHitboxIndex>& hitboxes );
 	void GetBestPoint( bool forceBaim, std::vector<EHitboxIndex>& hitboxes );

@@ -134,6 +134,7 @@ void Scripting::Load( std::string fileName ) {
 	entity_ut[ _( "get_bool" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetBool );
 	entity_ut[ _( "get_float" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetFloat );
 	entity_ut[ _( "get_vector" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetVector );
+
 	entity_ut[ _( "set_int" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetInt );
 	entity_ut[ _( "set_bool" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetBool );
 	entity_ut[ _( "set_float" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetFloat );
@@ -154,13 +155,13 @@ void Scripting::Load( std::string fileName ) {
 	player_entry_t_ut[ _( "player_index" ) ] = &PlayerEntry::m_iPlayerIndex;
 	player_entry_t_ut[ _( "bot" ) ] = &PlayerEntry::m_bBot;
 	player_entry_t_ut[ _( "broke_lagcompensation" ) ] = &PlayerEntry::m_bBrokeLC;
-	player_entry_t_ut[ _( "lag_exploit" ) ] = &PlayerEntry::m_bRecordAdded;
-	player_entry_t_ut[ _( "first_shot_yaw" ) ] = &PlayerEntry::m_flFirstShotEyeYaw;
-	player_entry_t_ut[ _( "first_shot_time" ) ] = &PlayerEntry::m_flFirstShotTime;
+	player_entry_t_ut[ _( "recorded_added" ) ] = &PlayerEntry::m_bRecordAdded;
+	player_entry_t_ut[ _( "first_miss_yaw" ) ] = &PlayerEntry::m_flFirstShotEyeYaw;
+	player_entry_t_ut[ _( "last_miss_time" ) ] = &PlayerEntry::m_flFirstShotTime;
 	player_entry_t_ut[ _( "lower_body_realign_timer" ) ] = &PlayerEntry::m_flLowerBodyRealignTimer;
 	player_entry_t_ut[ _( "lower_body_yaw_target" ) ] = &PlayerEntry::m_flLowerBodyYawTarget;
 	player_entry_t_ut[ _( "spawntime" ) ] = &PlayerEntry::m_flSpawnTime;
-	player_entry_t_ut[ _( "previous_new_commands" ) ] = &PlayerEntry::m_iLastNewCmds;
+	player_entry_t_ut[ _( "new_commands" ) ] = &PlayerEntry::m_iLastNewCmds;
 	player_entry_t_ut[ _( "last_recieved_tick" ) ] = &PlayerEntry::m_iLastRecievedTick;
 	player_entry_t_ut[ _( "missed_shots" ) ] = &PlayerEntry::m_iMissedShots;
 

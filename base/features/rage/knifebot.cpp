@@ -76,11 +76,14 @@ void CRageBot::KnifeBot( CUserCmd& cmd ) {
 		else {
 			std::shared_ptr< LagRecord_t > bestRecord{ };
 
+			LagRecord_t* previous{ };
 			for ( auto it{ entry.m_pRecords.rbegin( ) }; it != entry.m_pRecords.rend( ); it = std::next( it ) ) {
 				const auto& record{ *it };
 
-				if ( record->m_bBrokeLC )
+				if ( record->BreakingLagcompensation( previous ) )
 					break;
+
+				previous = record.get( );
 
 				if ( !record->Validity( ) )
 					continue;

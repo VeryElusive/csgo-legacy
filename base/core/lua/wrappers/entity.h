@@ -72,14 +72,23 @@ namespace Wrappers::Entity {
 		}
 
 		bool IsAlive( ) {
+			if ( !m_pPlayer )
+				return false;
+
 			return !m_pPlayer->IsDead( );
 		}
 
 		bool IsPlayer( ) {
+			if ( !m_pPlayer )
+				return false;
+
 			return !m_pPlayer->IsPlayer( );
 		}
 
 		bool IsDormant( ) {
+			if ( !m_pPlayer )
+				return true;
+
 			return m_pPlayer->Dormant( );
 		}
 

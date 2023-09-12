@@ -466,9 +466,6 @@ void CChams::OnSceneEnd( ) {
 				for ( auto it{ records.rbegin( ) }; it != records.rend( ); it = std::next( it ) ) {
 					const auto& record{ *it };
 
-					if ( record->m_bBrokeLC )
-						break;
-
 					if ( record->m_bFirst )
 						continue;
 

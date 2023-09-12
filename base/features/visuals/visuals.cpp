@@ -246,6 +246,8 @@ void CVisuals::Watermark( ) {
 
 		if ( ctx.m_bSafeFromDefensive )
 			Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, "SAFE" );
+
+		//Render::Text( Fonts::Menu, pos + Vector2D( 0, 20 * i ), Color( 255, 255, 255 ), 0, std::to_string( ctx.m_iRealOutLatencyTicks ).c_str( ) );
 	}
 
 	if ( !Config::Get<bool>( Vars.MiscWatermark ) )

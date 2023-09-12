@@ -213,6 +213,7 @@ void Displacement::Init( void* netvarsPTR ) {
 
 	//Interfaces::ConVar->FindVar( _( "r_occlusion" ) )->SetValue( 0 );
 	Interfaces::ConVar->FindVar( _( "rate" ) )->SetValue( 786432 );
+	//Displacement::Cvars.sv_maxunlag->SetValue( 0.4f );
 	//Interfaces::ConVar->FindVar( _( "cl_cmdrate" ) )->SetValue( 128 );
 	//Interfaces::ConVar->FindVar( _( "cl_updaterate" ) )->SetValue( 128 );
 

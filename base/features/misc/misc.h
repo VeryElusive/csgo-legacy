@@ -41,6 +41,7 @@ private:
 	void FakeDuck( CUserCmd& cmd );
 	void Stop( CUserCmd& cmd );
 
+public:
 	// FAKE PING
 	std::deque<SequenceObject_t> m_vecSequences = { };
 	/* our real incoming sequences count */

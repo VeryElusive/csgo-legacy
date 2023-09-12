@@ -117,7 +117,6 @@ void CAnimationSys::RunAnimationSystem( ) {
 					entry.m_pRecords.clear( );
 
 				current->m_bFirst = outOfDormancy;
-				current->m_bBrokeLC = entry.m_bBrokeLC;
 
 				entry.m_pRecords.push_back( current );
 			}
