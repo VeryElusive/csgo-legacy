@@ -36,7 +36,7 @@ FORCEINLINE void ShouldShift( CUserCmd& cmd ) {
 	if ( ctx.m_iTicksAllowed ) {
 		if ( ( ( cmd.iButtons & IN_ATTACK || ( cmd.iButtons & IN_ATTACK2 && ctx.m_pWeaponData->nWeaponType == WEAPONTYPE_KNIFE ) ) && ctx.m_bCanShoot /* && ctx.m_iTicksAllowed >= 14*/
 			&& ctx.m_pWeaponData->nWeaponType >= WEAPONTYPE_KNIFE && ctx.m_pWeaponData->nWeaponType < WEAPONTYPE_C4 )
-			|| ( !ctx.m_bExploitsEnabled || ctx.m_bFakeDucking ) ) {
+			|| ( !ctx.m_bExploitsEnabled || ctx.m_bFakeDucking || ( Config::Get<bool>( Vars.MiscSlowWalk ) && Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled ) ) ) {
 			const bool isDTEnabled{ ( Config::Get<bool>( Vars.ExploitsDoubletap ) && Config::Get<keybind_t>( Vars.ExploitsDoubletapKey ).enabled ) };
 
 			Features::Exploits.m_bRealCmds = ( !ctx.m_bExploitsEnabled || isDTEnabled || ctx.m_bFakeDucking );
@@ -336,7 +336,8 @@ void CreateMove( const int nSequenceNumber, const float flInputSampleFrametime, 
 		ctx.m_iLastShotNumber = cmd.iCommandNumber;
 		ctx.m_iLastStopTime = Interfaces::Globals->flRealTime;
 		ctx.m_bSendPacket = false;
-		ctx.m_bForceUnchoke = true;
+		if ( !Config::Get<bool>( Vars.MiscSlowWalk ) || !Config::Get<keybind_t>( Vars.MiscSlowWalkKey ).enabled )
+			ctx.m_bForceUnchoke = true;
 	}
 
 	const auto resetTHISTick{ Features::Exploits.m_bResetNextTick || ( hadExtraTicks && ctx.m_bSendPacket ) };

@@ -121,7 +121,7 @@ struct AimTarget_t {
 	std::shared_ptr< std::string > m_pDbgLog{ };
 	std::shared_ptr< LagRecord_t > m_pRecord{ };
 
-	void Extrapolate( PlayerEntry& entry );
+	void Extrapolate( PlayerEntry& entry, bool useLagRecord );
 	void GetBestLagRecord( PlayerEntry& entry );
 	void CompareTarget( AimTarget_t& target );
 	void SetupMatrices( std::shared_ptr< LagRecord_t > record, float yaw = 0.f );

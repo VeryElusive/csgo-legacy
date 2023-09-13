@@ -4,6 +4,7 @@
 #include "wrappers/entity.h"
 #include "wrappers/interfaces.h"
 #include "wrappers/util.h"
+#include "wrappers/events.h"
 
 
 void Scripting::Unload( std::string name ) {
@@ -69,6 +70,7 @@ void Scripting::Load( std::string fileName ) {
 	renderTable[ _( "rounded_rectangle" ) ] = sol::overload( &Wrappers::Renderer::RoundedBox );
 	renderTable[ _( "filled_rounded_rectangle" ) ] = sol::overload( &Wrappers::Renderer::FilledRoundedBox );
 	renderTable[ _( "line" ) ] = sol::overload( &Wrappers::Renderer::Line );
+	renderTable[ _( "world_to_screen" ) ] = sol::overload( &Wrappers::Renderer::WorldToScreen );
 
 	utilsTable[ _( "trace_bullet" ) ] = sol::overload( &Wrappers::Utils::FireBullet );
 	utilsTable[ _( "trace_line" ) ] = sol::overload( &Wrappers::Utils::TraceLine );
@@ -129,11 +131,19 @@ void Scripting::Load( std::string fileName ) {
 	trace_t_ut[ _( "contents" ) ] = &CGameTrace::iContents;
 	trace_t_ut[ _( "plane" ) ] = &CGameTrace::plane;
 
+	auto event_t_t{ state->m_cState.new_usertype<Wrappers::Events::CEvent>( _( "event_t" ), sol::no_constructor ) };
+	event_t_t[ _( "get_int" ) ] = sol::overload( &Wrappers::Events::CEvent::GetInt );
+	event_t_t[ _( "get_bool" ) ] = sol::overload( &Wrappers::Events::CEvent::GetBool );
+	event_t_t[ _( "get_float" ) ] = sol::overload( &Wrappers::Events::CEvent::GetFloat );
+	event_t_t[ _( "get_string" ) ] = sol::overload( &Wrappers::Events::CEvent::GetString );
+	event_t_t[ _( "get_uint64" ) ] = sol::overload( &Wrappers::Events::CEvent::GeUint64 );
+
 	auto entity_ut{ state->m_cState.new_usertype<Wrappers::Entity::CPlayer>( _( "player_t" ), sol::no_constructor ) };
 	entity_ut[ _( "get_int" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetInt );
 	entity_ut[ _( "get_bool" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetBool );
 	entity_ut[ _( "get_float" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetFloat );
 	entity_ut[ _( "get_vector" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetVector );
+	entity_ut[ _( "get_string" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetString );
 
 	entity_ut[ _( "set_int" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetInt );
 	entity_ut[ _( "set_bool" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetBool );
@@ -149,6 +159,11 @@ void Scripting::Load( std::string fileName ) {
 	entity_ut[ _( "animate" ) ] = sol::overload( &Wrappers::Entity::CPlayer::AnimatePlayer );
 	entity_ut[ _( "setupbones" ) ] = sol::overload( &Wrappers::Entity::CPlayer::SetupBones );
 	entity_ut[ _( "get_hitbox_position" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetHitboxPosition );
+
+
+	auto font_t_ut{ state->m_cState.new_usertype<Wrappers::Renderer::CFont>( _( "font_t" ) ) };
+	font_t_ut[ sol::meta_function::construct ] = sol::constructors<Wrappers::Renderer::CFont( const char*, int, int, int )>( );
+	font_t_ut[ _( "render" ) ] = &Wrappers::Renderer::CFont::Render;
 
 	auto player_entry_t_ut{ state->m_cState.new_usertype<PlayerEntry>( _( "player_entry_t" ), sol::no_constructor ) };
 	player_entry_t_ut[ _( "get_previous_anim_data" ) ] = sol::overload( &PlayerEntry::GetPreviousAnimData );

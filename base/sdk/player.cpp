@@ -50,25 +50,20 @@ Vector CBasePlayer::GetEyePosition( float yaw, float pitch ) {
 		std::memcpy( backupLayers, this->m_AnimationLayers( ), 13 * sizeof CAnimationLayer );
 		const auto backupPoseParam{ this->m_flPoseParameter( ) };
 
-		const auto backupTickbase{ this->m_nTickBase( ) };
-		const auto backupFlags{ this->m_fFlags( ) };
-		const auto backupVel{ this->m_vecAbsVelocity( ) };
-		const auto backupDuckAmount{ this->m_flDuckAmount( ) };
+		const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + 1 ) % 150 };
 
-		const auto backupJumping{ Features::AnimSys.m_bJumping };
-		const auto backupLowerBodyRealignTimer{ Features::AnimSys.m_flLowerBodyRealignTimer };
+		auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
+		auto& curLocalData{ ctx.m_cLocalData.at( j ) };
 
-		for ( auto i{ 1 }; i <= Interfaces::ClientState->nChokedCommands; ++i ) {
-			const auto j{ ( Interfaces::ClientState->iLastOutgoingCommand + i ) % 150 };
+		if ( curLocalData.m_flSpawnTime == this->m_flSpawnTime( )
+			&& curUserCmd.iTickCount != INT_MAX ) {
+			const auto backupTickbase{ this->m_nTickBase( ) };
+			const auto backupFlags{ this->m_fFlags( ) };
+			const auto backupVel{ this->m_vecAbsVelocity( ) };
+			const auto backupDuckAmount{ this->m_flDuckAmount( ) };
 
-			auto& curUserCmd{ Interfaces::Input->pCommands[ j ] };
-			auto& curLocalData{ ctx.m_cLocalData.at( j ) };
-
-			if ( curLocalData.m_flSpawnTime != this->m_flSpawnTime( ) )
-				continue;
-
-			if ( curUserCmd.iTickCount == INT_MAX )
-				continue;
+			const auto backupJumping{ Features::AnimSys.m_bJumping };
+			const auto backupLowerBodyRealignTimer{ Features::AnimSys.m_flLowerBodyRealignTimer };
 
 			this->m_nTickBase( ) = curLocalData.PredictedNetvars.m_nTickBase;
 			this->m_fFlags( ) = curLocalData.PredictedNetvars.m_iFlags;
@@ -76,15 +71,15 @@ Vector CBasePlayer::GetEyePosition( float yaw, float pitch ) {
 			this->m_flDuckAmount( ) = curLocalData.PredictedNetvars.m_flDuckAmount;
 
 			Features::AnimSys.UpdateLocal( { pitch, yaw, 0.f }, true, curUserCmd );
+
+			this->m_nTickBase( ) = backupTickbase;
+			this->m_fFlags( ) = backupFlags;
+			this->m_vecAbsVelocity( ) = backupVel;
+			this->m_flDuckAmount( ) = backupDuckAmount;
+
+			Features::AnimSys.m_bJumping = backupJumping;
+			Features::AnimSys.m_flLowerBodyRealignTimer = backupLowerBodyRealignTimer;
 		}
-
-		this->m_nTickBase( ) = backupTickbase;
-		this->m_fFlags( ) = backupFlags;
-		this->m_vecAbsVelocity( ) = backupVel;
-		this->m_flDuckAmount( ) = backupDuckAmount;
-
-		Features::AnimSys.m_bJumping = backupJumping;
-		Features::AnimSys.m_flLowerBodyRealignTimer = backupLowerBodyRealignTimer;
 
 		this->m_flPoseParameter( ).at( 12u ) = ( std::clamp( std::remainder(
 			pitch, 360.f

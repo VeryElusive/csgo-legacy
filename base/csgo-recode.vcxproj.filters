@@ -296,6 +296,7 @@
     <ClInclude Include="core\lua\wrappers\entity.h" />
     <ClInclude Include="core\lua\wrappers\util.h" />
     <ClInclude Include="core\lua\wrappers\interfaces.h" />
+    <ClInclude Include="core\lua\wrappers\events.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sdk\convar.cpp" />

@@ -733,7 +733,7 @@ LagRecord_t* AimTarget_t::GetAbuseRecord( PlayerEntry& entry ) {
 	return ret;
 }
 
-void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
+void AimTarget_t::Extrapolate( PlayerEntry& entry, bool useLagRecord ) {
 	int delay{ };
 	if ( ctx.m_bFakeDucking )
 		delay = 15 - Interfaces::ClientState->nChokedCommands;
@@ -742,46 +742,83 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry ) {
 	if ( ctx.m_pLocal->Index( ) < this->m_pPlayer->Index( ) )
 		latency -= 1;
 
-	auto extrapolationCapped{ static_cast< int >( ( latency ) / entry.m_iLastNewCmds ) * entry.m_iLastNewCmds };
-	if ( extrapolationCapped + entry.m_iLastRecievedTick > Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + delay
-		|| entry.m_pRecords.back( )->m_bFirst )
-		extrapolationCapped = 0;
+	if ( entry.m_pRecords.back( )->m_bFirst )
+		return;
 
-	// WAH WAH WAH LABEL USAGE. i just didnt want to c+p same code. blyat.
+	const auto curtime{ ctx.m_flFixedCurtime + TICKS_TO_TIME( 1 ) };
+
+	const auto correct{ std::clamp( ctx.m_flOutLatency + ctx.m_flLerpTime, 0.f, Displacement::Cvars.sv_maxunlag->GetFloat( ) ) };
+
+	float simtime{ this->m_pPlayer->m_flSimulationTime( ) };
+
+	// cap it out to the newest record and ignore the current pos
+	auto extrapolationCapped{ static_cast< int >( ( latency ) / entry.m_iLastNewCmds ) * entry.m_iLastNewCmds };
+
+	if ( useLagRecord ) {
+		const auto extrapCapped{ extrapolationCapped };
+		for ( int i{ 0 }; i <= extrapCapped; i += entry.m_iLastNewCmds ) {
+			extrapolationCapped = i;
+
+			const auto delta{ correct - ( curtime - simtime + TICKS_TO_TIME( i ) ) };
+
+			if ( simtime + TICKS_TO_TIME( i ) > entry.m_flHighestSimulationTime
+				&& std::fabsf( delta ) < 0.2f )
+				break;
+		}
+
+		if ( extrapolationCapped > extrapCapped ) {
+			*this->m_pDbgLog = _( "N1" );
+			return;
+		}
+
+
+		simtime = this->m_pPlayer->m_flSimulationTime( ) + TICKS_TO_TIME( extrapolationCapped );
+
+		if ( simtime < entry.m_flHighestSimulationTime ) {
+			*this->m_pDbgLog = _( "N2" );
+			return;
+		}
+
+		//extrapolationCapped = static_cast< int >( ( extrapolationCapped ) / entry.m_iLastRecordInterval ) * entry.m_iLastRecordInterval;
+	}
+
 	ExtrapolationBackup_t backupExtrapolationData{ entry.m_pPlayer };
 
 	if ( extrapolationCapped ) {
-		// TODO: wtf we do here... yaw will be wrong.... we could just... you know... call ExtrapolateYaw from ExtrapolatePlayer.... but im hesitant in order to retain the sanctity of my code
-		if ( !THIS.ExtrapolatePlayer( entry, entry.m_pRecords.back( )->m_angEyeAngles.y, 0, extrapolationCapped, entry.m_vecPreviousVelocity ) ) {
+		if ( !THIS.ExtrapolatePlayer( entry, -1, 0, extrapolationCapped, entry.m_vecPreviousVelocity ) ) {
 			this->m_pRecord = nullptr;
+			*this->m_pDbgLog = _( "EP" );
 			return;
 		}
 
 		const auto newRecord{ std::make_shared< LagRecord_t >( entry.m_pPlayer ) };
+		newRecord->m_iReceiveTick = Interfaces::Globals->iTickCount + extrapolationCapped;
+
 		auto& side{ newRecord->m_cAnimData.m_arrSides.at( 0 ) };
+
+		newRecord->m_cAnimData.m_flSimulationTime = simtime;
 
 		Features::AnimSys.SetupBonesRebuilt( entry.m_pPlayer, side.m_pMatrix,
 			BONE_USED_BY_SERVER, newRecord->m_cAnimData.m_flSimulationTime + TICKS_TO_TIME( extrapolationCapped ), false );
 
 		// TODO: should i bother setting up all sides
 		for ( int i{ 1 }; i < 3; ++i )
-			std::memcpy( newRecord->m_cAnimData.m_arrSides.at( 0 ).m_pMatrix, side.m_pMatrix, entry.m_pPlayer->m_CachedBoneData( ).Count( ) * sizeof( matrix3x4a_t ) );
+			std::memcpy( newRecord->m_cAnimData.m_arrSides.at( i ).m_pMatrix, side.m_pMatrix, 256 * sizeof( matrix3x4a_t ) );
 
 		this->m_pRecord = newRecord;
 
-		this->m_bExtrapolating = true;
-
 		backupExtrapolationData.restore( entry.m_pPlayer );
 	}
-	else 
-		// TODO: use prevdata instead.
+	else
 		this->m_pRecord = entry.m_pRecords.back( );
 
-	if ( !this->m_pRecord->Validity( )
-		|| TIME_TO_TICKS( this->m_pRecord->m_cAnimData.m_flSimulationTime + ctx.m_flLerpTime ) >= Interfaces::Globals->iTickCount + 8 ) {
+	if ( !this->m_pRecord->Validity( ) && Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
 		this->m_pRecord = nullptr;
+		*this->m_pDbgLog = _( "VD" );
 		return;
 	}
+
+	this->m_bExtrapolating = true;
 
 	std::vector<int> hitgroups{ HITBOX_HEAD, HITBOX_RIGHT_UPPER_ARM, HITBOX_LEFT_UPPER_ARM, HITBOX_RIGHT_FOOT, HITBOX_LEFT_FOOT };
 	const auto dmg{ QuickScan( this->m_pRecord, hitgroups ) };
@@ -797,7 +834,7 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 
 	if ( !Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
 	EXTRAPOLATE:
-		Extrapolate( entry );
+		Extrapolate( entry, Config::Get<bool>( Vars.RagebotLagcompensation ) );
 		backup->Apply( entry.m_pPlayer );
 		delete backup;
 		return;
@@ -939,29 +976,10 @@ void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 		}
 	}
 	else {
-		//this->m_pDbgLog = ctx.m_strDbgLogs.emplace_back( std::make_shared< std::string >( _( "NO" ) ) );
-		//if ( Config::Get<bool>( Vars.DBGExtrap ) )
-		//	goto EXTRAPOLATE;
-
-		auto record{ GetAbuseRecord( entry ) };
-		if ( !record )
-			goto END;
-
-		this->m_pRecord = std::make_shared<LagRecord_t>( *record );
-		//*this->m_pRecord = *record;
-
-		const auto dmg{ this->QuickScan( this->m_pRecord, hitgroups ) };
-		if ( dmg < 1 )
-			this->m_pRecord = nullptr;
-		else {
-			this->m_iBestDamage = dmg;
-			this->m_bAbuseRecord = true;
-		}
-
-		delete record;
+		this->m_pDbgLog = ctx.m_strDbgLogs.emplace_back( std::make_shared< std::string >( _( "NO" ) ) );
+		if ( Config::Get<bool>( Vars.DBGExtrap ) )
+			goto EXTRAPOLATE;
 	}
-
-END:
 
 	backup->Apply( entry.m_pPlayer );
 

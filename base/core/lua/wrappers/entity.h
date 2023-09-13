@@ -67,6 +67,13 @@ namespace Wrappers::Entity {
 			return *reinterpret_cast< Vector* >( uintptr_t( m_pPlayer ) + offset );
 		}
 
+		std::string GetString( int offset ) {
+			if ( !m_pPlayer )
+				return { 0,0,0 };
+
+			return static_cast< std::string >( *reinterpret_cast< const char** >( uintptr_t( m_pPlayer ) + offset ) );
+		}
+
 		bool Valid( ) {
 			return m_pPlayer != nullptr;
 		}

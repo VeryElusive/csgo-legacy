@@ -125,6 +125,7 @@ struct PlayerEntry {
 	float m_flLowerBodyRealignTimer{ };
 	float m_flFirstShotEyeYaw{ };
 	float m_flFirstShotTime{ };
+	float m_flHighestSimulationTime{ };
 	//bool m_bStartingDuck{ };
 	//float m_flLastPacketTime{ };
 	//float m_flTrackSimulationTime{ };

@@ -111,6 +111,9 @@ void CAnimationSys::RunAnimationSystem( ) {
 				/* || noRecords*/ )
 				&& !player->IsTeammate( ) );
 
+			if ( player->m_flSimulationTime( ) > entry.m_flHighestSimulationTime )
+				entry.m_flHighestSimulationTime = player->m_flSimulationTime( );
+
 			if ( entry.m_bRecordAdded ) {
 				entry.m_bBrokeLC = entry.m_pRecords.size( ) && ( player->m_vecOrigin( ) - entry.m_pRecords.back( )->m_cAnimData.m_vecOrigin ).LengthSqr( ) > 4096.f;
 				if ( entry.m_bBrokeLC )

@@ -1,5 +1,7 @@
 #include "event_listener.h"
 #include "../utils/xorstr.h"
+#include "lua/scripting.h"
+#include "lua/wrappers/events.h"
 // sequence:
 // weapon_fire -> bullet_impact -> player_hurt
 
@@ -19,6 +21,8 @@ void CEventListener::Destroy( ) {
 void BulletImpact( IGameEvent* pEvent ) {
 	if ( !pEvent || !ctx.m_pLocal )
 		return;
+
+	Scripting::DoCallback( FNV1A::HashConst( "bullet_impact" ), Wrappers::Events::CEvent( pEvent ) );
 
 	Vector pos{ pEvent->GetFloat( _( "x" ) ), pEvent->GetFloat( _( "y" ) ), pEvent->GetFloat( _( "z" ) ) };
 	auto ent{ static_cast<CBasePlayer*>( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) ) ) };
@@ -58,6 +62,8 @@ void BulletImpact( IGameEvent* pEvent ) {
 void RoundStart( IGameEvent* pEvent ) {
 	if ( !pEvent || !ctx.m_pLocal )
 		return;
+
+	Scripting::DoCallback( FNV1A::HashConst( "round_start" ), pEvent );
 
 	ctx.m_bClearKillfeed = true;
 	ctx.m_iBombCarrier = -1;
@@ -141,6 +147,8 @@ void WeaponFire( IGameEvent* pEvent ) {
 	if ( !pEvent || !ctx.m_pLocal )
 		return;
 
+	Scripting::DoCallback( FNV1A::HashConst( "weapon_fire" ), pEvent );
+
 	if ( Interfaces::ClientEntityList->GetClientEntity( Interfaces::Engine->GetPlayerForUserID( pEvent->GetInt( _( "userid" ) ) ) ) != ctx.m_pLocal )
 		return;
 
@@ -161,10 +169,14 @@ void WeaponFire( IGameEvent* pEvent ) {
 }
 
 void PlayerDeath( IGameEvent* pEvent ) {
+	Scripting::DoCallback( FNV1A::HashConst( "player_death" ), pEvent );
+
 	const auto user{ pEvent->GetInt( _( "userid" ) ) };
 	ctx.m_iLastID = Interfaces::Engine->GetPlayerForUserID( user );
 }
 void PlayerHurt( IGameEvent* pEvent ) {
+	Scripting::DoCallback( FNV1A::HashConst( "player_hurt" ), pEvent );
+
 	static auto GetHitboxByHitGroup = [ ]( int hitgroup ) -> int
 	{
 		switch ( hitgroup )

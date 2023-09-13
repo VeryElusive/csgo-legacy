@@ -21,4 +21,23 @@ namespace Wrappers::Renderer {
 	void Line( int x, int y, int x2, int y2, Color color ) {
 		Render::Line( { x, y }, { x2, y2 }, color );
 	}
+
+	Vector2D WorldToScreen( Vector pos ) {
+		Vector2D out;
+		Math::WorldToScreen( pos, out );
+		return out;
+	}
+
+	class CFont {
+	public:
+		CFont( const char* name, int height, int weight, int flags ) {
+			Interfaces::Surface->SetFontGlyphSet( m_cFont = Interfaces::Surface->FontCreate( ), name, height, weight, NULL, NULL, flags );
+		};
+
+		void Render( const char* text, int x, int y, int alignment, Color col ) {
+			Render::Text( m_cFont, x, y, col, alignment, text );
+		}
+
+		HFont m_cFont{ };
+	};
 }
