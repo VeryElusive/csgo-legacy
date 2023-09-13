@@ -755,31 +755,36 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry, bool useLagRecord ) {
 	auto extrapolationCapped{ static_cast< int >( ( latency ) / entry.m_iLastNewCmds ) * entry.m_iLastNewCmds };
 
 	if ( useLagRecord ) {
+		bool found{ };
 		const auto extrapCapped{ extrapolationCapped };
 		for ( int i{ 0 }; i <= extrapCapped; i += entry.m_iLastNewCmds ) {
 			extrapolationCapped = i;
 
-			const auto delta{ correct - ( curtime - simtime + TICKS_TO_TIME( i ) ) };
+			const auto delta{ correct - ( curtime - ( simtime + TICKS_TO_TIME( i ) ) ) };
 
 			if ( simtime + TICKS_TO_TIME( i ) > entry.m_flHighestSimulationTime
-				&& std::fabsf( delta ) < 0.2f )
+				&& std::fabsf( delta ) < 0.2f ) {
+				found = true;
 				break;
+			}
 		}
 
-		if ( extrapolationCapped > extrapCapped ) {
+		if ( !found ) {
 			*this->m_pDbgLog = _( "N1" );
 			return;
 		}
 
-
-		simtime = this->m_pPlayer->m_flSimulationTime( ) + TICKS_TO_TIME( extrapolationCapped );
-
-		if ( simtime < entry.m_flHighestSimulationTime ) {
-			*this->m_pDbgLog = _( "N2" );
-			return;
+		if ( extrapolationCapped > latency ) {
+			extrapolationCapped = 0;
 		}
+		else {
+			simtime = this->m_pPlayer->m_flSimulationTime( ) + TICKS_TO_TIME( extrapolationCapped );
 
-		//extrapolationCapped = static_cast< int >( ( extrapolationCapped ) / entry.m_iLastRecordInterval ) * entry.m_iLastRecordInterval;
+			if ( simtime <= entry.m_flHighestSimulationTime ) {
+				*this->m_pDbgLog = _( "N2" );
+				return;
+			}
+		}
 	}
 
 	ExtrapolationBackup_t backupExtrapolationData{ entry.m_pPlayer };
@@ -812,7 +817,8 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry, bool useLagRecord ) {
 	else
 		this->m_pRecord = entry.m_pRecords.back( );
 
-	if ( !this->m_pRecord->Validity( ) && Config::Get<bool>( Vars.RagebotLagcompensation ) ) {
+	if ( ( !this->m_pRecord->Validity( ) && Config::Get<bool>( Vars.RagebotLagcompensation ) )
+		/* || TIME_TO_TICKS( this->m_pRecord->m_cAnimData.m_flSimulationTime + ctx.m_flLerpTime ) >= Interfaces::Globals->iTickCount + ctx.m_iRealOutLatencyTicks + 8*/ ) {// this should never happen
 		this->m_pRecord = nullptr;
 		*this->m_pDbgLog = _( "VD" );
 		return;
@@ -828,6 +834,7 @@ void AimTarget_t::Extrapolate( PlayerEntry& entry, bool useLagRecord ) {
 	else
 		this->m_iBestDamage = dmg;
 }
+
 
 void AimTarget_t::GetBestLagRecord( PlayerEntry& entry ) {
 	const auto backup{ new LagBackup_t( this->m_pPlayer ) };

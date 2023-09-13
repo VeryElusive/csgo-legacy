@@ -67,11 +67,19 @@ namespace Wrappers::Entity {
 			return *reinterpret_cast< Vector* >( uintptr_t( m_pPlayer ) + offset );
 		}
 
-		std::string GetString( int offset ) {
-			if ( !m_pPlayer )
-				return { 0,0,0 };
+		const char* GetName( ) {
+			auto playerInfo{ Interfaces::Engine->GetPlayerInfo( m_pPlayer->Index( ) ) };
+			if ( !playerInfo.has_value( ) )
+				return "";
 
-			return static_cast< std::string >( *reinterpret_cast< const char** >( uintptr_t( m_pPlayer ) + offset ) );
+			return playerInfo.value( ).szName;
+		}
+
+		const char* GetString( int offset ) {
+			if ( !m_pPlayer )
+				return "";
+
+			return *reinterpret_cast< const char** >( uintptr_t( m_pPlayer ) + offset );
 		}
 
 		bool Valid( ) {

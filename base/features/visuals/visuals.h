@@ -184,9 +184,9 @@ private:
 
 struct TracerData_t {
 	TracerData_t( Vector start, Vector end, CBasePlayer* shooter ) 
-		: m_vecStart( start ), m_vecEnd( end ), m_pShooter( shooter ), m_flStartTime( Interfaces::Globals->flRealTime ) { };
+		: m_vecStart( start ), m_vecEnd( end ), m_pShooter( shooter ), m_flStartTick( Interfaces::Globals->iTickCount ) { };
 
-	float m_flStartTime{ };
+	int m_flStartTick{ };
 	Vector m_vecStart{ };
 	Vector m_vecEnd{ };
 	CBasePlayer* m_pShooter{ };
@@ -216,7 +216,7 @@ public:
 				std::remove_if(
 					m_vecTracers.begin( ), m_vecTracers.end( ),
 					[ & ]( const TracerData_t& tracer ) -> bool {
-						return tracer.m_flStartTime == Interfaces::Globals->flRealTime
+						return tracer.m_flStartTick == Interfaces::Globals->iTickCount
 							&& shooter == tracer.m_pShooter;
 					}
 				),

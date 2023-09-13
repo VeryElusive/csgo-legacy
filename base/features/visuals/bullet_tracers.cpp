@@ -8,7 +8,7 @@ void CBulletTracers::Draw( ) {
 		std::remove_if(
 			m_vecTracers.begin( ), m_vecTracers.end( ),
 			[ & ]( const TracerData_t& tracer ) -> bool {
-				return Interfaces::Globals->flRealTime >= tracer.m_flStartTime + 5.f;
+				return Interfaces::Globals->iTickCount >= tracer.m_flStartTick + 5.f * 64;
 			}
 		),
 		m_vecTracers.end( )
@@ -25,7 +25,7 @@ void CBulletTracers::Draw( ) {
 	}
 
 	for ( const auto& tracer : m_vecTracers ) {
-		const auto alpha{ std::min( tracer.m_flStartTime + 5.f - Interfaces::Globals->flRealTime, 1.f ) };
+		const auto alpha{ std::min( tracer.m_flStartTick + 5.f * 64 - Interfaces::Globals->iTickCount, 1.f ) };
 
 		const auto& col{ tracer.m_pShooter == ctx.m_pLocal ? Config::Get<Color>( Vars.VisLocalBulletTracersCol ) : Config::Get<Color>( Vars.VisOtherBulletTracersCol ) };
 

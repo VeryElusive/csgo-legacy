@@ -194,7 +194,7 @@ void CAnimationSys::AnimatePlayer( LagRecord_t* current, PlayerEntry& entry ) {
 	entry.m_bCanExtrapolate = entry.m_iLastNewCmds == current->m_iNewCmds;
 	current->m_iNewCmds = std::clamp( current->m_iNewCmds, 1, 64 );
 
-	entry.m_iLastNewCmds = current->m_iNewCmds;
+	entry.m_iLastNewCmds = std::min( Interfaces::Globals->iTickCount - entry.m_iLastRecievedTick, current->m_iNewCmds );
 
 	//static auto lookupBone{ *reinterpret_cast< int( __thiscall* )( void*, const char* ) >( Displacement::Sigs.LookupBone ) };
 	//const auto boneIndex{ lookupBone( entry.m_pPlayer, _( "lean_root" ) ) };

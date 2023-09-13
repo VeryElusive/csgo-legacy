@@ -20,6 +20,10 @@ namespace Wrappers::Interface {
 
 		int GetHighestEntityIndex( ) {
 			return Interfaces::ClientEntityList->GetHighestEntityIndex( );
+		}		
+		
+		int GetPlayerForUserID( int i ) {
+			return Interfaces::Engine->GetPlayerForUserID( i );
 		}
 	}
 

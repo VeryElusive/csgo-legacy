@@ -55,8 +55,8 @@ void Scripting::Load( std::string fileName ) {
 	const auto netvarTable{ state->m_cState[ _( "netvars" ) ].get_or_create<sol::table>( ) };
 	const auto utilsTable{ state->m_cState[ _( "utils" ) ].get_or_create<sol::table>( ) };
 
-	const auto entityList{ state->m_cState[ _( "entity_list" ) ].get_or_create<sol::table>( ) };
-	const auto globalsList{ state->m_cState[ _( "globals" ) ].get_or_create<sol::table>( ) };
+	const auto entityListTable{ state->m_cState[ _( "entity_list" ) ].get_or_create<sol::table>( ) };
+	//const auto globalsTable{ state->m_cState[ _( "globals" ) ].get_or_create<sol::table>( ) };
 
 	// callbacks
 	callbackTable[ _( "register" ) ] = sol::overload( &AddCallback );
@@ -77,12 +77,22 @@ void Scripting::Load( std::string fileName ) {
 	utilsTable[ _( "get_local_eye_position" ) ] = sol::overload( &Wrappers::Utils::GetLocalEyePosition );
 
 	// INTERFACES:
-	entityList[ _( "get_local_index" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetLocalIndex );
-	entityList[ _( "get_entity" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetClientEntity );
-	entityList[ _( "get_max_clients" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetMaxClients );
-	entityList[ _( "get_highest_entity_index" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetHighestEntityIndex );
+	entityListTable[ _( "get_local_index" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetLocalIndex );
+	entityListTable[ _( "get_entity" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetClientEntity );
+	entityListTable[ _( "get_max_clients" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetMaxClients );
+	entityListTable[ _( "get_highest_entity_index" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetHighestEntityIndex );
+	entityListTable[ _( "get_index_for_userid" ) ] = sol::overload( &Wrappers::Interface::EntityList::GetPlayerForUserID );
 
-	globalsList[ _( "real_time" ) ] = sol::overload( &Wrappers::Interface::Globals::RealTime );
+	state->m_cState[ _( "globals" ) ] = Interfaces::Globals;
+	auto global_vars_ut = state->m_cState.new_usertype<IGlobalVarsBase>( _( "global_vars_t" ), sol::no_constructor );
+	global_vars_ut[  _( "cur_time" ) ] = &IGlobalVarsBase::flCurTime;
+	global_vars_ut[  _( "real_time" ) ] = &IGlobalVarsBase::flRealTime;
+	global_vars_ut[  _( "frame_time" ) ] = &IGlobalVarsBase::flFrameTime;
+	global_vars_ut[  _( "frame_count" ) ] = &IGlobalVarsBase::iFrameCount;
+	global_vars_ut[  _( "abs_frame_time" ) ] = &IGlobalVarsBase::flAbsFrameTime;
+	global_vars_ut[  _( "tick_count" ) ] = &IGlobalVarsBase::iTickCount;
+	global_vars_ut[  _( "interval_per_tick" ) ] = &IGlobalVarsBase::flIntervalPerTick;
+	global_vars_ut[  _( "interpolation_amount" ) ] = &IGlobalVarsBase::flInterpolationAmount;
 
 
 	/* usertypes */
@@ -154,6 +164,7 @@ void Scripting::Load( std::string fileName ) {
 	entity_ut[ _( "alive" ) ] = sol::overload( &Wrappers::Entity::CPlayer::IsAlive );
 	entity_ut[ _( "dormant" ) ] = sol::overload( &Wrappers::Entity::CPlayer::IsDormant );
 	entity_ut[ _( "is_player" ) ] = sol::overload( &Wrappers::Entity::CPlayer::IsPlayer );
+	entity_ut[ _( "get_name" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetName );
 
 	entity_ut[ _( "get_layer_sequence_activity" ) ] = sol::overload( &Wrappers::Entity::CPlayer::GetLayerSequenceActivity );
 	entity_ut[ _( "animate" ) ] = sol::overload( &Wrappers::Entity::CPlayer::AnimatePlayer );
