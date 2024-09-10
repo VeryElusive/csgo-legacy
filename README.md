@@ -1,0 +1,1 @@
+hello, i have released this source publicly as i have been made aware of pasters flexing (and gatekeeping LOL) my source. here is my half finished legacy port of havoc, maybe someone can finish it for me since i cant be bothered to do it myself as i have no interest in this game. :)
